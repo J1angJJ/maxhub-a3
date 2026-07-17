@@ -1,0 +1,99 @@
+# Private local materials
+/private/
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100/
+.Trashes/
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Editor and IDE state
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs and runtime output
+*.log
+logs/
+tmp/
+temp/
+.tmp/
+.cache/
+.pytest_cache/
+
+# Environment and local secrets
+.env
+.env.*
+!.env.example
+!.env.template
+*.local
+*.secret
+secrets/
+
+# Python caches and virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+
+# C/C++ and CMake build artifacts
+build/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+compile_commands.json
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dll
+*.dylib
+*.exe
+
+# ROS 1 catkin and ROS 2 colcon workspaces
+devel/
+install/
+log/
+.catkin_tools/
+.colcon/
+
+# Node package and build artifacts
+node_modules/
+dist/
+coverage/
+.next/
+.nuxt/
+.vite/
+
+# LLM / agent local state and generated scratch space
+.codex/
+.claude/
+.cursor/
+.continue/
+.aider*
+.mcp/
+memory.local/
+scratch/
+transcripts/
+sessions/
+
+# Archives and local exports
+*.zip
+*.7z
+*.rar
+*.tar
+*.tar.gz
+*.tgz
+exports/

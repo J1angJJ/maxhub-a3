@@ -1,0 +1,83 @@
+# Normalize text files across Windows, macOS, and Linux.
+# Editors should write UTF-8 according to .editorconfig.
+* text=auto
+
+# Source, configuration, and documentation stay LF in the repository.
+*.md text eol=lf
+*.txt text eol=lf
+*.json text eol=lf
+*.jsonl text eol=lf
+*.ipynb text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.toml text eol=lf
+*.ini text eol=lf
+*.cfg text eol=lf
+*.conf text eol=lf
+.editorconfig text eol=lf
+.gitattributes text eol=lf
+.gitignore text eol=lf
+*.xml text eol=lf
+*.launch text eol=lf
+*.urdf text eol=lf
+*.xacro text eol=lf
+*.py text eol=lf
+*.cpp text eol=lf
+*.cc text eol=lf
+*.cxx text eol=lf
+*.c text eol=lf
+*.hpp text eol=lf
+*.hh text eol=lf
+*.hxx text eol=lf
+*.h text eol=lf
+*.cmake text eol=lf
+CMakeLists.txt text eol=lf
+*.sh text eol=lf
+*.bash text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.css text eol=lf
+*.scss text eol=lf
+*.html text eol=lf
+*.tex text eol=lf
+*.bib text eol=lf
+
+# Windows scripts should keep CRLF for native tools.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Treat common binary assets as binary so Git never rewrites them.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.doc binary
+*.docx binary
+*.ppt binary
+*.pptx binary
+*.xls binary
+*.xlsx binary
+*.zip binary
+*.7z binary
+*.rar binary
+*.tar binary
+*.gz binary
+*.tgz binary
+*.mp3 binary
+*.mp4 binary
+*.mov binary
+*.avi binary
+*.mkv binary
+*.bag binary
+*.db3 binary
+*.onnx binary
+*.pth binary
+*.pt binary
+*.woff binary
+*.woff2 binary
