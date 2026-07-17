@@ -23,6 +23,7 @@ Desktop.ini
 # Logs and runtime output
 *.log
 logs/
+log/
 tmp/
 temp/
 .tmp/
@@ -49,10 +50,15 @@ env/
 
 # C/C++ and CMake build artifacts
 build/
+Build/
 cmake-build-*/
 CMakeFiles/
 CMakeCache.txt
 compile_commands.json
+CTestTestfile.cmake
+Testing/
+Makefile
+*.cmake.user
 *.o
 *.obj
 *.a
@@ -65,9 +71,18 @@ compile_commands.json
 # ROS 1 catkin and ROS 2 colcon workspaces
 devel/
 install/
-log/
 .catkin_tools/
 .colcon/
+.ros/
+.rosinstall
+.rosinstall.bak
+.catkin_workspace
+CATKIN_IGNORE
+COLCON_IGNORE
+ament_cmake_index/
+ament_index/
+local_setup.*
+setup.*
 
 # Node package and build artifacts
 node_modules/
@@ -97,3 +112,56 @@ sessions/
 *.tar.gz
 *.tgz
 exports/
+
+# Robot and simulator generated data
+*.bag
+*.bag.active
+*.db3
+*.mcap
+*.pcd
+*.ply
+*.stl
+*.dae
+*.urdf.xacro~
+*.rviz~
+*.bt
+*.pgm
+*.ppm
+*.pbstream
+*.sqlite
+*.sqlite3
+*.csv
+*.npy
+*.npz
+*.onnx
+*.pth
+*.pt
+gazebo/
+.gazebo/
+ignition/
+.ignition/
+rviz/
+
+# Video and camera recordings
+*.3g2
+*.3gp
+*.asf
+*.avi
+*.flv
+*.m2ts
+*.m4v
+*.mkv
+*.mov
+*.mp4
+*.mpeg
+*.mpg
+*.mts
+*.mxf
+*.ogv
+*.rm
+*.rmvb
+*.ts
+*.vob
+*.webm
+*.wmv
+*.y4m
