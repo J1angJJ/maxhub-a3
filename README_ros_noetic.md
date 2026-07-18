@@ -160,6 +160,31 @@ workspace/ubuntu/carm_ws/src/carm_a3_vision/config/camera.yaml
 - 诊断话题：`/carm_a3/camera/diagnostics`
 - 软件方向校正：`rotate_180: true`
 
+### Camera Modes
+
+`v4l2-ctl -d /dev/video0 --list-formats-ext` 实测支持：
+
+| Format | Resolution | FPS |
+| --- | --- | --- |
+| MJPG | 320x240 | 30 |
+| MJPG | 640x480 | 30 |
+| MJPG | 800x600 | 30 |
+| MJPG | 1024x768 | 30 |
+| MJPG | 1280x720 | 30 |
+| MJPG | 1280x1024 | 30 |
+| MJPG | 1920x1080 | 30 |
+| YUYV | 320x240 | 30 |
+| YUYV | 640x480 | 30 |
+| YUYV | 800x600 | 21 |
+| YUYV | 1024x768 | 6 |
+| YUYV | 1280x720 | 9 |
+| YUYV | 1280x1024 | 6 |
+| YUYV | 1920x1080 | 6 |
+
+当前 `carm_a3_vision` 节点只实现了 `YUYV -> rgb8`，因此默认继续使用已经验证并完成内参标定的 `640x480 YUYV 30fps`。如果后续需要 `1280x720` 或 `1920x1080` 的 30fps，需要先给节点增加 MJPG 解码，或改用成熟的 ROS 相机驱动包。
+
+注意：相机内参和分辨率绑定。当前 `camera_info.yaml` 只适用于 `640x480`，切换到其他分辨率后应重新标定。
+
 ## TF Check
 
 启动 `carm_a3_driver` 后检查 TF：

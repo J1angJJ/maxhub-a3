@@ -50,6 +50,31 @@ rosrun camera_calibration cameracalibrator.py \
 
 Uploaded calibration data is accepted in memory for the running node. Use the calibrator's `SAVE` output as the persistent calibration file, then place the YAML under `config/camera_info.yaml`.
 
+## Camera Modes
+
+The original USB camera reports these modes through `v4l2-ctl -d /dev/video0 --list-formats-ext`:
+
+| Format | Resolution | FPS |
+| --- | --- | --- |
+| MJPG | 320x240 | 30 |
+| MJPG | 640x480 | 30 |
+| MJPG | 800x600 | 30 |
+| MJPG | 1024x768 | 30 |
+| MJPG | 1280x720 | 30 |
+| MJPG | 1280x1024 | 30 |
+| MJPG | 1920x1080 | 30 |
+| YUYV | 320x240 | 30 |
+| YUYV | 640x480 | 30 |
+| YUYV | 800x600 | 21 |
+| YUYV | 1024x768 | 6 |
+| YUYV | 1280x720 | 9 |
+| YUYV | 1280x1024 | 6 |
+| YUYV | 1920x1080 | 6 |
+
+This package currently supports YUYV input. Keep `640x480 YUYV 30fps` as the default calibrated mode. Higher-resolution 30fps modes require MJPG decoding or a mature ROS camera driver package.
+
+Camera intrinsics are resolution-specific. The current `config/camera_info.yaml` is for `640x480`; calibrate again after changing resolution.
+
 ## Orientation
 
 The camera currently appears upside down in `guvcview`. The default config sets `rotate_180: true`. If the image becomes correct after physical adjustment, set it to `false` in `config/camera.yaml`.
