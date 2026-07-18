@@ -8,6 +8,7 @@ import numpy as np
 import rospy
 import tf2_ros
 import yaml
+from geometry_msgs.msg import TransformStamped
 from sensor_msgs.msg import CameraInfo, Image
 from std_srvs.srv import Trigger, TriggerResponse
 
@@ -89,6 +90,37 @@ def marker_pose_to_dict(camera_frame, stamp, rvec, tvec):
     }
 
 
+def quat_from_rotation(rot):
+    trace = float(np.trace(rot))
+    if trace > 0.0:
+        s = np.sqrt(trace + 1.0) * 2.0
+        w = 0.25 * s
+        x = (rot[2, 1] - rot[1, 2]) / s
+        y = (rot[0, 2] - rot[2, 0]) / s
+        z = (rot[1, 0] - rot[0, 1]) / s
+    elif rot[0, 0] > rot[1, 1] and rot[0, 0] > rot[2, 2]:
+        s = np.sqrt(1.0 + rot[0, 0] - rot[1, 1] - rot[2, 2]) * 2.0
+        w = (rot[2, 1] - rot[1, 2]) / s
+        x = 0.25 * s
+        y = (rot[0, 1] + rot[1, 0]) / s
+        z = (rot[0, 2] + rot[2, 0]) / s
+    elif rot[1, 1] > rot[2, 2]:
+        s = np.sqrt(1.0 + rot[1, 1] - rot[0, 0] - rot[2, 2]) * 2.0
+        w = (rot[0, 2] - rot[2, 0]) / s
+        x = (rot[0, 1] + rot[1, 0]) / s
+        y = 0.25 * s
+        z = (rot[1, 2] + rot[2, 1]) / s
+    else:
+        s = np.sqrt(1.0 + rot[2, 2] - rot[0, 0] - rot[1, 1]) * 2.0
+        w = (rot[1, 0] - rot[0, 1]) / s
+        x = (rot[0, 2] + rot[2, 0]) / s
+        y = (rot[1, 2] + rot[2, 1]) / s
+        z = 0.25 * s
+    quat = np.array([x, y, z, w], dtype=np.float64)
+    quat /= np.linalg.norm(quat)
+    return quat
+
+
 class ArucoHandeyeSampler:
     def __init__(self):
         self.image_topic = rospy.get_param("~image_topic", "/carm_a3/camera/image_raw")
@@ -96,8 +128,10 @@ class ArucoHandeyeSampler:
         self.base_frame = rospy.get_param("~base_frame", "base_link")
         self.flange_frame = rospy.get_param("~flange_frame", "flange")
         self.camera_frame = rospy.get_param("~camera_frame", "carm_a3_camera_optical_frame")
+        self.marker_frame = rospy.get_param("~marker_frame", "aruco_marker")
         self.marker_id = int(rospy.get_param("~marker_id", 23))
         self.marker_size_m = float(rospy.get_param("~marker_size_m", 0.1))
+        self.publish_marker_tf = bool(rospy.get_param("~publish_marker_tf", True))
         self.output_dir = os.path.expanduser(rospy.get_param("~output_dir", "~/maxhub-a3/workspace/ubuntu/logs/handeye_samples"))
         self.save_sample_service = rospy.get_param("~save_sample_service", "/carm_a3/handeye/save_sample")
         self.max_sample_age_s = float(rospy.get_param("~max_sample_age_s", 1.0))
@@ -112,6 +146,7 @@ class ArucoHandeyeSampler:
         self.detector_parameters = get_detector_parameters()
         self.tf_buffer = tf2_ros.Buffer(rospy.Duration(30.0))
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
+        self.marker_tf_broadcaster = tf2_ros.TransformBroadcaster()
 
         os.makedirs(self.output_dir, exist_ok=True)
         self.sample_count = self.count_existing_samples()
@@ -160,6 +195,11 @@ class ArucoHandeyeSampler:
         rvecs, tvecs, _ = cv2.aruco.estimatePoseSingleMarkers(
             [corners[index]], self.marker_size_m, self.camera_matrix, self.dist_coeffs
         )
+        marker_rot, _ = cv2.Rodrigues(np.asarray(rvecs[0][0], dtype=np.float64).reshape(3, 1))
+        marker_t = np.asarray(tvecs[0][0], dtype=np.float64).reshape(3)
+
+        if self.publish_marker_tf:
+            self.publish_marker_transform(msg.header.stamp, marker_rot, marker_t)
 
         try:
             transform = self.tf_buffer.lookup_transform(self.base_frame, self.flange_frame, rospy.Time(0), rospy.Duration(0.2))
@@ -182,7 +222,7 @@ class ArucoHandeyeSampler:
                 "size_m": self.marker_size_m,
             },
             "base_T_flange": transform_to_dict(transform),
-            "camera_T_marker": marker_pose_to_dict(self.camera_frame, msg.header.stamp, rvecs[0][0], tvecs[0][0]),
+            "camera_T_marker": marker_pose_to_dict(self.camera_frame, msg.header.stamp, rvecs[0][0], marker_t),
         }
         with self.lock:
             self.latest_sample = sample
@@ -194,6 +234,21 @@ class ArucoHandeyeSampler:
             sample["camera_T_marker"]["translation"]["y"],
             sample["camera_T_marker"]["translation"]["z"],
         )
+
+    def publish_marker_transform(self, stamp, rot, trans):
+        quat = quat_from_rotation(rot)
+        transform = TransformStamped()
+        transform.header.stamp = stamp
+        transform.header.frame_id = self.camera_frame
+        transform.child_frame_id = self.marker_frame
+        transform.transform.translation.x = float(trans[0])
+        transform.transform.translation.y = float(trans[1])
+        transform.transform.translation.z = float(trans[2])
+        transform.transform.rotation.x = float(quat[0])
+        transform.transform.rotation.y = float(quat[1])
+        transform.transform.rotation.z = float(quat[2])
+        transform.transform.rotation.w = float(quat[3])
+        self.marker_tf_broadcaster.sendTransform(transform)
 
     def input_loop(self):
         while not rospy.is_shutdown():

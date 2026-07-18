@@ -4,8 +4,10 @@
   <arg name="base_frame" default="base_link" />
   <arg name="flange_frame" default="flange" />
   <arg name="camera_frame" default="carm_a3_camera_optical_frame" />
+  <arg name="marker_frame" default="aruco_marker" />
   <arg name="marker_id" default="23" />
   <arg name="marker_size_m" default="0.1" />
+  <arg name="publish_marker_tf" default="true" />
   <arg name="output_dir" default="$(env HOME)/maxhub-a3/workspace/ubuntu/logs/handeye_samples" />
   <arg name="save_sample_service" default="/carm_a3/handeye/save_sample" />
 
@@ -19,8 +21,10 @@
     <param name="base_frame" value="$(arg base_frame)" />
     <param name="flange_frame" value="$(arg flange_frame)" />
     <param name="camera_frame" value="$(arg camera_frame)" />
+    <param name="marker_frame" value="$(arg marker_frame)" />
     <param name="marker_id" value="$(arg marker_id)" />
     <param name="marker_size_m" value="$(arg marker_size_m)" />
+    <param name="publish_marker_tf" value="$(arg publish_marker_tf)" />
     <param name="output_dir" value="$(arg output_dir)" />
     <param name="save_sample_service" value="$(arg save_sample_service)" />
   </node>

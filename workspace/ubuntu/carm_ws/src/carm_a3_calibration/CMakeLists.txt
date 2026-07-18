@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.0.2)
 project(carm_a3_calibration)
 
 find_package(catkin REQUIRED COMPONENTS
+  geometry_msgs
   rospy
   sensor_msgs
   std_msgs
@@ -10,7 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 catkin_package(
-  CATKIN_DEPENDS rospy sensor_msgs std_msgs std_srvs tf2_ros
+  CATKIN_DEPENDS geometry_msgs rospy sensor_msgs std_msgs std_srvs tf2_ros
 )
 
 catkin_install_python(PROGRAMS

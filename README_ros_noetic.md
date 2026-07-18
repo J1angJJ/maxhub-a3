@@ -446,6 +446,28 @@ rosrun tf tf_echo flange carm_a3_camera_optical_frame
 rosrun tf tf_echo base_link carm_a3_camera_optical_frame
 ```
 
+你当前验证到的静态外参为：
+
+```text
+flange -> carm_a3_camera_optical_frame
+translation: [0.061, -0.003, 0.045] m
+RPY: [-26.1, 0.9, 89.0] deg
+```
+
+下一步做固定 ArUco 的一致性验证。保持 ArUco 纸固定不动，启动采样器发布实时 `camera -> marker`：
+
+```bash
+roslaunch carm_a3_calibration aruco_handeye_sampler.launch
+```
+
+另开终端观察：
+
+```bash
+rosrun tf tf_echo base_link aruco_marker
+```
+
+缓慢改变机械臂/相机姿态时，如果 `base_link -> aruco_marker` 的平移基本稳定，说明当前 `flange -> camera` 外参方向和数量级大体可信。如果漂移很明显，优先重新检查 ArUco 尺寸、相机画面方向、样本姿态覆盖和 TF 方向约定。
+
 ## Read-only Test Plan
 
 编译成功后，下一步只测试“连接与状态读取”，不做使能、不回零、不运动。

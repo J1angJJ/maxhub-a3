@@ -4,7 +4,7 @@ ROS Noetic calibration helpers for CArm / MAXHUB A3.
 
 The first tool is an eye-in-hand ArUco sample recorder. It detects the printed `DICT_ARUCO_ORIGINAL` marker ID `23`, estimates `camera_T_marker`, reads `base_link -> flange` from TF, and saves one YAML file per sample.
 
-It does not move or command the robot.
+It also publishes a live `carm_a3_camera_optical_frame -> aruco_marker` TF for validation. It does not move or command the robot.
 
 ## Install
 
@@ -80,6 +80,15 @@ Then inspect:
 rosrun tf tf_echo flange carm_a3_camera_optical_frame
 rosrun tf tf_echo base_link carm_a3_camera_optical_frame
 ```
+
+For live marker validation, also run the ArUco sampler with the marker visible:
+
+```bash
+roslaunch carm_a3_calibration aruco_handeye_sampler.launch
+rosrun tf tf_echo base_link aruco_marker
+```
+
+Keep the ArUco paper fixed in the workspace and move the robot/camera through several poses. A good draft hand-eye transform should keep `base_link -> aruco_marker` roughly stable.
 
 ## Sampling Notes
 
