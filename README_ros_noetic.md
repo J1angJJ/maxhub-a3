@@ -85,6 +85,170 @@ rostopic echo -n 1 /joint_states
 rostopic echo -n 1 /maxhub_a3/flange_pose
 ```
 
+## Read-only Test Plan
+
+编译成功后，下一步只测试“连接与状态读取”，不做使能、不回零、不运动。
+
+### 1. Fresh Terminal Environment
+
+每个新终端先准备 ROS 和 SDK 环境：
+
+```bash
+cd /home/noetic/maxhub-a3
+source /opt/ros/noetic/setup.bash
+source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash
+source workspace/ubuntu/carm_ws/devel/setup.bash
+```
+
+确认环境变量：
+
+```bash
+echo "$arm_control_sdk_DIR"
+echo "$LD_LIBRARY_PATH" | tr ':' '\n' | grep arm_control_sdk
+rospack find carm_a3_driver
+```
+
+期望：
+
+- `arm_control_sdk_DIR` 指向 `workspace/ubuntu/carm_ws/vendor/arm_control_sdk`。
+- `LD_LIBRARY_PATH` 中包含 `arm_control_sdk/lib` 和 `arm_control_sdk/poco/lib`。
+- `rospack find carm_a3_driver` 能找到 `workspace/ubuntu/carm_ws/src/carm_a3_driver`。
+
+### 2. Network Reachability
+
+```bash
+cd /home/noetic/maxhub-a3
+ping -c 4 192.168.31.60
+curl -I http://192.168.31.60
+```
+
+期望：
+
+- `ping` 无丢包或基本稳定。
+- `curl` 能返回 HTTP 响应头。
+
+如果失败，先检查虚拟机桥接网络、Ubuntu IP 是否在 `192.168.31.0/24` 网段、机械臂是否接回路由器。
+
+### 3. Start roscore
+
+终端 1：
+
+```bash
+source /opt/ros/noetic/setup.bash
+roscore
+```
+
+期望：`roscore` 正常启动，无端口占用报错。
+
+### 4. Start Read-only Driver
+
+终端 2：
+
+```bash
+cd /home/noetic/maxhub-a3
+source /opt/ros/noetic/setup.bash
+source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash
+source workspace/ubuntu/carm_ws/devel/setup.bash
+roslaunch carm_a3_driver readonly_state.launch
+```
+
+期望：
+
+- 日志显示目标控制器为 `192.168.31.60:8090`。
+- 日志明确提示节点不会调用 ready、enable、motion、stop 或 gripper API。
+- `/maxhub_a3/diagnostics` 中出现 `connected=true` 或相近状态。
+
+如果出现动态库错误，重新 source SDK：
+
+```bash
+cd /home/noetic/maxhub-a3
+source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash
+echo "$LD_LIBRARY_PATH" | tr ':' '\n' | grep arm_control_sdk
+```
+
+### 5. Inspect Topics
+
+终端 3：
+
+```bash
+source /opt/ros/noetic/setup.bash
+source /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/devel/setup.bash
+rostopic list
+rostopic echo -n 1 /maxhub_a3/diagnostics
+rostopic echo -n 1 /joint_states
+rostopic echo -n 1 /maxhub_a3/flange_pose
+```
+
+期望话题：
+
+- `/joint_states`
+- `/maxhub_a3/flange_pose`
+- `/maxhub_a3/diagnostics`
+
+`/joint_states` 期望包含 6 个关节名和 6 个位置值。  
+`/maxhub_a3/flange_pose` 期望包含位置和四元数。  
+`/maxhub_a3/diagnostics` 期望包含连接状态、自由度、伺服状态、控制器状态和速度百分比。
+
+### 6. Record First Result
+
+测试成功后建议保存一次只读 bring-up 记录：
+
+```bash
+cd /home/noetic/maxhub-a3
+mkdir -p workspace/ubuntu/logs/readonly_test
+date > workspace/ubuntu/logs/readonly_test/date.txt
+rostopic list > workspace/ubuntu/logs/readonly_test/topics.txt
+rostopic echo -n 1 /maxhub_a3/diagnostics > workspace/ubuntu/logs/readonly_test/diagnostics.txt
+rostopic echo -n 1 /joint_states > workspace/ubuntu/logs/readonly_test/joint_states.txt
+rostopic echo -n 1 /maxhub_a3/flange_pose > workspace/ubuntu/logs/readonly_test/flange_pose.txt
+```
+
+注意：`logs/` 默认被 `.gitignore` 忽略。需要长期保留的结论请整理成文档，不直接提交原始日志。
+
+### 7. Stop Test
+
+按顺序停止：
+
+1. 终端 2 中 `Ctrl+C` 停止 `roslaunch`。
+2. 终端 1 中 `Ctrl+C` 停止 `roscore`。
+3. 不需要对机械臂执行额外动作，因为只读节点没有使能或运动。
+
+## Next Gate
+
+只有当以下条件全部满足后，再进入下一阶段：
+
+- `catkin_make` 可重复成功。
+- 网络可达稳定。
+- 只读节点可重复启动。
+- `/joint_states` 和 `/maxhub_a3/flange_pose` 数据看起来连续、非空、数量正确。
+- `/maxhub_a3/diagnostics` 中没有错误状态。
+- 实机急停和机械固定状态已确认。
+
+下一阶段建议先做“显式参数保护的低速只读增强/安全服务”，不要直接开放运动话题。
+
+## Test Log
+
+### 2026-07-18 Read-only ROS Bring-up Passed
+
+Ubuntu 20.04 + ROS Noetic 下已完成首次只读链路测试：
+
+- `carm_ws` 工作区编译成功。
+- `carm_a3_driver` 可通过 `roslaunch carm_a3_driver readonly_state.launch` 启动。
+- 机械臂网络地址 `192.168.31.60` 可访问。
+- 只读节点可连接底层 C++ SDK。
+- `/joint_states` 可输出关节状态。
+- `/maxhub_a3/flange_pose` 可输出末端位姿。
+- `/maxhub_a3/diagnostics` 可输出诊断状态。
+- 测试过程中未执行使能、回零、运动或夹爪控制。
+
+本次截图留档位置：
+
+```text
+R:\maxhub-a3\private\log\屏幕截图 2026-07-18 183236.png
+```
+
+截图位于 `private/` 下，不进入 Git。
+
 ## Safety
 
 当前只读节点不会调用：
