@@ -4,6 +4,7 @@ height: 480
 fps: 30
 
 frame_id: "carm_a3_camera_optical_frame"
+camera_name: "carm_a3_camera"
 image_topic: "/carm_a3/camera/image_raw"
 camera_info_topic: "/carm_a3/camera/camera_info"
 set_camera_info_service: "/carm_a3/camera/set_camera_info"

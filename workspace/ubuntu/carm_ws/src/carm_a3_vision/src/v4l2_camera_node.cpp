@@ -2,6 +2,7 @@
 #include <cerrno>
 #include <cstring>
 #include <fcntl.h>
+#include <memory>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -13,6 +14,7 @@
 
 #include <linux/videodev2.h>
 
+#include <camera_info_manager/camera_info_manager.h>
 #include <ros/ros.h>
 #include <sensor_msgs/CameraInfo.h>
 #include <sensor_msgs/Image.h>
@@ -100,6 +102,8 @@ public:
         pnh_.param<int>("height", height_, 480);
         pnh_.param<int>("fps", fps_, 30);
         pnh_.param<std::string>("frame_id", frame_id_, "carm_a3_camera_optical_frame");
+        pnh_.param<std::string>("camera_name", camera_name_, "carm_a3_camera");
+        pnh_.param<std::string>("camera_info_url", camera_info_url_, "");
         pnh_.param<std::string>("image_topic", image_topic_, "/carm_a3/camera/image_raw");
         pnh_.param<std::string>("camera_info_topic", camera_info_topic_, "/carm_a3/camera/camera_info");
         pnh_.param<std::string>("set_camera_info_service", set_camera_info_service_, "/carm_a3/camera/set_camera_info");
@@ -110,6 +114,7 @@ public:
 
         image_pub_ = nh_.advertise<sensor_msgs::Image>(image_topic_, 2);
         camera_info_pub_ = nh_.advertise<sensor_msgs::CameraInfo>(camera_info_topic_, 2);
+        camera_info_manager_.reset(new camera_info_manager::CameraInfoManager(nh_, camera_name_, camera_info_url_));
         set_camera_info_srv_ = nh_.advertiseService(set_camera_info_service_, &V4L2CameraNode::setCameraInfo, this);
         diagnostics_pub_ = nh_.advertise<std_msgs::String>(diagnostics_topic_, 2, true);
 
@@ -119,6 +124,11 @@ public:
         startStreaming();
 
         publishDiagnostics("camera_started");
+        if (camera_info_manager_->isCalibrated()) {
+            ROS_INFO("Loaded camera calibration: name=%s url=%s", camera_name_.c_str(), camera_info_url_.c_str());
+        } else {
+            ROS_WARN("Camera calibration is not loaded; /camera_info will contain default zero intrinsics");
+        }
         ROS_INFO("CArm A3 camera started: %s %dx%d@%d YUYV -> rgb8", device_.c_str(), width_, height_, fps_);
     }
 
@@ -287,7 +297,7 @@ private:
         image.data = rgb_;
         image_pub_.publish(image);
 
-        sensor_msgs::CameraInfo info = camera_info_;
+        sensor_msgs::CameraInfo info = camera_info_manager_->getCameraInfo();
         info.header = image.header;
         info.height = image.height;
         info.width = image.width;
@@ -298,13 +308,12 @@ private:
     }
 
     bool setCameraInfo(sensor_msgs::SetCameraInfo::Request& req, sensor_msgs::SetCameraInfo::Response& res) {
-        camera_info_ = req.camera_info;
-        camera_info_.header.frame_id = frame_id_;
-        camera_info_.height = static_cast<unsigned int>(height_);
-        camera_info_.width = static_cast<unsigned int>(width_);
-        res.success = true;
-        res.status_message = "camera_info accepted in memory; use cameracalibrator SAVE output for persistence";
-        ROS_INFO("Updated in-memory camera_info from set_camera_info");
+        req.camera_info.header.frame_id = frame_id_;
+        req.camera_info.height = static_cast<unsigned int>(height_);
+        req.camera_info.width = static_cast<unsigned int>(width_);
+        res.success = camera_info_manager_->setCameraInfo(req.camera_info);
+        res.status_message = res.success ? "camera_info accepted" : "camera_info rejected";
+        ROS_INFO("set_camera_info request finished: %s", res.status_message.c_str());
         publishDiagnostics("camera_info_updated");
         return true;
     }
@@ -327,6 +336,8 @@ private:
 
     std::string device_;
     std::string frame_id_;
+    std::string camera_name_;
+    std::string camera_info_url_;
     std::string image_topic_;
     std::string camera_info_topic_;
     std::string set_camera_info_service_;
@@ -342,7 +353,7 @@ private:
     bool streaming_ = false;
     std::vector<Buffer> buffers_;
     std::vector<unsigned char> rgb_;
-    sensor_msgs::CameraInfo camera_info_;
+    std::unique_ptr<camera_info_manager::CameraInfoManager> camera_info_manager_;
 };
 
 int main(int argc, char** argv) {

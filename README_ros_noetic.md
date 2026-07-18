@@ -157,6 +157,7 @@ workspace/ubuntu/carm_ws/src/carm_a3_vision/config/camera.yaml
 - 图像话题：`/carm_a3/camera/image_raw`
 - 相机信息话题：`/carm_a3/camera/camera_info`
 - 相机信息写入服务：`/carm_a3/camera/set_camera_info`
+- 标定文件：`workspace/ubuntu/carm_ws/src/carm_a3_vision/config/camera_info.yaml`
 - 诊断话题：`/carm_a3/camera/diagnostics`
 - 软件方向校正：`rotate_180: true`
 
@@ -211,13 +212,25 @@ base_link -> joint1 -> joint2 -> joint3 -> joint4 -> joint5 -> joint6 -> flange
 
 ## Camera Intrinsic Calibration
 
-相机内参标定应在手眼标定之前完成。当前 `/carm_a3/camera/camera_info` 可以发布，但 `K/R/P/D` 仍为空或全零，下一步需要标定得到真实内参。
+相机内参标定应在手眼标定之前完成。当前仓库已保存 `640x480` 标定文件，并且 `carm_a3_vision` 启动时会默认加载：
+
+```text
+workspace/ubuntu/carm_ws/src/carm_a3_vision/config/camera_info.yaml
+```
+
+启动相机节点后检查：
+
+```bash
+rostopic echo -n 1 /carm_a3/camera/camera_info
+```
+
+期望 `K/D/R/P` 不再是全零。
 
 ### Install Tools
 
 ```bash
 sudo apt update
-sudo apt install ros-noetic-camera-calibration ros-noetic-image-view ros-noetic-rqt-image-view
+sudo apt install ros-noetic-camera-calibration ros-noetic-camera-info-manager ros-noetic-image-view ros-noetic-rqt-image-view
 ```
 
 ### Prepare Checkerboard
@@ -291,13 +304,13 @@ Service not found
 - 避免运动模糊和强反光。
 - 保持棋盘完整出现在画面中。
 
-标定完成后点击 `CALIBRATE`，结果稳定后点击 `SAVE`。保存得到的 YAML 后，再放入仓库，例如：
+标定完成后点击 `CALIBRATE`，结果稳定后点击 `SAVE`。保存得到的 YAML 后，再放入仓库：
 
 ```text
 workspace/ubuntu/carm_ws/src/carm_a3_vision/config/camera_info.yaml
 ```
 
-后续再让 `carm_a3_vision` 读取该 YAML，填充 `/carm_a3/camera/camera_info`。
+如果 YAML 中的 `camera_name` 不是 `carm_a3_camera`，建议改成 `carm_a3_camera`，与 `config/camera.yaml` 保持一致。
 
 ### Before Hand-eye Calibration
 
@@ -451,7 +464,7 @@ rostopic echo -n 1 /maxhub_a3/flange_pose > workspace/ubuntu/logs/readonly_test/
 
 下一阶段建议先做“显式参数保护的低速只读增强/安全服务”，不要直接开放运动话题。
 
-视觉链路的下一阶段建议是相机内参标定，之后再做眼在手上的手眼标定。
+视觉链路的下一阶段建议是确认 `camera_info.yaml` 已被正常加载，之后再做眼在手上的手眼标定。
 
 ## Test Log
 
@@ -489,7 +502,7 @@ camera_started,device=/dev/video0,width=640,height=480,fps=30,rotate_180=true
 ```
 
 - `/carm_a3/camera/camera_info` 可输出，当前尺寸为 `640x480`，`frame_id` 为 `carm_a3_camera_optical_frame`。
-- 当前尚未做相机内参标定，因此 `camera_info` 中 `K/R/P/D` 仍为空或全零，属于预期状态。
+- `camera_info.yaml` 已保存 `640x480` 内参；重新编译并启动当前版本后，`K/R/P/D` 应发布真实标定值。
 - `image_view` 能正常显示图像；退出时出现 OpenCV GTK 窗口销毁异常：
 
 ```text

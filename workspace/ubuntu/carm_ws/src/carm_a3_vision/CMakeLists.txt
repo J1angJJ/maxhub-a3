@@ -4,13 +4,14 @@ project(carm_a3_vision)
 add_compile_options(-std=c++14)
 
 find_package(catkin REQUIRED COMPONENTS
+  camera_info_manager
   roscpp
   sensor_msgs
   std_msgs
 )
 
 catkin_package(
-  CATKIN_DEPENDS roscpp sensor_msgs std_msgs
+  CATKIN_DEPENDS camera_info_manager roscpp sensor_msgs std_msgs
 )
 
 include_directories(
