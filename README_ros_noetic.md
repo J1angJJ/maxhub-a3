@@ -307,6 +307,28 @@ R:\maxhub-a3\private\log\屏幕截图 2026-07-18 183236.png
 
 截图位于 `private/` 下，不进入 Git。
 
+### 2026-07-18 USB Camera ROS Stream Passed
+
+Ubuntu 20.04 + ROS Noetic 下已完成原装 USB 相机 ROS 图像链路测试：
+
+- `carm_a3_vision` 可通过 `roslaunch carm_a3_vision camera.launch` 启动。
+- `/carm_a3/camera/image_raw` 发布稳定，`rostopic hz` 实测约 `29.86-30.04 Hz`。
+- `/carm_a3/camera/diagnostics` 输出：
+
+```text
+camera_started,device=/dev/video0,width=640,height=480,fps=30,rotate_180=true
+```
+
+- `/carm_a3/camera/camera_info` 可输出，当前尺寸为 `640x480`，`frame_id` 为 `carm_a3_camera_optical_frame`。
+- 当前尚未做相机内参标定，因此 `camera_info` 中 `K/R/P/D` 仍为空或全零，属于预期状态。
+- `image_view` 能正常显示图像；退出时出现 OpenCV GTK 窗口销毁异常：
+
+```text
+Can't destroy non-registered window
+```
+
+该异常发生在 `image_view` 退出阶段，不影响当前对相机话题、帧率和图像显示的判断。后续可优先使用 `rqt_image_view` 或继续用 `rostopic hz` 做链路检查。
+
 ## Safety
 
 当前只读节点不会调用：

@@ -156,6 +156,9 @@ USB 2.0 Camera: HD USB Camera (usb-0000:03:00.0-2):
 - 已新增 ROS Noetic 视觉包 `carm_a3_vision`，用于直接通过 V4L2 读取 `/dev/video0` 并发布 ROS 图像话题。
 - `carm_a3_vision` 默认使用 `640x480 YUYV 30 fps` 输入，转换为 `rgb8` 后发布。
 - `carm_a3_vision` 默认启用 `rotate_180: true`，用于软件修正当前相机安装方向。
+- ROS 图像话题 `/carm_a3/camera/image_raw` 已验证稳定约 30 fps。
+- `/carm_a3/camera/camera_info` 已可发布，但当前尚未进行相机内参标定，内参矩阵仍为空或全零。
+- `image_view` 能正常显示图像；退出阶段可能出现 OpenCV GTK 窗口销毁异常，不影响图像链路判断。
 
 支持的主要格式：
 
@@ -526,9 +529,10 @@ robot:
 - [x] 安装原装相机并确认 Ubuntu USB/V4L2 识别
 - [x] 使用 `guvcview` 验证 USB 透传和 30 fps 实时预览
 - [x] 新增 ROS Noetic 视觉包 `carm_a3_vision`
+- [x] 测试 ROS 图像采集节点
+- [x] 在软件图像链路中处理上下颠倒问题
 - [ ] 确认相机具体型号和镜头参数
-- [ ] 测试 ROS 图像采集节点
-- [ ] 在软件图像链路中处理上下颠倒问题
+- [ ] 完成相机内参标定并填充 `camera_info`
 - [ ] 记录机械臂固件版本
 - [ ] 记录网页上位机版本
 - [ ] 记录 SDK 版本
@@ -561,3 +565,4 @@ robot:
 | 2026-07-18 | 安装原装相机，Ubuntu 虚拟机识别为 `05a3:9230 ARC International Camera`，主图像节点为 `/dev/video0` |
 | 2026-07-18 | 通过 `guvcview` 验证相机 USB 透传和 30 fps 预览流畅；画面上下颠倒，后续通过软件校正 |
 | 2026-07-18 | 新增 `carm_a3_vision` ROS Noetic 视觉包，默认发布 `/carm_a3/camera/image_raw` 并启用 180 度软件校正 |
+| 2026-07-18 | 完成 ROS 图像话题测试，`/carm_a3/camera/image_raw` 稳定约 30 fps，`image_view` 可显示图像 |
