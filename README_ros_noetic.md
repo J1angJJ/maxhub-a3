@@ -464,7 +464,7 @@ rostopic echo -n 1 /maxhub_a3/flange_pose > workspace/ubuntu/logs/readonly_test/
 
 下一阶段建议先做“显式参数保护的低速只读增强/安全服务”，不要直接开放运动话题。
 
-视觉链路的下一阶段建议是确认 `camera_info.yaml` 已被正常加载，之后再做眼在手上的手眼标定。
+视觉链路的下一阶段建议是启动机械臂只读 TF 和相机节点，准备眼在手上的手眼标定采样。
 
 ## Test Log
 
@@ -510,6 +510,17 @@ Can't destroy non-registered window
 ```
 
 该异常发生在 `image_view` 退出阶段，不影响当前对相机话题、帧率和图像显示的判断。后续可优先使用 `rqt_image_view` 或继续用 `rostopic hz` 做链路检查。
+
+### 2026-07-19 Camera Intrinsics Loaded
+
+Ubuntu 20.04 + ROS Noetic 下已确认 `carm_a3_vision` 可以加载 `640x480` 相机内参：
+
+- `/carm_a3/camera/camera_info` 尺寸为 `640x480`。
+- `frame_id` 为 `carm_a3_camera_optical_frame`。
+- `distortion_model` 为 `plumb_bob`。
+- `D/K/R/P` 均已发布真实标定值，不再是全零。
+
+当前内参只适用于 `640x480` 默认模式。切换到其他分辨率，尤其是后续 MJPG 高分辨率模式后，需要重新标定。
 
 ## Safety
 
