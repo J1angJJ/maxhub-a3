@@ -76,7 +76,6 @@ install/
 .ros/
 .rosinstall
 .rosinstall.bak
-.catkin_workspace
 CATKIN_IGNORE
 COLCON_IGNORE
 ament_cmake_index/

@@ -1,0 +1,20 @@
+robot:
+  model: "MAXHUB A3"
+  serial_number: "A3YTL2607***-****"
+  host: "192.168.31.60"
+  web_url: "http://192.168.31.60"
+  factory_host: "10.42.0.101"
+  factory_gateway: "10.42.0.1"
+  supply_voltage_v: 24
+  rated_payload_kg: 2.0
+  notes:
+    - "Public config keeps the SN masked."
+    - "Do not add private credentials or full device identifiers here."
+
+safety:
+  default_mode: "readonly"
+  allow_motion_by_default: false
+  first_motion:
+    speed: "low"
+    amplitude: "small"
+    scope: "single_joint"
