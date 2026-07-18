@@ -410,11 +410,13 @@ rosrun carm_a3_calibration solve_handeye.py \
 workspace/ubuntu/logs/handeye_samples/handeye_result.yaml
 ```
 
-先重点看 `sample_count`、`motion_summary` 和 `recommended_transform`。推荐结果表达的是：
+脚本默认使用 `PARK` 作为推荐方法。先重点看 `sample_count`、`motion_summary`、`recommended_transform` 和 `method_consistency_to_recommended`。推荐结果表达的是：
 
 ```text
 flange -> carm_a3_camera_optical_frame
 ```
+
+如果 PARK 和 HORAUD 结果接近，而 TSAI、ANDREFF 或 DANIILIDIS 有偏差，优先把 PARK/HORAUD 当作当前草案；后续还需要用实物观察或重投影误差验证。
 
 ## Read-only Test Plan
 

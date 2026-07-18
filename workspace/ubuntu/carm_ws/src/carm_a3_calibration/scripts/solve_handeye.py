@@ -150,6 +150,34 @@ def result_dict(method_name, rot, trans):
     }
 
 
+def translation_from_result(result):
+    trans = result["translation"]
+    return np.array([trans["x"], trans["y"], trans["z"]], dtype=np.float64)
+
+
+def rotation_from_result(result):
+    return rotation_from_quat(result["rotation"])
+
+
+def compare_to_reference(method_results, reference):
+    comparisons = []
+    ref_rot = rotation_from_result(reference)
+    ref_trans = translation_from_result(reference)
+    for result in method_results:
+        if "error" in result:
+            continue
+        rot = rotation_from_result(result)
+        trans = translation_from_result(result)
+        comparisons.append(
+            {
+                "method": result["method"],
+                "translation_delta_m": float(np.linalg.norm(trans - ref_trans)),
+                "rotation_delta_deg": float(angle_from_rotation(ref_rot.T @ rot)),
+            }
+        )
+    return comparisons
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Solve eye-in-hand calibration from CArm A3 ArUco YAML samples.")
     parser.add_argument(
@@ -165,7 +193,7 @@ def parse_args():
     parser.add_argument(
         "--method",
         choices=sorted(METHODS.keys()),
-        default="TSAI",
+        default="PARK",
         help="Primary OpenCV hand-eye method for the top-level result.",
     )
     return parser.parse_args()
@@ -197,6 +225,7 @@ def main():
         },
         "recommended_transform": primary,
         "all_methods": method_results,
+        "method_consistency_to_recommended": compare_to_reference(method_results, primary),
         "motion_summary": describe_motion(samples),
     }
 

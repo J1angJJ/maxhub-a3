@@ -60,6 +60,8 @@ workspace/ubuntu/logs/handeye_samples/handeye_result.yaml
 
 The recommended result is `flange -> carm_a3_camera_optical_frame`.
 
+The default primary method is `PARK`. Compare `all_methods` and `method_consistency_to_recommended`; PARK and HORAUD should usually be close if the samples are healthy. Large method disagreement means the transform should be treated as a draft and verified physically.
+
 ## Sampling Notes
 
 Collect at least 15 samples. Use 20-30 if possible.
