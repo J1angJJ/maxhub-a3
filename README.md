@@ -8,6 +8,7 @@
 
 - [README_getting_started.md](README_getting_started.md)：开箱清单、安装记录、电源急停、网络配置、网页验收和开发前置准备。
 - [README_ubuntu.md](README_ubuntu.md)：Ubuntu 20.04 虚拟机端开发路径、conda 环境、快照和安全 bring-up 顺序。
+- [README_ros_noetic.md](README_ros_noetic.md)：ROS Noetic 工作区、`carm_a3_driver` 只读状态节点和后续迁移路线。
 
 ## 厂家资料
 

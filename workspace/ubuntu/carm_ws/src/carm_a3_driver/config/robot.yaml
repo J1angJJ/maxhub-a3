@@ -1,0 +1,16 @@
+robot_host: "192.168.31.60"
+robot_port: 8090
+connect_timeout_s: 1.0
+publish_rate_hz: 5.0
+connect_on_start: true
+
+frame_id: "base_link"
+flange_frame_id: "flange"
+
+joint_names:
+  - "joint1"
+  - "joint2"
+  - "joint3"
+  - "joint4"
+  - "joint5"
+  - "joint6"

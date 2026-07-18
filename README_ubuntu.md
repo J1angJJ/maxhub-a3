@@ -34,7 +34,7 @@ pwd
 
 ## Conda Environment
 
-Ubuntu 虚拟机中已新建 conda 环境：
+Ubuntu 虚拟机中已新建 conda 环境。该环境主要用于纯 Python SDK 或辅助脚本；ROS Noetic C++ 工作流不依赖 conda。
 
 ```bash
 cd /home/noetic/maxhub-a3
@@ -62,14 +62,12 @@ apt list --installed > workspace/ubuntu/apt_installed_snapshot.txt
 
 ## First Checks
 
-在运行 SDK Demo 之前，先确认 Ubuntu 虚拟机网络能访问机械臂：
+在运行 ROS 节点之前，先确认 Ubuntu 虚拟机网络能访问机械臂：
 
 ```bash
 cd /home/noetic/maxhub-a3
-conda activate maxhub-a3
 ping -c 4 192.168.31.60
 curl -I http://192.168.31.60
-python workspace/ubuntu/scripts/check_network.py
 ```
 
 如果 ping 不通，优先检查虚拟机网络是否为桥接模式，以及 Ubuntu IP 是否处于 `192.168.31.0/24` 网段。
@@ -83,26 +81,32 @@ python workspace/ubuntu/scripts/check_network.py
 - CArm user documentation: https://cvte-bot.feishu.cn/wiki/GyGbwKeWMiqEfDk80QXc9zeCnjf
 - Product page: https://www.cvte.com/product/flexiblemanipulator
 
-建议先将官方 Demo clone 到仓库外部目录，例如：
+本仓库已将 ROS 编译所需的厂家 C++ SDK 移植到 ROS 工作区内：
+
+```text
+workspace/ubuntu/carm_ws/vendor/arm_control_sdk
+```
+
+因此虚拟机端只需要 `git pull`，不需要再单独 clone 官方仓库。完整官方 Demo 仍只作为来源参考；本仓库只保留编译所需 SDK、本机适配、实验记录、配置和经过筛选的最小验证脚本。
+
+ROS 编译或运行前声明 SDK 环境：
 
 ```bash
 cd /home/noetic/maxhub-a3
-conda activate maxhub-a3
-mkdir -p ~/vendor
-cd ~/vendor
-git clone https://github.com/cvte-robotics/carm_demo.git
+source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash
+echo "$arm_control_sdk_DIR"
 ```
-
-本仓库只保留本机适配、实验记录、配置和经过筛选的最小验证脚本，不直接混入完整官方 Demo。
 
 ## Recommended Bring-up Order
 
 1. 确认 Ubuntu 网络可达机械臂。
-2. 激活 `maxhub-a3` conda 环境。
-3. 阅读官方 Demo 的安装说明和最小连接示例。
-4. 先写只读连接脚本，只读取状态、关节角度和末端位姿。
-5. 保存设备固件版本、SDK 版本、Python 版本和 conda 环境快照。
+2. 声明 vendored C++ SDK 环境。
+3. 编译 `workspace/ubuntu/carm_ws` ROS Noetic 工作区。
+4. 先运行只读 ROS 状态发布节点，只读取状态、关节角度和末端位姿。
+5. 保存设备固件版本、SDK 版本、Python 版本和环境快照。
 6. 只读连接稳定后，再进入低速、小幅、单关节运动测试。
+
+ROS Noetic 详细步骤见 [README_ros_noetic.md](README_ros_noetic.md)。
 
 ## Current Local Scripts
 
@@ -110,13 +114,10 @@ git clone https://github.com/cvte-robotics/carm_demo.git
 
 ```bash
 cd /home/noetic/maxhub-a3
-conda activate maxhub-a3
 python workspace/ubuntu/scripts/check_network.py
-python workspace/ubuntu/scripts/inspect_carm_sdk.py
 ```
 
 `check_network.py` 只检查 TCP / HTTP 连通性，不调用机械臂 SDK。  
-`inspect_carm_sdk.py` 只导入并打印 `carm` 模块信息，不建立连接，也不发送运动命令。
 
 ## Safety Rule
 

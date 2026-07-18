@@ -164,3 +164,12 @@ rviz/
 *.webm
 *.wmv
 *.y4m
+
+# Vendored official CArm SDK needed by the ROS workspace.
+# Keep these files versioned even though they include shared libraries and setup scripts.
+!workspace/
+!workspace/ubuntu/
+!workspace/ubuntu/carm_ws/
+!workspace/ubuntu/carm_ws/vendor/
+!workspace/ubuntu/carm_ws/vendor/arm_control_sdk/
+!workspace/ubuntu/carm_ws/vendor/arm_control_sdk/**

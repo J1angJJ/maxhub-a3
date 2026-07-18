@@ -8,9 +8,20 @@
 
 ```bash
 cd /home/noetic/maxhub-a3
-conda activate maxhub-a3
-python workspace/ubuntu/scripts/check_network.py
-python workspace/ubuntu/scripts/inspect_carm_sdk.py
+source /opt/ros/noetic/setup.bash
+source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash
+```
+
+ROS Noetic 工作区：
+
+```bash
+cd /home/noetic/maxhub-a3
+source /opt/ros/noetic/setup.bash
+source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash
+cd workspace/ubuntu/carm_ws
+catkin_make
+source devel/setup.bash
+roslaunch carm_a3_driver readonly_state.launch
 ```
 
 ## Files
@@ -20,6 +31,7 @@ python workspace/ubuntu/scripts/inspect_carm_sdk.py
 - `config/robot.yaml`: 当前机械臂的非敏感配置。
 - `scripts/check_network.py`: 只做网络连通性检查。
 - `scripts/inspect_carm_sdk.py`: 只导入并检查 `carm` SDK 模块。
+- `carm_ws/src/carm_a3_driver`: ROS Noetic 驱动包，当前包含只读状态节点。
 
 ## Safety
 

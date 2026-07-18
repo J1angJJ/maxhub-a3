@@ -69,6 +69,12 @@ CMakeLists.txt text eol=lf
 *.tar binary
 *.gz binary
 *.tgz binary
+*.a binary
+*.lib binary
+*.so binary
+*.so.* binary
+*.dll binary
+*.dylib binary
 *.mp3 binary
 *.mp4 binary
 *.mov binary

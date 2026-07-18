@@ -1,0 +1,12 @@
+<launch>
+  <arg name="config" default="$(find carm_a3_driver)/config/robot.yaml" />
+
+  <node
+    pkg="carm_a3_driver"
+    type="readonly_state_node"
+    name="maxhub_a3_readonly_state_publisher"
+    output="screen"
+    required="true">
+    <rosparam command="load" file="$(arg config)" />
+  </node>
+</launch>
