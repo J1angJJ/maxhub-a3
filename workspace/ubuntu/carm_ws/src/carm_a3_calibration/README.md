@@ -1,0 +1,53 @@
+# carm_a3_calibration
+
+ROS Noetic calibration helpers for CArm / MAXHUB A3.
+
+The first tool is an eye-in-hand ArUco sample recorder. It detects the printed `DICT_ARUCO_ORIGINAL` marker ID `23`, estimates `camera_T_marker`, reads `base_link -> flange` from TF, and saves one YAML file per sample.
+
+It does not move or command the robot.
+
+## Install
+
+```bash
+sudo apt update
+sudo apt install python3-opencv python3-yaml ros-noetic-tf2-ros
+```
+
+## Run
+
+Start `roscore`, `carm_a3_driver`, and `carm_a3_vision` first. Then:
+
+```bash
+cd /home/noetic/maxhub-a3
+source /opt/ros/noetic/setup.bash
+source workspace/ubuntu/carm_ws/devel/setup.bash
+roslaunch carm_a3_calibration aruco_handeye_sampler.launch
+```
+
+## Save Samples
+
+Keep the ArUco marker visible and call:
+
+```bash
+rosservice call /carm_a3/handeye/save_sample
+```
+
+Samples are saved by default under:
+
+```text
+workspace/ubuntu/logs/handeye_samples
+```
+
+The `logs/` directory is ignored by Git. Keep raw samples private until they are reviewed and summarized.
+
+## Sampling Notes
+
+Collect at least 15 samples. Use 20-30 if possible.
+
+Move the robot by hand or through safe manual controls only. Use varied poses:
+
+- Different X/Y/Z positions.
+- Different wrist rotations.
+- Marker visible near the image center and near edges.
+- Avoid nearly identical poses.
+- Avoid blur and strong reflections.

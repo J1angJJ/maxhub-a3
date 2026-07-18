@@ -323,6 +323,77 @@ workspace/ubuntu/carm_ws/src/carm_a3_vision/config/camera_info.yaml
 - 如果相机在末端，需要求解 `flange -> carm_a3_camera_optical_frame`。
 - 如果相机在外部，需要求解 `base_link -> carm_a3_camera_optical_frame`。
 
+## Eye-in-hand ArUco Sampling
+
+当前相机安装在机械臂末端，先按眼在手上流程采样。`carm_a3_calibration` 提供只记录、不运动的 ArUco 采样节点：
+
+- 识别字典：`DICT_ARUCO_ORIGINAL`
+- 标记 ID：`23`
+- 黑色标记外边长：`0.1 m`
+- 机器人位姿：读取 TF `base_link -> flange`
+- 相机观测：估计 `carm_a3_camera_optical_frame -> aruco_marker`
+- 默认保存目录：`workspace/ubuntu/logs/handeye_samples`
+
+安装依赖：
+
+```bash
+sudo apt update
+sudo apt install python3-opencv python3-yaml ros-noetic-tf2-ros
+```
+
+终端 1：
+
+```bash
+source /opt/ros/noetic/setup.bash
+roscore
+```
+
+终端 2，启动机械臂只读 TF：
+
+```bash
+cd /home/noetic/maxhub-a3
+source /opt/ros/noetic/setup.bash
+source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash
+source workspace/ubuntu/carm_ws/devel/setup.bash
+roslaunch carm_a3_driver readonly_state.launch
+```
+
+终端 3，启动相机：
+
+```bash
+cd /home/noetic/maxhub-a3
+source /opt/ros/noetic/setup.bash
+source workspace/ubuntu/carm_ws/devel/setup.bash
+roslaunch carm_a3_vision camera.launch
+```
+
+终端 4，启动采样器：
+
+```bash
+cd /home/noetic/maxhub-a3
+source /opt/ros/noetic/setup.bash
+source workspace/ubuntu/carm_ws/devel/setup.bash
+roslaunch carm_a3_calibration aruco_handeye_sampler.launch
+```
+
+保持 ArUco 标记可见后，另开终端保存一组样本：
+
+```bash
+source /opt/ros/noetic/setup.bash
+source /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/devel/setup.bash
+rosservice call /carm_a3/handeye/save_sample
+```
+
+建议采集至少 `15` 组，条件允许采 `20-30` 组。每组之间应改变末端位置和姿态，尤其要有明显的腕部旋转变化；不要只平移不旋转。采样时避免图像模糊、反光、ArUco 太远或只出现在画面极边缘。
+
+原始样本默认在：
+
+```text
+workspace/ubuntu/logs/handeye_samples
+```
+
+该目录默认不进入 Git。确认采样质量后，再整理出可提交的标定结果。
+
 ## Read-only Test Plan
 
 编译成功后，下一步只测试“连接与状态读取”，不做使能、不回零、不运动。
