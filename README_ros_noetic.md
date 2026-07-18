@@ -185,10 +185,26 @@ sudo apt install ros-noetic-camera-calibration ros-noetic-image-view ros-noetic-
 
 ### Prepare Checkerboard
 
-建议先用棋盘格标定。需要明确两个参数：
+建议先用棋盘格标定。仓库已准备一份 A4 打印文件：
 
-- `size`: 内角点数量，不是格子数量。例如棋盘有 9 x 7 个内角点，就写 `--size 9x7`。
-- `square`: 单个方格边长，单位米。例如 25 mm 就写 `--square 0.025`。
+```text
+docs/calibration/printables/checkerboard_squares_9x7_inner_8x6_square_25mm_A4.pdf
+```
+
+这份棋盘格实际为 `9 x 7` 个方格、`8 x 6` 个内部角点，单格边长 `25 mm`。因此 ROS 标定参数应为：
+
+- `size`: `8x6`，这是内部角点数量，不是格子数量。
+- `square`: `0.025`，单位是米。
+
+打印时请选择“实际大小 / 100% / 不缩放”，不要使用“适合页面”。
+
+另有一份 ArUco 打印文件，后续可用于手眼标定或位姿检查：
+
+```text
+docs/calibration/printables/aruco_original_id23_marker_100mm_A4.pdf
+```
+
+该标记来自 `https://chev.me/arucogen/`，使用 `DICT_ARUCO_ORIGINAL` 字典，ID 为 `23`，黑色标记外边长为 `100.0 mm`。打印后建议用尺子复核外边长。
 
 ### Run Camera Node
 
@@ -210,12 +226,12 @@ roslaunch carm_a3_vision camera.launch
 
 ### Run Calibration
 
-把下面的 `9x7` 和 `0.025` 改成你的棋盘格实际参数：
+当前仓库棋盘格对应命令：
 
 ```bash
 source /opt/ros/noetic/setup.bash
 rosrun camera_calibration cameracalibrator.py \
-  --size 9x7 \
+  --size 8x6 \
   --square 0.025 \
   image:=/carm_a3/camera/image_raw \
   camera:=/carm_a3/camera
