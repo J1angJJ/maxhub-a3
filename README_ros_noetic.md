@@ -122,6 +122,7 @@ source /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/devel/setup.bash
 rostopic hz /carm_a3/camera/image_raw
 rostopic echo -n 1 /carm_a3/camera/diagnostics
 rostopic echo -n 1 /carm_a3/camera/camera_info
+rosservice list | grep /carm_a3/camera/set_camera_info
 ```
 
 如已安装 `image_view`：
@@ -145,6 +146,7 @@ workspace/ubuntu/carm_ws/src/carm_a3_vision/config/camera.yaml
 - 输出 ROS 编码：`rgb8`
 - 图像话题：`/carm_a3/camera/image_raw`
 - 相机信息话题：`/carm_a3/camera/camera_info`
+- 相机信息写入服务：`/carm_a3/camera/set_camera_info`
 - 诊断话题：`/carm_a3/camera/diagnostics`
 - 软件方向校正：`rotate_180: true`
 
@@ -236,6 +238,15 @@ rosrun camera_calibration cameracalibrator.py \
   image:=/carm_a3/camera/image_raw \
   camera:=/carm_a3/camera
 ```
+
+如果看到：
+
+```text
+Waiting for service /carm_a3/camera/set_camera_info ...
+Service not found
+```
+
+说明当前运行的相机节点还没有提供 `set_camera_info` 服务。请先拉取本仓库更新、重新编译 `carm_ws`，再重新启动 `carm_a3_vision`。
 
 采集时让棋盘格覆盖画面不同区域和姿态：
 

@@ -30,10 +30,25 @@ source /opt/ros/noetic/setup.bash
 source /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/devel/setup.bash
 rostopic hz /carm_a3/camera/image_raw
 rostopic echo -n 1 /carm_a3/camera/diagnostics
+rosservice list | grep /carm_a3/camera/set_camera_info
 rosrun image_view image_view image:=/carm_a3/camera/image_raw
 ```
 
 If `image_view` is not installed, use `rostopic hz` first and install visualization tools later.
+
+## Calibration
+
+The node advertises `/carm_a3/camera/set_camera_info` so ROS `camera_calibration` can run:
+
+```bash
+rosrun camera_calibration cameracalibrator.py \
+  --size 8x6 \
+  --square 0.025 \
+  image:=/carm_a3/camera/image_raw \
+  camera:=/carm_a3/camera
+```
+
+Uploaded calibration data is accepted in memory for the running node. Use the calibrator's `SAVE` output as the persistent calibration file, then place the YAML under `config/camera_info.yaml`.
 
 ## Orientation
 

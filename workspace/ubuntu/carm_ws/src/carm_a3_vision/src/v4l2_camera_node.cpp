@@ -16,6 +16,7 @@
 #include <ros/ros.h>
 #include <sensor_msgs/CameraInfo.h>
 #include <sensor_msgs/Image.h>
+#include <sensor_msgs/SetCameraInfo.h>
 #include <std_msgs/String.h>
 
 namespace {
@@ -101,6 +102,7 @@ public:
         pnh_.param<std::string>("frame_id", frame_id_, "carm_a3_camera_optical_frame");
         pnh_.param<std::string>("image_topic", image_topic_, "/carm_a3/camera/image_raw");
         pnh_.param<std::string>("camera_info_topic", camera_info_topic_, "/carm_a3/camera/camera_info");
+        pnh_.param<std::string>("set_camera_info_service", set_camera_info_service_, "/carm_a3/camera/set_camera_info");
         pnh_.param<std::string>("diagnostics_topic", diagnostics_topic_, "/carm_a3/camera/diagnostics");
         pnh_.param<bool>("flip_vertical", flip_vertical_, false);
         pnh_.param<bool>("flip_horizontal", flip_horizontal_, false);
@@ -108,6 +110,7 @@ public:
 
         image_pub_ = nh_.advertise<sensor_msgs::Image>(image_topic_, 2);
         camera_info_pub_ = nh_.advertise<sensor_msgs::CameraInfo>(camera_info_topic_, 2);
+        set_camera_info_srv_ = nh_.advertiseService(set_camera_info_service_, &V4L2CameraNode::setCameraInfo, this);
         diagnostics_pub_ = nh_.advertise<std_msgs::String>(diagnostics_topic_, 2, true);
 
         openDevice();
@@ -284,12 +287,26 @@ private:
         image.data = rgb_;
         image_pub_.publish(image);
 
-        sensor_msgs::CameraInfo info;
+        sensor_msgs::CameraInfo info = camera_info_;
         info.header = image.header;
         info.height = image.height;
         info.width = image.width;
-        info.distortion_model = "plumb_bob";
+        if (info.distortion_model.empty()) {
+            info.distortion_model = "plumb_bob";
+        }
         camera_info_pub_.publish(info);
+    }
+
+    bool setCameraInfo(sensor_msgs::SetCameraInfo::Request& req, sensor_msgs::SetCameraInfo::Response& res) {
+        camera_info_ = req.camera_info;
+        camera_info_.header.frame_id = frame_id_;
+        camera_info_.height = static_cast<unsigned int>(height_);
+        camera_info_.width = static_cast<unsigned int>(width_);
+        res.success = true;
+        res.status_message = "camera_info accepted in memory; use cameracalibrator SAVE output for persistence";
+        ROS_INFO("Updated in-memory camera_info from set_camera_info");
+        publishDiagnostics("camera_info_updated");
+        return true;
     }
 
     void publishDiagnostics(const std::string& text) {
@@ -306,11 +323,13 @@ private:
     ros::Publisher image_pub_;
     ros::Publisher camera_info_pub_;
     ros::Publisher diagnostics_pub_;
+    ros::ServiceServer set_camera_info_srv_;
 
     std::string device_;
     std::string frame_id_;
     std::string image_topic_;
     std::string camera_info_topic_;
+    std::string set_camera_info_service_;
     std::string diagnostics_topic_;
     int width_ = 640;
     int height_ = 480;
@@ -323,6 +342,7 @@ private:
     bool streaming_ = false;
     std::vector<Buffer> buffers_;
     std::vector<unsigned char> rgb_;
+    sensor_msgs::CameraInfo camera_info_;
 };
 
 int main(int argc, char** argv) {
