@@ -1,0 +1,12 @@
+<launch>
+  <arg name="config" default="$(find carm_a3_vision)/config/camera.yaml" />
+
+  <node
+    pkg="carm_a3_vision"
+    type="v4l2_camera_node"
+    name="carm_a3_usb_camera"
+    output="screen"
+    required="true">
+    <rosparam command="load" file="$(arg config)" />
+  </node>
+</launch>

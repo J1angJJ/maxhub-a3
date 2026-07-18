@@ -32,6 +32,7 @@ roslaunch carm_a3_driver readonly_state.launch
 - `scripts/check_network.py`: 只做网络连通性检查。
 - `scripts/inspect_carm_sdk.py`: 只导入并检查 `carm` SDK 模块。
 - `carm_ws/src/carm_a3_driver`: ROS Noetic 驱动包，当前包含只读状态节点。
+- `carm_ws/src/carm_a3_vision`: ROS Noetic 视觉包，当前包含原装 USB 相机 V4L2 采集节点。
 
 ## Safety
 

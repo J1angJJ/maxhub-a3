@@ -16,6 +16,8 @@
 
 `carm_a3_driver` 只负责机器人底层接口、状态、诊断和安全运动入口。后续手眼标定、YOLO 抓取协作、强化学习等内容如果展开，建议拆成独立 ROS 包，避免驱动包变成大杂烩。
 
+`carm_a3_vision` 负责原装 USB 相机的 ROS 图像采集、方向校正和后续视觉链路入口。当前版本不依赖 OpenCV、`cv_bridge`、`usb_cam` 或 `v4l2_camera`，直接通过 V4L2 读取 `/dev/video0` 并发布 `rgb8` 图像。
+
 ## Prepare Official SDK
 
 厂家 C++ SDK 已移植到 ROS 工作区内：
@@ -84,6 +86,60 @@ rostopic echo -n 1 /maxhub_a3/diagnostics
 rostopic echo -n 1 /joint_states
 rostopic echo -n 1 /maxhub_a3/flange_pose
 ```
+
+## Run USB Camera Node
+
+原装相机已通过 `guvcview` 验证 USB 透传和 30 fps 预览。当前物理安装方向导致画面上下颠倒，`carm_a3_vision` 默认启用 `rotate_180: true` 做软件校正。
+
+终端 1：
+
+```bash
+source /opt/ros/noetic/setup.bash
+roscore
+```
+
+终端 2：
+
+```bash
+cd /home/noetic/maxhub-a3
+source /opt/ros/noetic/setup.bash
+source workspace/ubuntu/carm_ws/devel/setup.bash
+roslaunch carm_a3_vision camera.launch
+```
+
+终端 3：
+
+```bash
+source /opt/ros/noetic/setup.bash
+source /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/devel/setup.bash
+rostopic hz /carm_a3/camera/image_raw
+rostopic echo -n 1 /carm_a3/camera/diagnostics
+rostopic echo -n 1 /carm_a3/camera/camera_info
+```
+
+如已安装 `image_view`：
+
+```bash
+rosrun image_view image_view image:=/carm_a3/camera/image_raw
+```
+
+默认配置文件：
+
+```text
+workspace/ubuntu/carm_ws/src/carm_a3_vision/config/camera.yaml
+```
+
+默认参数：
+
+- 设备：`/dev/video0`
+- 分辨率：`640x480`
+- 帧率：`30`
+- 输入格式：`YUYV`
+- 输出 ROS 编码：`rgb8`
+- 图像话题：`/carm_a3/camera/image_raw`
+- 相机信息话题：`/carm_a3/camera/camera_info`
+- 诊断话题：`/carm_a3/camera/diagnostics`
+- 软件方向校正：`rotate_180: true`
 
 ## Read-only Test Plan
 
@@ -225,6 +281,8 @@ rostopic echo -n 1 /maxhub_a3/flange_pose > workspace/ubuntu/logs/readonly_test/
 - 实机急停和机械固定状态已确认。
 
 下一阶段建议先做“显式参数保护的低速只读增强/安全服务”，不要直接开放运动话题。
+
+视觉链路的下一阶段建议是相机内参标定，之后再做眼在手上的手眼标定。
 
 ## Test Log
 

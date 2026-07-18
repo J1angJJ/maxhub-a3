@@ -1,0 +1,15 @@
+device: "/dev/video0"
+width: 640
+height: 480
+fps: 30
+
+frame_id: "carm_a3_camera_optical_frame"
+image_topic: "/carm_a3/camera/image_raw"
+camera_info_topic: "/carm_a3/camera/camera_info"
+diagnostics_topic: "/carm_a3/camera/diagnostics"
+
+# Current physical mounting makes the image upside down in guvcview.
+# rotate_180 is equivalent to flip_vertical + flip_horizontal.
+flip_vertical: false
+flip_horizontal: false
+rotate_180: true
