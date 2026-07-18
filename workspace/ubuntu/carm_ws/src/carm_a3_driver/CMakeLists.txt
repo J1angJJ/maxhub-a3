@@ -24,7 +24,12 @@ endif()
 
 find_package(arm_control_sdk REQUIRED)
 
-catkin_package()
+set(ARM_CONTROL_SDK_LIB_DIR "${arm_control_sdk_ROOT_DIR}/lib")
+set(ARM_CONTROL_SDK_POCO_LIB_DIR "${arm_control_sdk_ROOT_DIR}/poco/lib")
+
+catkin_package(
+  CATKIN_DEPENDS geometry_msgs roscpp sensor_msgs std_msgs tf2_ros
+)
 
 include_directories(
   ${catkin_INCLUDE_DIRS}
@@ -38,6 +43,14 @@ add_executable(readonly_state_node
 target_link_libraries(readonly_state_node
   ${catkin_LIBRARIES}
   ${arm_control_sdk_LIBRARIES}
+  "${ARM_CONTROL_SDK_POCO_LIB_DIR}/libPocoNet.so.71"
+  "${ARM_CONTROL_SDK_POCO_LIB_DIR}/libPocoUtil.so.71"
+  "${ARM_CONTROL_SDK_POCO_LIB_DIR}/libPocoFoundation.so.71"
+)
+
+set_target_properties(readonly_state_node PROPERTIES
+  BUILD_RPATH "${ARM_CONTROL_SDK_LIB_DIR};${ARM_CONTROL_SDK_POCO_LIB_DIR}"
+  INSTALL_RPATH "${ARM_CONTROL_SDK_LIB_DIR};${ARM_CONTROL_SDK_POCO_LIB_DIR}"
 )
 
 add_dependencies(readonly_state_node ${catkin_EXPORTED_TARGETS})

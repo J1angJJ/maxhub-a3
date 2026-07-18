@@ -48,6 +48,16 @@ catkin_make
 source devel/setup.bash
 ```
 
+如果 `readonly_state_node` 链接阶段出现 `libPocoNet.so.71 not found` 或 `undefined reference to Poco::...`，先确认本终端已经加载厂家 SDK 环境：
+
+```bash
+cd /home/noetic/maxhub-a3
+source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash
+echo "$LD_LIBRARY_PATH" | tr ':' '\n' | grep arm_control_sdk
+cd workspace/ubuntu/carm_ws
+catkin_make
+```
+
 ## Network Check
 
 ```bash
