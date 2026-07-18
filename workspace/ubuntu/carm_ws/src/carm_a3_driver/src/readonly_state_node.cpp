@@ -7,9 +7,11 @@
 #include <vector>
 
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/TransformStamped.h>
 #include <ros/ros.h>
 #include <sensor_msgs/JointState.h>
 #include <std_msgs/String.h>
+#include <tf2_ros/transform_broadcaster.h>
 
 #include "arm_control_sdk/carm_cobot.h"
 #include "arm_control_sdk/data_type_def.h"
@@ -22,8 +24,10 @@ public:
         pnh_.param<double>("connect_timeout_s", connect_timeout_s_, 1.0);
         pnh_.param<double>("publish_rate_hz", publish_rate_hz_, 5.0);
         pnh_.param<bool>("connect_on_start", connect_on_start_, true);
-        pnh_.param<std::string>("frame_id", frame_id_, "base_link");
-        pnh_.param<std::string>("flange_frame_id", flange_frame_id_, "base_link");
+        pnh_.param<std::string>("base_frame_id", base_frame_id_, "base_link");
+        pnh_.param<std::string>("joint_state_frame_id", joint_state_frame_id_, base_frame_id_);
+        pnh_.param<std::string>("flange_frame_id", flange_frame_id_, "flange");
+        pnh_.param<bool>("publish_flange_tf", publish_flange_tf_, true);
         joint_names_ = {"joint1", "joint2", "joint3", "joint4", "joint5", "joint6"};
         pnh_.getParam("joint_names", joint_names_);
 
@@ -127,7 +131,7 @@ private:
 
         sensor_msgs::JointState msg;
         msg.header.stamp = ros::Time::now();
-        msg.header.frame_id = frame_id_;
+        msg.header.frame_id = joint_state_frame_id_;
         msg.name = trimJointNames(positions.size());
         msg.position = trimToJointCount(positions);
         msg.velocity = trimToJointCount(velocities);
@@ -140,7 +144,7 @@ private:
 
         geometry_msgs::PoseStamped msg;
         msg.header.stamp = ros::Time::now();
-        msg.header.frame_id = flange_frame_id_;
+        msg.header.frame_id = base_frame_id_;
         msg.pose.position.x = pose[0];
         msg.pose.position.y = pose[1];
         msg.pose.position.z = pose[2];
@@ -149,6 +153,17 @@ private:
         msg.pose.orientation.z = pose[5];
         msg.pose.orientation.w = pose[6];
         flange_pose_pub_.publish(msg);
+
+        if (publish_flange_tf_) {
+            geometry_msgs::TransformStamped tf_msg;
+            tf_msg.header = msg.header;
+            tf_msg.child_frame_id = flange_frame_id_;
+            tf_msg.transform.translation.x = pose[0];
+            tf_msg.transform.translation.y = pose[1];
+            tf_msg.transform.translation.z = pose[2];
+            tf_msg.transform.rotation = msg.pose.orientation;
+            tf_broadcaster_.sendTransform(tf_msg);
+        }
     }
 
     std::vector<double> trimToJointCount(const std::vector<double>& values) const {
@@ -173,6 +188,7 @@ private:
     ros::Publisher flange_pose_pub_;
     ros::Publisher diagnostics_pub_;
     ros::Timer timer_;
+    tf2_ros::TransformBroadcaster tf_broadcaster_;
 
     std::unique_ptr<carm::CArmSingleCol> arm_;
     std::string robot_host_;
@@ -180,8 +196,10 @@ private:
     double connect_timeout_s_ = 1.0;
     double publish_rate_hz_ = 5.0;
     bool connect_on_start_ = true;
-    std::string frame_id_;
+    std::string base_frame_id_;
+    std::string joint_state_frame_id_;
     std::string flange_frame_id_;
+    bool publish_flange_tf_ = true;
     std::vector<std::string> joint_names_;
 };
 

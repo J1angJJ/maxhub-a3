@@ -159,6 +159,7 @@ USB 2.0 Camera: HD USB Camera (usb-0000:03:00.0-2):
 - ROS 图像话题 `/carm_a3/camera/image_raw` 已验证稳定约 30 fps。
 - `/carm_a3/camera/camera_info` 已可发布，但当前尚未进行相机内参标定，内参矩阵仍为空或全零。
 - `image_view` 能正常显示图像；退出阶段可能出现 OpenCV GTK 窗口销毁异常，不影响图像链路判断。
+- `carm_a3_driver` 当前可发布最小动态 TF：`base_link -> flange`，但尚未具备完整机械臂 URDF 关节链。
 
 支持的主要格式：
 
@@ -542,6 +543,7 @@ robot:
 - [ ] 夹爪 SDK 控制测试
 - [ ] 建立机械臂工作区和线缆固定方案
 - [ ] 完成末端工具 TCP、负载和重心配置
+- [ ] 获取或建立 MAXHUB A3 的 URDF / Xacro 关节链模型
 - [ ] 完成相机内参及手眼标定
 - [ ] 建立实验室安全操作规范
 - [ ] 为每次固件升级保存升级前后版本和回退方案

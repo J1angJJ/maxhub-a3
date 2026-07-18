@@ -4,7 +4,7 @@ ROS Noetic driver package for CArm / MAXHUB A3.
 
 This package should contain the robot-facing ROS interface: SDK connection, state publishers, diagnostics, and later carefully gated motion or gripper command nodes.
 
-The first node is read-only. It may connect to the robot and read state, but it must not enable, reset, move, stop, or control the gripper.
+The first node is read-only. It may connect to the robot, read state, publish `/joint_states`, publish `/maxhub_a3/flange_pose`, and broadcast the minimal `base_link -> flange` TF. It must not enable, reset, move, stop, or control the gripper.
 
 Future higher-level work should stay in separate packages when it grows beyond driver responsibilities:
 
@@ -42,4 +42,5 @@ rostopic list
 rostopic echo -n 1 /maxhub_a3/diagnostics
 rostopic echo -n 1 /joint_states
 rostopic echo -n 1 /maxhub_a3/flange_pose
+rosrun tf tf_echo base_link flange
 ```

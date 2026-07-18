@@ -18,6 +18,13 @@
 
 `carm_a3_vision` 负责原装 USB 相机的 ROS 图像采集、方向校正和后续视觉链路入口。当前版本不依赖 OpenCV、`cv_bridge`、`usb_cam` 或 `v4l2_camera`，直接通过 V4L2 读取 `/dev/video0` 并发布 `rgb8` 图像。
 
+当前 TF 状态：
+
+- `carm_a3_driver` 可根据 SDK 末端位姿发布最小动态 TF：`base_link -> flange`。
+- `carm_a3_vision` 的图像 `frame_id` 为 `carm_a3_camera_optical_frame`。
+- 当前还没有完整机械臂 URDF / Xacro，也没有 `robot_state_publisher`，因此还不能生成 `base_link -> joint1 -> ... -> flange` 的完整关节链 TF。
+- 在拿到厂家 URDF、DH 参数或可靠的连杆几何参数前，不建议手写完整机械臂 TF 链。
+
 ## Prepare Official SDK
 
 厂家 C++ SDK 已移植到 ROS 工作区内：
@@ -140,6 +147,106 @@ workspace/ubuntu/carm_ws/src/carm_a3_vision/config/camera.yaml
 - 相机信息话题：`/carm_a3/camera/camera_info`
 - 诊断话题：`/carm_a3/camera/diagnostics`
 - 软件方向校正：`rotate_180: true`
+
+## TF Check
+
+启动 `carm_a3_driver` 后检查 TF：
+
+```bash
+source /opt/ros/noetic/setup.bash
+source /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/devel/setup.bash
+rostopic echo -n 1 /tf
+rosrun tf tf_echo base_link flange
+```
+
+期望：
+
+- `/tf` 中能看到 `base_link -> flange`。
+- `tf_echo base_link flange` 能持续输出平移和四元数。
+
+当前不应期待看到完整关节链：
+
+```text
+base_link -> joint1 -> joint2 -> joint3 -> joint4 -> joint5 -> joint6 -> flange
+```
+
+完整链路需要后续加入 URDF / Xacro 和 `robot_state_publisher`。
+
+## Camera Intrinsic Calibration
+
+相机内参标定应在手眼标定之前完成。当前 `/carm_a3/camera/camera_info` 可以发布，但 `K/R/P/D` 仍为空或全零，下一步需要标定得到真实内参。
+
+### Install Tools
+
+```bash
+sudo apt update
+sudo apt install ros-noetic-camera-calibration ros-noetic-image-view ros-noetic-rqt-image-view
+```
+
+### Prepare Checkerboard
+
+建议先用棋盘格标定。需要明确两个参数：
+
+- `size`: 内角点数量，不是格子数量。例如棋盘有 9 x 7 个内角点，就写 `--size 9x7`。
+- `square`: 单个方格边长，单位米。例如 25 mm 就写 `--square 0.025`。
+
+### Run Camera Node
+
+终端 1：
+
+```bash
+source /opt/ros/noetic/setup.bash
+roscore
+```
+
+终端 2：
+
+```bash
+cd /home/noetic/maxhub-a3
+source /opt/ros/noetic/setup.bash
+source workspace/ubuntu/carm_ws/devel/setup.bash
+roslaunch carm_a3_vision camera.launch
+```
+
+### Run Calibration
+
+把下面的 `9x7` 和 `0.025` 改成你的棋盘格实际参数：
+
+```bash
+source /opt/ros/noetic/setup.bash
+rosrun camera_calibration cameracalibrator.py \
+  --size 9x7 \
+  --square 0.025 \
+  image:=/carm_a3/camera/image_raw \
+  camera:=/carm_a3/camera
+```
+
+采集时让棋盘格覆盖画面不同区域和姿态：
+
+- 中心、四角、边缘都要覆盖。
+- 前后距离要变化。
+- 有一定俯仰、偏航、滚转角度变化。
+- 避免运动模糊和强反光。
+- 保持棋盘完整出现在画面中。
+
+标定完成后点击 `CALIBRATE`，结果稳定后点击 `SAVE`。保存得到的 YAML 后，再放入仓库，例如：
+
+```text
+workspace/ubuntu/carm_ws/src/carm_a3_vision/config/camera_info.yaml
+```
+
+后续再让 `carm_a3_vision` 读取该 YAML，填充 `/carm_a3/camera/camera_info`。
+
+### Before Hand-eye Calibration
+
+进入眼在手上手眼标定前，至少需要满足：
+
+- `/carm_a3/camera/image_raw` 稳定。
+- `/carm_a3/camera/camera_info` 已有真实内参。
+- `base_link -> flange` TF 可用。
+- 明确相机实际安装在末端还是固定在外部。
+- 如果相机在末端，需要求解 `flange -> carm_a3_camera_optical_frame`。
+- 如果相机在外部，需要求解 `base_link -> carm_a3_camera_optical_frame`。
 
 ## Read-only Test Plan
 

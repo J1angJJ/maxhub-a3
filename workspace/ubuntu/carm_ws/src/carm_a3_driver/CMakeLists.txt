@@ -8,6 +8,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   sensor_msgs
   std_msgs
+  tf2_ros
 )
 
 if(DEFINED ENV{arm_control_sdk_DIR})
