@@ -1,0 +1,17 @@
+<launch>
+  <arg name="x" default="0.060657665604206705" />
+  <arg name="y" default="-0.0026679060673056292" />
+  <arg name="z" default="0.045434769872937465" />
+  <arg name="qx" default="-0.16626727190642754" />
+  <arg name="qy" default="-0.15279773441799158" />
+  <arg name="qz" default="0.6837667531060054" />
+  <arg name="qw" default="0.6938811670570072" />
+  <arg name="parent_frame" default="flange" />
+  <arg name="child_frame" default="carm_a3_camera_optical_frame" />
+
+  <node
+    pkg="tf2_ros"
+    type="static_transform_publisher"
+    name="carm_a3_handeye_static_tf"
+    args="$(arg x) $(arg y) $(arg z) $(arg qx) $(arg qy) $(arg qz) $(arg qw) $(arg parent_frame) $(arg child_frame)" />
+</launch>

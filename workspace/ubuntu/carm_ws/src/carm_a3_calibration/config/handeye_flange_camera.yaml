@@ -1,0 +1,20 @@
+# Draft eye-in-hand calibration result for physical validation.
+# Source samples: workspace/ubuntu/logs/handeye_samples, 30 samples, 640x480 YUYV camera mode.
+parent_frame: "flange"
+child_frame: "carm_a3_camera_optical_frame"
+method: "PARK"
+translation:
+  x: 0.060657665604206705
+  y: -0.0026679060673056292
+  z: 0.045434769872937465
+rotation:
+  x: -0.16626727190642754
+  y: -0.15279773441799158
+  z: 0.6837667531060054
+  w: 0.6938811670570072
+quality_notes:
+  sample_count: 30
+  park_horaud_translation_delta_m: 0.0011320882558199603
+  park_horaud_rotation_delta_deg: 0.49556702201079006
+  max_relative_flange_rotation_deg: 178.76216528867994
+  marker_depth_range_m: [0.21214976454744727, 0.5459971779797549]

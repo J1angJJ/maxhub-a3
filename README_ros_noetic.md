@@ -418,6 +418,34 @@ flange -> carm_a3_camera_optical_frame
 
 如果 PARK 和 HORAUD 结果接近，而 TSAI、ANDREFF 或 DANIILIDIS 有偏差，优先把 PARK/HORAUD 当作当前草案；后续还需要用实物观察或重投影误差验证。
 
+当前 30 组样本的 PARK 草案结果已整理到：
+
+```text
+workspace/ubuntu/carm_ws/src/carm_a3_calibration/config/handeye_flange_camera.yaml
+```
+
+结果质量摘要：
+
+- PARK 与 HORAUD 平移差约 `1.1 mm`。
+- PARK 与 HORAUD 旋转差约 `0.5 deg`。
+- 最大末端相对旋转约 `178.8 deg`。
+
+发布草案静态 TF：
+
+```bash
+cd /home/noetic/maxhub-a3
+source /opt/ros/noetic/setup.bash
+source workspace/ubuntu/carm_ws/devel/setup.bash
+roslaunch carm_a3_calibration publish_handeye_tf.launch
+```
+
+检查：
+
+```bash
+rosrun tf tf_echo flange carm_a3_camera_optical_frame
+rosrun tf tf_echo base_link carm_a3_camera_optical_frame
+```
+
 ## Read-only Test Plan
 
 编译成功后，下一步只测试“连接与状态读取”，不做使能、不回零、不运动。
