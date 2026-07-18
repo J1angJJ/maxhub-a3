@@ -114,6 +114,7 @@ class ArucoHandeyeSampler:
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
 
         os.makedirs(self.output_dir, exist_ok=True)
+        self.sample_count = self.count_existing_samples()
         rospy.Subscriber(self.camera_info_topic, CameraInfo, self.camera_info_cb, queue_size=1)
         rospy.Subscriber(self.image_topic, Image, self.image_cb, queue_size=1)
         rospy.Service(self.save_sample_service, Trigger, self.save_sample_cb)
@@ -122,6 +123,10 @@ class ArucoHandeyeSampler:
         rospy.loginfo("Save samples with: rosservice call %s", self.save_sample_service)
         rospy.loginfo("If running with rosrun, pressing Enter in this terminal also saves the latest valid sample.")
         threading.Thread(target=self.input_loop, daemon=True).start()
+
+    def count_existing_samples(self):
+        names = [name for name in os.listdir(self.output_dir) if name.startswith("sample_") and name.endswith(".yaml")]
+        return len(names)
 
     def camera_info_cb(self, msg):
         if len(msg.K) == 9 and msg.K[0] != 0.0:
@@ -183,7 +188,7 @@ class ArucoHandeyeSampler:
             self.latest_sample = sample
         rospy.loginfo_throttle(
             1.0,
-            "valid marker id=%d: t=[%.3f %.3f %.3f] m; press Enter to save",
+            "valid marker id=%d: t=[%.3f %.3f %.3f] m; call save_sample to save",
             self.marker_id,
             sample["camera_T_marker"]["translation"]["x"],
             sample["camera_T_marker"]["translation"]["y"],

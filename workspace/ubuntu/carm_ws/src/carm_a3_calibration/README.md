@@ -40,6 +40,26 @@ workspace/ubuntu/logs/handeye_samples
 
 The `logs/` directory is ignored by Git. Keep raw samples private until they are reviewed and summarized.
 
+## Solve
+
+After collecting samples, run:
+
+```bash
+cd /home/noetic/maxhub-a3
+source /opt/ros/noetic/setup.bash
+source workspace/ubuntu/carm_ws/devel/setup.bash
+rosrun carm_a3_calibration solve_handeye.py \
+  --samples-dir /home/noetic/maxhub-a3/workspace/ubuntu/logs/handeye_samples
+```
+
+The script writes:
+
+```text
+workspace/ubuntu/logs/handeye_samples/handeye_result.yaml
+```
+
+The recommended result is `flange -> carm_a3_camera_optical_frame`.
+
 ## Sampling Notes
 
 Collect at least 15 samples. Use 20-30 if possible.

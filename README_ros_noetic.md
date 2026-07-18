@@ -394,6 +394,28 @@ workspace/ubuntu/logs/handeye_samples
 
 该目录默认不进入 Git。确认采样质量后，再整理出可提交的标定结果。
 
+采样完成后求解：
+
+```bash
+cd /home/noetic/maxhub-a3
+source /opt/ros/noetic/setup.bash
+source workspace/ubuntu/carm_ws/devel/setup.bash
+rosrun carm_a3_calibration solve_handeye.py \
+  --samples-dir /home/noetic/maxhub-a3/workspace/ubuntu/logs/handeye_samples
+```
+
+输出文件：
+
+```text
+workspace/ubuntu/logs/handeye_samples/handeye_result.yaml
+```
+
+先重点看 `sample_count`、`motion_summary` 和 `recommended_transform`。推荐结果表达的是：
+
+```text
+flange -> carm_a3_camera_optical_frame
+```
+
 ## Read-only Test Plan
 
 编译成功后，下一步只测试“连接与状态读取”，不做使能、不回零、不运动。
