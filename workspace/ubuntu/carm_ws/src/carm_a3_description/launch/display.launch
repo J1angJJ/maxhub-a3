@@ -1,0 +1,24 @@
+<launch>
+  <arg name="urdf" default="$(find carm_a3_description)/urdf/carm_a3.urdf" />
+  <arg name="rviz_config" default="$(find carm_a3_description)/urdf/default.rviz" />
+
+  <param name="robot_description" textfile="$(arg urdf)" />
+
+  <node
+    pkg="joint_state_publisher"
+    type="joint_state_publisher"
+    name="joint_state_publisher"
+    output="screen" />
+
+  <node
+    pkg="robot_state_publisher"
+    type="robot_state_publisher"
+    name="robot_state_publisher"
+    output="screen" />
+
+  <node
+    pkg="rviz"
+    type="rviz"
+    name="rviz"
+    args="-d $(arg rviz_config)" />
+</launch>

@@ -1,0 +1,576 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- This URDF was automatically created by SolidWorks to URDF Exporter! Originally created by Stephen Brawner (brawner@gmail.com) 
+     Commit Version: 1.5.1-0-g916b5db  Build Version: 1.5.7152.31018
+     For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
+<robot
+  name="carm_a3">
+  <link
+    name="base_link">
+    <inertial>
+      <origin
+        xyz="-0.00417913831198338 -2.76962077784436E-05 0.0452053833851515"
+        rpy="0 0 0" />
+      <mass
+        value="1.34054234645234" />
+      <inertia
+        ixx="0.00121108567707363"
+        ixy="-2.11606872578902E-07"
+        ixz="1.2130591016219E-05"
+        iyy="0.00112889111988113"
+        iyz="-6.4110712367573E-07"
+        izz="0.00189021484601477" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://carm_a3_description/meshes/base_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://carm_a3_description/meshes/base_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <link
+    name="link1">
+    <inertial>
+      <origin
+        xyz="4.24701849851951E-05 0.00208702464932863 -0.0113964721261459"
+        rpy="0 0 0" />
+      <mass
+        value="1.04078980910831" />
+      <inertia
+        ixx="0.000608522720485779"
+        ixy="8.98822967934078E-07"
+        ixz="1.82211781184724E-07"
+        iyy="0.000832050915751871"
+        iyz="1.19294665215659E-06"
+        izz="0.000610174041357029" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://carm_a3_description/meshes/link1.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://carm_a3_description/meshes/link1.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="joint1"
+    type="revolute">
+    <origin
+      xyz="0 0 0.157"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="link1" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-2.9671"
+      upper="2.9671"
+      effort="97"
+      velocity="6.28" />
+  </joint>
+  <link
+    name="link2">
+    <inertial>
+      <origin
+        xyz="0.159123389889189 -0.000718932632983046 0.000702480823088812"
+        rpy="0 0 0" />
+      <mass
+        value="0.76278095721942" />
+      <inertia
+        ixx="0.000282035904102345"
+        ixy="1.03745447367783E-05"
+        ixz="2.21593621692068E-06"
+        iyy="0.00349499050057046"
+        iyz="8.55546208617917E-08"
+        izz="0.00351611282619752" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://carm_a3_description/meshes/link2.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://carm_a3_description/meshes/link2.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="joint2"
+    type="revolute">
+    <origin
+      xyz="0 0 0"
+      rpy="1.5708 0 3.1416" />
+    <parent
+      link="link1" />
+    <child
+      link="link2" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="0"
+      upper="3.1416"
+      effort="97"
+      velocity="6.28" />
+  </joint>
+  <link
+    name="link3">
+    <inertial>
+      <origin
+        xyz="0.0378861074785143 0.0162664023220562 0.000742234222590544"
+        rpy="0 0 0" />
+      <mass
+        value="0.907122224021925" />
+      <inertia
+        ixx="0.000388548778417176"
+        ixy="-3.84765486941333E-05"
+        ixz="5.04303402824083E-08"
+        iyy="0.00039651616204773"
+        iyz="2.15543419695664E-08"
+        izz="0.000465350290748233" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://carm_a3_description/meshes/link3.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://carm_a3_description/meshes/link3.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="joint3"
+    type="revolute">
+    <origin
+      xyz="0.35 0 0"
+      rpy="0 0 1.5708" />
+    <parent
+      link="link2" />
+    <child
+      link="link3" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-3.1416"
+      upper="0"
+      effort="40"
+      velocity="10" />
+  </joint>
+  <link
+    name="link4">
+    <inertial>
+      <origin
+        xyz="-0.00013015875247141 -0.00120727641520348 -0.0372980711063461"
+        rpy="0 0 0" />
+      <mass
+        value="0.638130377014533" />
+      <inertia
+        ixx="0.000596296330783302"
+        ixy="7.21482368644724E-07"
+        ixz="-1.97851897422733E-06"
+        iyy="0.000625400751247167"
+        iyz="-1.53212531990098E-05"
+        izz="0.000223972467067503" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://carm_a3_description/meshes/link4.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://carm_a3_description/meshes/link4.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="joint4"
+    type="revolute">
+    <origin
+      xyz="0.079 0.242 0"
+      rpy="-1.5708 0 0" />
+    <parent
+      link="link3" />
+    <child
+      link="link4" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-2.6704"
+      upper="2.6704"
+      effort="40"
+      velocity="10" />
+  </joint>
+  <link
+    name="link5">
+    <inertial>
+      <origin
+        xyz="-5.16043021026591E-05 0.0602527591713593 0.00573732389216532"
+        rpy="0 0 0" />
+      <mass
+        value="0.445060188173882" />
+      <inertia
+        ixx="0.000199827093871247"
+        ixy="-8.53360092923471E-07"
+        ixz="-7.32244032299957E-08"
+        iyy="0.000192756759234306"
+        iyz="2.03018250890979E-05"
+        izz="0.000184053586918881" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://carm_a3_description/meshes/link5.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://carm_a3_description/meshes/link5.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="joint5"
+    type="revolute">
+    <origin
+      xyz="0 0 0"
+      rpy="1.5708 0 0" />
+    <parent
+      link="link4" />
+    <child
+      link="link5" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-1.5708"
+      upper="1.5708"
+      effort="40"
+      velocity="10" />
+  </joint>
+  <link
+    name="link6">
+    <inertial>
+      <origin
+        xyz="-0.000105936669902662 6.74699306710059E-05 -0.00631058732438214"
+        rpy="0 0 0" />
+      <mass
+        value="0.0421256522970801" />
+      <inertia
+        ixx="5.27516380865188E-06"
+        ixy="-3.89822033475575E-10"
+        ixz="-1.32816266881601E-08"
+        iyy="5.41898561538116E-06"
+        iyz="-5.50257198520904E-09"
+        izz="9.60414014186417E-06" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://carm_a3_description/meshes/link6.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://carm_a3_description/meshes/link6.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="joint6"
+    type="revolute">
+    <origin
+      xyz="0 0.108 0"
+      rpy="-1.5708 0 0" />
+    <parent
+      link="link5" />
+    <child
+      link="link6" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-2.8275"
+      upper="2.8275"
+      effort="40"
+      velocity="10" />
+  </joint>
+  <link
+    name="flange" />
+  <joint
+    name="link6_to_flange"
+    type="fixed">
+    <origin
+      xyz="0 0 0"
+      rpy="0 0 0" />
+    <parent
+      link="link6" />
+    <child
+      link="flange" />
+  </joint>
+  <link
+    name="gripper_base">
+    <inertial>
+      <origin
+        xyz="4.89593580243485E-06 -2.79261660692539E-05 0.0336306034256955"
+        rpy="0 0 0" />
+      <mass
+        value="0.537306336668519" />
+      <inertia
+        ixx="0.00025506262513351"
+        ixy="-8.16301234165744E-07"
+        ixz="1.87273262843196E-09"
+        iyy="0.000136093891983897"
+        iyz="-1.28240035983322E-07"
+        izz="0.000331950713285236" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://carm_a3_description/meshes/gripper_base.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://carm_a3_description/meshes/gripper_base.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="joint6_to_gripper_base"
+    type="fixed">
+    <origin
+      xyz="0 0 0"
+      rpy="0 0 0" />
+    <parent
+      link="link6" />
+    <child
+      link="gripper_base" />
+  </joint>  
+  <link
+    name="gripper_right">
+    <inertial>
+      <origin
+        xyz="-0.00119999830259251 -0.0068017764750606 -0.00828189774110881"
+        rpy="0 0 0" />
+      <mass
+        value="0.0836748962697291" />
+      <inertia
+        ixx="1.28447236902658E-05"
+        ixy="-1.31586539542703E-12"
+        ixz="2.51060291849457E-13"
+        iyy="9.36611746344693E-06"
+        iyz="9.98513535366314E-07"
+        izz="1.82593554269922E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://carm_a3_description/meshes/gripper_right.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://carm_a3_description/meshes/gripper_right.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="joint7"
+    type="prismatic">
+    <origin
+      xyz="0.0012 -0.0217 0.081"
+      rpy="1.5708 0 0" />
+    <parent
+      link="gripper_base" />
+    <child
+      link="gripper_right" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="0"
+      upper="0.037"
+      effort="27"
+      velocity="10" />
+  </joint>
+  <link
+    name="gripper_left">
+    <inertial>
+      <origin
+        xyz="0.00120000169738422 -0.00680177647501988 -0.0082818977411101"
+        rpy="0 0 0" />
+      <mass
+        value="0.0836748962697291" />
+      <inertia
+        ixx="1.28447236902712E-05"
+        ixy="-1.31587760368984E-12"
+        ixz="2.51061322210124E-13"
+        iyy="9.36611746344158E-06"
+        iyz="9.98513535358944E-07"
+        izz="1.82593554269922E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://carm_a3_description/meshes/gripper_left.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://carm_a3_description/meshes/gripper_left.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="joint8"
+    type="prismatic">
+    <origin
+      xyz="0.0012 0.0217 0.081"
+      rpy="1.5708 0 3.1416" />
+    <parent
+      link="gripper_base" />
+    <child
+      link="gripper_left" />
+    <axis
+      xyz="0 0 1" />
+    <mimic joint="joint7" multiplier="1" offset="0" />
+    <limit
+      lower="0"
+      upper="0.037"
+      effort="27"
+      velocity="10" />
+  </joint>
+</robot>

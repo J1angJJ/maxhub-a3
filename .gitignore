@@ -141,6 +141,10 @@ ignition/
 .ignition/
 rviz/
 
+# Versioned robot description meshes.
+!workspace/ubuntu/carm_ws/src/carm_a3_description/meshes/
+!workspace/ubuntu/carm_ws/src/carm_a3_description/meshes/**
+
 # Video and camera recordings
 *.3g2
 *.3gp

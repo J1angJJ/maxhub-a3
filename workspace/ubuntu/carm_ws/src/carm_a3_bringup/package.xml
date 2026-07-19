@@ -12,4 +12,6 @@
   <exec_depend>carm_a3_driver</exec_depend>
   <exec_depend>carm_a3_vision</exec_depend>
   <exec_depend>carm_a3_calibration</exec_depend>
+  <exec_depend>carm_a3_description</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
 </package>

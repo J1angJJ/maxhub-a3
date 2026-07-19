@@ -20,10 +20,12 @@
 
 当前 TF 状态：
 
-- `carm_a3_driver` 可根据 SDK 末端位姿发布最小动态 TF：`base_link -> flange`。
+- `carm_a3_description` 已迁入厂家/下载模型，可通过 `robot_state_publisher` 根据 `/joint_states` 发布完整机械臂关节链 TF。
+- `carm_a3_driver` 单独启动时仍可根据 SDK 末端位姿发布最小动态 TF：`base_link -> flange`。
+- `carm_a3_bringup` 默认关闭 driver 的最小直连 `base_link -> flange`，改用 URDF + `/joint_states` 发布完整链路。
 - `carm_a3_vision` 的图像 `frame_id` 为 `carm_a3_camera_optical_frame`。
-- 当前还没有完整机械臂 URDF / Xacro，也没有 `robot_state_publisher`，因此还不能生成 `base_link -> joint1 -> ... -> flange` 的完整关节链 TF。
-- 在拿到厂家 URDF、DH 参数或可靠的连杆几何参数前，不建议手写完整机械臂 TF 链。
+- `carm_a3_calibration` 已保存并验证 `flange -> carm_a3_camera_optical_frame` 手眼静态 TF。
+- 当前 URDF 来自 `carm_a3.zip`，应在 RViz 和实机姿态下继续核对关节方向、零位和 mesh 姿态。
 
 ## Prepare Official SDK
 
@@ -202,13 +204,21 @@ rosrun tf tf_echo base_link flange
 - `/tf` 中能看到 `base_link -> flange`。
 - `tf_echo base_link flange` 能持续输出平移和四元数。
 
-当前不应期待看到完整关节链：
+这是 driver 单独启动时的最小 TF，用于早期 bring-up 和故障排查。
 
-```text
-base_link -> joint1 -> joint2 -> joint3 -> joint4 -> joint5 -> joint6 -> flange
+当前 bringup 已加入 URDF 模型。启动：
+
+```bash
+roslaunch carm_a3_bringup readonly_vision_handeye.launch
 ```
 
-完整链路需要后续加入 URDF / Xacro 和 `robot_state_publisher`。
+检查完整链路：
+
+```bash
+rosrun tf tf_echo base_link link6
+rosrun tf tf_echo base_link flange
+rosrun tf tf_echo base_link carm_a3_camera_optical_frame
+```
 
 ## Camera Intrinsic Calibration
 
@@ -231,6 +241,7 @@ rostopic echo -n 1 /carm_a3/camera/camera_info
 ```bash
 sudo apt update
 sudo apt install ros-noetic-camera-calibration ros-noetic-camera-info-manager ros-noetic-image-view ros-noetic-rqt-image-view
+sudo apt install ros-noetic-robot-state-publisher ros-noetic-joint-state-publisher ros-noetic-rviz
 ```
 
 ### Prepare Checkerboard

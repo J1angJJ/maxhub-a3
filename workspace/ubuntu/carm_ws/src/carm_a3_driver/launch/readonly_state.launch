@@ -1,5 +1,6 @@
 <launch>
   <arg name="config" default="$(find carm_a3_driver)/config/robot.yaml" />
+  <arg name="publish_flange_tf" default="true" />
 
   <node
     pkg="carm_a3_driver"
@@ -9,5 +10,6 @@
     required="true">
     <env name="LD_LIBRARY_PATH" value="$(find carm_a3_driver)/../../vendor/arm_control_sdk/lib:$(find carm_a3_driver)/../../vendor/arm_control_sdk/poco/lib:$(optenv LD_LIBRARY_PATH)" />
     <rosparam command="load" file="$(arg config)" />
+    <param name="publish_flange_tf" value="$(arg publish_flange_tf)" />
   </node>
 </launch>

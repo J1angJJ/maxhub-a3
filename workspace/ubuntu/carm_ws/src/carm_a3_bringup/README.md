@@ -18,8 +18,11 @@ roslaunch carm_a3_bringup readonly_vision_handeye.launch
 This starts:
 
 - `carm_a3_driver` read-only state publisher.
+- `carm_a3_description` robot model through `robot_state_publisher`.
 - `carm_a3_vision` USB camera node with calibrated `640x480` camera info.
 - `flange -> carm_a3_camera_optical_frame` static hand-eye TF.
+
+The driver still publishes `/joint_states`, but its minimal direct `base_link -> flange` TF is disabled in this bringup. The full robot TF chain comes from URDF + `robot_state_publisher`.
 
 ## Hand-eye Validation
 

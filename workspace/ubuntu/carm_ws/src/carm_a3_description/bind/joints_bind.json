@@ -1,0 +1,11 @@
+{
+    "joint1": "joints[0]",
+    "joint2": "joints[1]",
+    "joint3": "joints[2]",
+    "joint4": "joints[3]",
+    "joint5": "joints[4]",
+    "joint6": "joints[5]",
+    "joint6_to_gripper_base": "",
+    "joint7": "efPos[0]",
+    "joint8": "efPos[0]"
+}

@@ -21,6 +21,7 @@
 *.launch text eol=lf
 *.urdf text eol=lf
 *.xacro text eol=lf
+*.rviz text eol=lf
 *.py text eol=lf
 *.cpp text eol=lf
 *.cc text eol=lf
@@ -82,6 +83,12 @@ CMakeLists.txt text eol=lf
 *.mkv binary
 *.bag binary
 *.db3 binary
+*.stl binary
+*.STL binary
+*.dae binary
+*.DAE binary
+*.ply binary
+*.PLY binary
 *.onnx binary
 *.pth binary
 *.pt binary

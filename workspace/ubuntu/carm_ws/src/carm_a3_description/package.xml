@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>carm_a3_description</name>
+  <version>0.1.0</version>
+  <description>URDF and meshes for the CArm / MAXHUB A3 robot.</description>
+
+  <maintainer email="noetic@todo.invalid">noetic</maintainer>
+  <license>UNLICENSED</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <exec_depend>joint_state_publisher</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>rviz</exec_depend>
+</package>

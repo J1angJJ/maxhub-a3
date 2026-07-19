@@ -1,0 +1,14 @@
+<launch>
+  <arg name="urdf" default="$(find carm_a3_description)/urdf/carm_a3.urdf" />
+  <arg name="publish_frequency" default="50.0" />
+
+  <param name="robot_description" textfile="$(arg urdf)" />
+
+  <node
+    pkg="robot_state_publisher"
+    type="robot_state_publisher"
+    name="robot_state_publisher"
+    output="screen">
+    <param name="publish_frequency" value="$(arg publish_frequency)" />
+  </node>
+</launch>
