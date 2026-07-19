@@ -274,7 +274,7 @@ rosrun carm_a3_motion motion_cli.py ik-offset 0 0 0.01
 
 - `x + 0.01 m` 无解。
 - `y + 0.01 m` 无解。
-- `z + 0.01 m` 有解，最大关节变化约 `0.029 rad`。
+- `z + 0.01 m` 有解，最大关节变化约 `0.029 rad`，并已通过 `--execute` 实机执行。
 
 确认 `z + 0.01 m` 的返回 joints 合理后，可用显式执行参数走安全 `move_joint`：
 
@@ -283,6 +283,17 @@ rosrun carm_a3_motion motion_cli.py ik-offset 0 0 0.01 --execute --max-joint-del
 ```
 
 该命令仍会经过两层保护：CLI 先限制 IK 解的最大关节变化量，随后 `/carm_a3/motion/move_joint` 再执行自身的单关节 delta 限制和运动后闭环确认。
+
+实测执行结果摘要：
+
+```text
+ik-offset 0 0 0.01 --execute --max-joint-delta 0.05
+inverse_kine ret=1
+max_joint_delta=0.0290863
+move_ret=1
+verified=true
+max_error=0.002692
+```
 
 IK 诊断记录见：
 
@@ -1094,6 +1105,25 @@ z: -0.001-0.003 m
 ```
 
 该结果说明当前 PARK 方法求得的 `flange -> carm_a3_camera_optical_frame` 外参方向和数量级可信，可作为当前默认手眼外参继续后续视觉实验。后续如更换相机安装、相机分辨率、标定板尺寸或采样方式，需要重新标定和验证。
+
+### 2026-07-20 Cartesian IK Offset Motion Passed
+
+Ubuntu 20.04 + ROS Noetic 下已完成第一条笛卡尔 IK 偏移执行链路：
+
+```text
+current cart pose -> z + 0.01 m -> inverse_kine -> move_joint -> joint readback verification
+```
+
+结果摘要：
+
+- `ik-offset 0 0 0.01` 可求解。
+- `x + 0.01 m` 和 `y + 0.01 m` 在当前近零位姿下暂时无解。
+- `z + 0.01 m` 的 IK 解最大关节变化约 `0.029 rad`。
+- 使用 `--execute --max-joint-delta 0.05` 后，机械臂实机可见运动。
+- `/carm_a3/motion/move_joint` 返回 `move_ret=1`、`verified=true`。
+- 运动后读回最大误差约 `0.002692 rad`，低于当前 `0.003 rad` 容差。
+
+这说明当前已经具备最小可用的“笛卡尔小偏移 -> IK -> 关节空间安全闭环执行”链路。
 
 ## Safety
 

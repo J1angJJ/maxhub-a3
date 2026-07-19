@@ -102,3 +102,16 @@ The successful `z + 0.01 m` solution:
 ```
 
 The largest joint delta is about `0.029 rad`, so this is a reasonable first Cartesian-IK execution candidate when routed through the safety-gated `move_joint` service.
+
+Execution result:
+
+```text
+rosrun carm_a3_motion motion_cli.py ik-offset 0 0 0.01 --execute --max-joint-delta 0.05
+inverse_kine ret=1
+max_joint_delta=0.0290863
+move_joint move_ret=1
+verified=true
+max_error=0.002692
+```
+
+The real arm moved visibly. This confirms the first minimal Cartesian offset control chain.

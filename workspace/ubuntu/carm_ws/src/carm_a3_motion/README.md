@@ -147,6 +147,7 @@ Current near-zero pose offset notes:
 - `+0.01 m` in `x` failed IK.
 - `+0.01 m` in `y` failed IK.
 - `+0.01 m` in `z` succeeded with max joint delta about `0.029 rad`.
+- `+0.01 m` in `z` has been executed successfully with `--execute --max-joint-delta 0.05`; `move_joint` returned `verified=true` with max readback error about `0.0027 rad`.
 
 Emergency stop service:
 
