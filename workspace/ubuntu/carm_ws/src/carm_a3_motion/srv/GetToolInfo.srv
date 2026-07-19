@@ -1,0 +1,6 @@
+int32 index
+---
+bool success
+string message
+int32 current_index
+float64[] coordinate

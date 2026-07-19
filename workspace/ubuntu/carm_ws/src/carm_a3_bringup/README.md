@@ -30,10 +30,13 @@ Motion is optional and disabled by default. To add the safety-gated motion servi
 roslaunch carm_a3_bringup readonly_vision_handeye.launch \
   launch_motion:=true \
   motion_allow_motion:=true \
+  motion_auto_ready_on_connect:=true \
+  motion_register_callbacks_on_connect:=true \
+  motion_pre_ready_delay_s:=1.0 \
   motion_dry_run:=true
 ```
 
-For real motion, prefer launching `carm_a3_motion` directly during first tests so the command surface is obvious.
+For real motion, prefer launching `carm_a3_motion` directly during first tests so the command surface is obvious. If using this bringup for real motion, keep the same official-style initialization arguments and set `motion_dry_run:=false` only after dry-run service calls look correct.
 
 ## Hand-eye Validation
 

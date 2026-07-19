@@ -1,0 +1,7 @@
+float64[] pose
+float64 line_theta_weight
+float64 accuracy
+bool wait
+---
+bool success
+string message

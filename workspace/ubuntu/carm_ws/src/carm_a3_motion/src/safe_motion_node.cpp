@@ -19,9 +19,20 @@
 #include "arm_control_sdk/carm_cobot.h"
 #include "arm_control_sdk/data_type_def.h"
 #include "carm_a3_motion/GetCartesianSnapshot.h"
+#include "carm_a3_motion/GetExtendedState.h"
 #include "carm_a3_motion/GetJointSnapshot.h"
+#include "carm_a3_motion/GetToolInfo.h"
 #include "carm_a3_motion/JogJoint.h"
+#include "carm_a3_motion/MoveFlowPose.h"
 #include "carm_a3_motion/MoveJoint.h"
+#include "carm_a3_motion/MoveLineJoint.h"
+#include "carm_a3_motion/MoveLinePose.h"
+#include "carm_a3_motion/MovePose.h"
+#include "carm_a3_motion/SetCollisionConfig.h"
+#include "carm_a3_motion/SetControlMode.h"
+#include "carm_a3_motion/SetGripper.h"
+#include "carm_a3_motion/SetSpeed.h"
+#include "carm_a3_motion/SetToolIndex.h"
 #include "carm_a3_motion/SolveFK.h"
 #include "carm_a3_motion/SolveFKArray.h"
 #include "carm_a3_motion/SolveIK.h"
@@ -80,12 +91,45 @@ public:
         move_joint_srv_ = nh_.advertiseService("/carm_a3/motion/move_joint",
                                                &SafeMotionNode::handleMoveJoint,
                                                this);
+        move_pose_srv_ = nh_.advertiseService("/carm_a3/motion/move_pose",
+                                              &SafeMotionNode::handleMovePose,
+                                              this);
+        move_line_joint_srv_ = nh_.advertiseService("/carm_a3/motion/move_line_joint",
+                                                    &SafeMotionNode::handleMoveLineJoint,
+                                                    this);
+        move_line_pose_srv_ = nh_.advertiseService("/carm_a3/motion/move_line_pose",
+                                                   &SafeMotionNode::handleMoveLinePose,
+                                                   this);
+        move_flow_pose_srv_ = nh_.advertiseService("/carm_a3/motion/move_flow_pose",
+                                                   &SafeMotionNode::handleMoveFlowPose,
+                                                   this);
         get_joint_snapshot_srv_ = nh_.advertiseService("/carm_a3/motion/get_joint_snapshot",
                                                        &SafeMotionNode::handleGetJointSnapshot,
                                                        this);
         get_cartesian_snapshot_srv_ = nh_.advertiseService("/carm_a3/motion/get_cartesian_snapshot",
                                                            &SafeMotionNode::handleGetCartesianSnapshot,
                                                            this);
+        get_extended_state_srv_ = nh_.advertiseService("/carm_a3/motion/get_extended_state",
+                                                       &SafeMotionNode::handleGetExtendedState,
+                                                       this);
+        get_tool_info_srv_ = nh_.advertiseService("/carm_a3/motion/get_tool_info",
+                                                  &SafeMotionNode::handleGetToolInfo,
+                                                  this);
+        set_speed_srv_ = nh_.advertiseService("/carm_a3/motion/set_speed",
+                                              &SafeMotionNode::handleSetSpeed,
+                                              this);
+        set_control_mode_srv_ = nh_.advertiseService("/carm_a3/motion/set_control_mode",
+                                                     &SafeMotionNode::handleSetControlMode,
+                                                     this);
+        set_collision_config_srv_ = nh_.advertiseService("/carm_a3/motion/set_collision_config",
+                                                         &SafeMotionNode::handleSetCollisionConfig,
+                                                         this);
+        set_tool_index_srv_ = nh_.advertiseService("/carm_a3/motion/set_tool_index",
+                                                   &SafeMotionNode::handleSetToolIndex,
+                                                   this);
+        set_gripper_srv_ = nh_.advertiseService("/carm_a3/motion/set_gripper",
+                                                &SafeMotionNode::handleSetGripper,
+                                                this);
         solve_ik_srv_ = nh_.advertiseService("/carm_a3/motion/solve_ik",
                                              &SafeMotionNode::handleSolveIK,
                                              this);
@@ -144,6 +188,8 @@ private:
         pnh_.param<bool>("allow_ready", allow_ready_, false);
         pnh_.param<bool>("allow_servo_enable", allow_servo_enable_, false);
         pnh_.param<bool>("allow_motion", allow_motion_, false);
+        pnh_.param<bool>("allow_settings", allow_settings_, false);
+        pnh_.param<bool>("allow_gripper", allow_gripper_, false);
         pnh_.param<bool>("dry_run", dry_run_, true);
 
         pnh_.param<bool>("require_connected", require_connected_, true);
@@ -154,6 +200,9 @@ private:
         pnh_.param<int>("joint_count", joint_count_, 6);
         pnh_.param<double>("max_jog_delta_rad", max_jog_delta_rad_, 0.03);
         pnh_.param<double>("max_move_delta_rad", max_move_delta_rad_, 0.15);
+        pnh_.param<double>("max_pose_position_delta_m", max_pose_position_delta_m_, 0.05);
+        pnh_.param<double>("max_gripper_pos_m", max_gripper_pos_m_, 0.08);
+        pnh_.param<double>("max_gripper_tau_n", max_gripper_tau_n_, 100.0);
         pnh_.param<double>("default_duration_s", default_duration_s_, 2.0);
         pnh_.param<double>("min_duration_s", min_duration_s_, 0.5);
         pnh_.param<double>("max_duration_s", max_duration_s_, 10.0);
@@ -166,6 +215,9 @@ private:
         pnh_.param<double>("verify_timeout_s", verify_timeout_s_, 3.0);
         pnh_.param<double>("verify_poll_s", verify_poll_s_, 0.1);
         pnh_.param<double>("verify_joint_tolerance_rad", verify_joint_tolerance_rad_, 0.003);
+        pnh_.param<double>("verify_pose_position_tolerance_m",
+                           verify_pose_position_tolerance_m_,
+                           0.005);
     }
 
     bool connectSdk(std::string* message = nullptr) {
@@ -315,6 +367,62 @@ private:
             max_error = std::max(max_error, std::abs(actual[i] - target[i]));
         }
         return max_error;
+    }
+
+    double maxPositionDelta(const std::array<double, 7>& a,
+                            const std::array<double, 7>& b) const {
+        double max_delta = 0.0;
+        for (size_t i = 0; i < 3U; ++i) {
+            max_delta = std::max(max_delta, std::abs(a[i] - b[i]));
+        }
+        return max_delta;
+    }
+
+    bool checkPoseDeltaLocked(const std::array<double, 7>& target,
+                              const std::string& label,
+                              std::string* message) {
+        const std::array<double, 7> current = arm_->get_cart_pose();
+        const double delta = maxPositionDelta(current, target);
+        if (delta > max_pose_position_delta_m_) {
+            std::ostringstream ss;
+            ss << label << " position delta " << delta
+               << " exceeds max_pose_position_delta_m=" << max_pose_position_delta_m_;
+            *message = ss.str();
+            return false;
+        }
+        return true;
+    }
+
+    bool waitForPoseTargetLocked(const std::array<double, 7>& target,
+                                 std::array<double, 7>* actual,
+                                 double* max_error,
+                                 std::string* message) {
+        if (!verify_after_motion_) {
+            *actual = arm_->get_cart_pose();
+            *max_error = maxPositionDelta(*actual, target);
+            *message = "verification disabled";
+            return true;
+        }
+        const ros::Time deadline = ros::Time::now() + ros::Duration(verify_timeout_s_);
+        const ros::Duration poll_duration(verify_poll_s_);
+        while (ros::ok()) {
+            *actual = arm_->get_cart_pose();
+            *max_error = maxPositionDelta(*actual, target);
+            if (*max_error <= verify_pose_position_tolerance_m_) {
+                *message = "pose target verified";
+                return true;
+            }
+            if (ros::Time::now() >= deadline) {
+                std::ostringstream ss;
+                ss << "pose verification timeout, max_position_error=" << *max_error
+                   << ", tolerance=" << verify_pose_position_tolerance_m_;
+                *message = ss.str();
+                return false;
+            }
+            poll_duration.sleep();
+        }
+        *message = "ROS shutdown during pose verification";
+        return false;
     }
 
     bool waitForJointTargetLocked(const std::vector<double>& target,
@@ -467,6 +575,67 @@ private:
             res.plan_pose = poseArrayToVector(arm_->get_plan_cart_pose());
             res.success = true;
             res.message = "cartesian snapshot ok, pose order=x,y,z,qx,qy,qz,qw";
+        } catch (const std::exception& e) {
+            res.success = false;
+            res.message = e.what();
+        }
+        return true;
+    }
+
+    bool handleGetExtendedState(carm_a3_motion::GetExtendedState::Request&,
+                                carm_a3_motion::GetExtendedState::Response& res) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        std::string message;
+        if (!ensureConnected(&message)) {
+            res.success = false;
+            res.message = message;
+            return true;
+        }
+        try {
+            const carm::ArmConfig config = arm_->get_config();
+            res.version = arm_->get_version();
+            res.dof = config.dof;
+            res.limit_upper = config.limit_upper;
+            res.limit_lower = config.limit_lower;
+            res.joint_vel_limits = config.joint_vel;
+            res.joint_acc_limits = config.joint_acc;
+            res.joint_dec_limits = config.joint_dec;
+            res.joint_jerk_limits = config.joint_jerk;
+            res.plan_positions = arm_->get_plan_joint_pos();
+            res.plan_velocities = arm_->get_plan_joint_vel();
+            res.plan_efforts = arm_->get_plan_joint_tau();
+            res.joint_external_tau = arm_->get_joint_external_tau();
+            res.cart_external_force = arm_->get_cart_external_force();
+            res.gripper_state = arm_->get_gripper_state();
+            res.gripper_pos = arm_->get_gripper_pos();
+            res.gripper_vel = arm_->get_gripper_vel();
+            res.gripper_tau = arm_->get_gripper_tau();
+            res.plan_gripper_pos = arm_->get_plan_gripper_pos();
+            res.plan_gripper_tau = arm_->get_plan_gripper_tau();
+            res.tool_index = arm_->get_tool_index();
+            res.success = true;
+            res.message = "extended SDK state ok";
+        } catch (const std::exception& e) {
+            res.success = false;
+            res.message = e.what();
+        }
+        return true;
+    }
+
+    bool handleGetToolInfo(carm_a3_motion::GetToolInfo::Request& req,
+                           carm_a3_motion::GetToolInfo::Response& res) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        std::string message;
+        if (!ensureConnected(&message)) {
+            res.success = false;
+            res.message = message;
+            return true;
+        }
+        try {
+            res.current_index = arm_->get_tool_index();
+            res.coordinate = poseArrayToVector(arm_->get_tool_coordinate(req.index));
+            res.success = true;
+            res.message = "tool coordinate order=x,y,z,qx,qy,qz,qw";
         } catch (const std::exception& e) {
             res.success = false;
             res.message = e.what();
@@ -669,6 +838,138 @@ private:
             res.success = false;
             res.message = e.what();
         }
+        return true;
+    }
+
+    bool handleSetSpeed(carm_a3_motion::SetSpeed::Request& req,
+                        carm_a3_motion::SetSpeed::Response& res) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (!allow_settings_) {
+            res.success = false;
+            res.message = "blocked: allow_settings is false";
+            return true;
+        }
+        if (req.level < 0.0 || req.level > 10.0 ||
+            req.response_level < 1 || req.response_level > 100) {
+            res.success = false;
+            res.message = "level must be [0,10], response_level must be [1,100]";
+            return true;
+        }
+        std::string message;
+        if (!ensureConnected(&message)) {
+            res.success = false;
+            res.message = message;
+            return true;
+        }
+        const int ret = dry_run_ ? 1 : arm_->set_speed_level(req.level, req.response_level);
+        res.success = ret >= 1;
+        res.message = std::string(dry_run_ ? "dry_run " : "") +
+                      "set_speed_level ret=" + std::to_string(ret);
+        return true;
+    }
+
+    bool handleSetControlMode(carm_a3_motion::SetControlMode::Request& req,
+                              carm_a3_motion::SetControlMode::Response& res) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (!allow_settings_) {
+            res.success = false;
+            res.message = "blocked: allow_settings is false";
+            return true;
+        }
+        if (req.mode < 0 || req.mode > 4) {
+            res.success = false;
+            res.message = "mode must be in [0,4]";
+            return true;
+        }
+        std::string message;
+        if (!ensureConnected(&message)) {
+            res.success = false;
+            res.message = message;
+            return true;
+        }
+        const int ret = dry_run_ ? 1 : arm_->set_control_mode(req.mode);
+        res.success = ret >= 1;
+        res.message = std::string(dry_run_ ? "dry_run " : "") +
+                      "set_control_mode ret=" + std::to_string(ret);
+        return true;
+    }
+
+    bool handleSetCollisionConfig(carm_a3_motion::SetCollisionConfig::Request& req,
+                                  carm_a3_motion::SetCollisionConfig::Response& res) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (!allow_settings_) {
+            res.success = false;
+            res.message = "blocked: allow_settings is false";
+            return true;
+        }
+        if (req.sensitivity_level < 0 || req.sensitivity_level > 2) {
+            res.success = false;
+            res.message = "sensitivity_level must be in [0,2]";
+            return true;
+        }
+        std::string message;
+        if (!ensureConnected(&message)) {
+            res.success = false;
+            res.message = message;
+            return true;
+        }
+        const int ret = dry_run_ ? 1 : arm_->set_collision_config(req.enable, req.sensitivity_level);
+        res.success = ret >= 1;
+        res.message = std::string(dry_run_ ? "dry_run " : "") +
+                      "set_collision_config ret=" + std::to_string(ret);
+        return true;
+    }
+
+    bool handleSetToolIndex(carm_a3_motion::SetToolIndex::Request& req,
+                            carm_a3_motion::SetToolIndex::Response& res) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (!allow_settings_) {
+            res.success = false;
+            res.message = "blocked: allow_settings is false";
+            return true;
+        }
+        if (req.index < 0) {
+            res.success = false;
+            res.message = "index must be >= 0";
+            return true;
+        }
+        std::string message;
+        if (!ensureConnected(&message)) {
+            res.success = false;
+            res.message = message;
+            return true;
+        }
+        const int ret = dry_run_ ? 1 : arm_->set_tool_index(req.index);
+        res.success = ret >= 1;
+        res.message = std::string(dry_run_ ? "dry_run " : "") +
+                      "set_tool_index ret=" + std::to_string(ret);
+        return true;
+    }
+
+    bool handleSetGripper(carm_a3_motion::SetGripper::Request& req,
+                          carm_a3_motion::SetGripper::Response& res) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (!allow_motion_ || !allow_gripper_) {
+            res.success = false;
+            res.message = "blocked: allow_motion or allow_gripper is false";
+            return true;
+        }
+        if (req.pos < 0.0 || req.pos > max_gripper_pos_m_ ||
+            req.tau < 0.0 || req.tau > max_gripper_tau_n_) {
+            res.success = false;
+            res.message = "gripper pos/tau out of configured range";
+            return true;
+        }
+        std::string message;
+        if (!ensureConnected(&message)) {
+            res.success = false;
+            res.message = message;
+            return true;
+        }
+        const int ret = dry_run_ ? 1 : arm_->set_gripper(req.pos, req.tau);
+        res.success = ret >= 1;
+        res.message = std::string(dry_run_ ? "dry_run " : "") +
+                      "set_gripper ret=" + std::to_string(ret);
         return true;
     }
 
@@ -931,6 +1232,260 @@ private:
         return true;
     }
 
+    bool handleMovePose(carm_a3_motion::MovePose::Request& req,
+                        carm_a3_motion::MovePose::Response& res) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (!allow_motion_) {
+            res.success = false;
+            res.message = "blocked: allow_motion is false";
+            return true;
+        }
+        std::array<double, 7> target{};
+        if (!vectorToPoseArray(req.pose, &target, &res.message)) {
+            res.success = false;
+            return true;
+        }
+        double duration = 0.0;
+        if (!normalizeDuration(req.duration_s, &duration, &res.message)) {
+            res.success = false;
+            return true;
+        }
+        std::string message;
+        if (!ensureConnected(&message)) {
+            res.success = false;
+            res.message = message;
+            return true;
+        }
+        try {
+            const carm::ArmStatus status = getStatusLocked();
+            if (!checkMotionPreconditions(status, &message)) {
+                res.success = false;
+                res.message = message + "; " + statusToString(status);
+                return true;
+            }
+            if (!checkPoseDeltaLocked(target, "move_pose", &message)) {
+                res.success = false;
+                res.message = message;
+                return true;
+            }
+            if (dry_run_) {
+                res.success = true;
+                res.message = "dry_run move_pose accepted: target=" + vectorToString(poseArrayToVector(target));
+                return true;
+            }
+            const double sdk_duration = use_duration_ ? duration : -1.0;
+            const bool wait = wait_for_motion_ && req.wait;
+            const int move_ret = arm_->move_pose(target, sdk_duration, wait);
+            std::array<double, 7> actual{};
+            double max_error = 0.0;
+            std::string verify_message;
+            const bool verified = move_ret >= 1 &&
+                                  waitForPoseTargetLocked(target, &actual, &max_error, &verify_message);
+            res.success = move_ret >= 1 && verified;
+            res.message = "move_pose ret=" + std::to_string(move_ret) +
+                          ", verified=" + (verified ? "true" : "false") +
+                          ", verify_message=" + verify_message +
+                          ", max_position_error=" + std::to_string(max_error) +
+                          ", actual=" + vectorToString(poseArrayToVector(actual));
+        } catch (const std::exception& e) {
+            res.success = false;
+            res.message = e.what();
+        }
+        return true;
+    }
+
+    bool handleMoveLineJoint(carm_a3_motion::MoveLineJoint::Request& req,
+                             carm_a3_motion::MoveLineJoint::Response& res) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (!allow_motion_) {
+            res.success = false;
+            res.message = "blocked: allow_motion is false";
+            return true;
+        }
+        if (static_cast<int>(req.positions.size()) != joint_count_) {
+            res.success = false;
+            res.message = "positions must contain exactly " + std::to_string(joint_count_) + " values";
+            return true;
+        }
+        std::string message;
+        if (!ensureConnected(&message)) {
+            res.success = false;
+            res.message = message;
+            return true;
+        }
+        try {
+            const carm::ArmStatus status = getStatusLocked();
+            if (!checkMotionPreconditions(status, &message)) {
+                res.success = false;
+                res.message = message + "; " + statusToString(status);
+                return true;
+            }
+            const std::vector<double> current = arm_->get_joint_pos();
+            if (static_cast<int>(current.size()) < joint_count_) {
+                res.success = false;
+                res.message = "SDK returned too few joints: " + std::to_string(current.size());
+                return true;
+            }
+            for (int i = 0; i < joint_count_; ++i) {
+                const double delta = std::abs(req.positions[static_cast<size_t>(i)] -
+                                              current[static_cast<size_t>(i)]);
+                if (delta > max_move_delta_rad_) {
+                    res.success = false;
+                    res.message = "joint " + std::to_string(i + 1) +
+                                  " delta exceeds max_move_delta_rad";
+                    return true;
+                }
+            }
+            if (dry_run_) {
+                res.success = true;
+                res.message = "dry_run move_line_joint accepted: target=" +
+                              vectorToString(req.positions);
+                return true;
+            }
+            const bool wait = wait_for_motion_ && req.wait;
+            const int move_ret = arm_->move_line_joint(req.positions, wait);
+            std::vector<double> actual;
+            double max_error = 0.0;
+            std::string verify_message;
+            const bool verified = move_ret >= 1 &&
+                                  waitForJointTargetLocked(req.positions,
+                                                           &actual,
+                                                           &max_error,
+                                                           &verify_message);
+            res.success = move_ret >= 1 && verified;
+            res.message = "move_line_joint ret=" + std::to_string(move_ret) +
+                          ", verified=" + (verified ? "true" : "false") +
+                          ", verify_message=" + verify_message +
+                          ", max_error=" + std::to_string(max_error) +
+                          ", actual=" + vectorToString(actual);
+        } catch (const std::exception& e) {
+            res.success = false;
+            res.message = e.what();
+        }
+        return true;
+    }
+
+    bool handleMoveLinePose(carm_a3_motion::MoveLinePose::Request& req,
+                            carm_a3_motion::MoveLinePose::Response& res) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (!allow_motion_) {
+            res.success = false;
+            res.message = "blocked: allow_motion is false";
+            return true;
+        }
+        std::array<double, 7> target{};
+        if (!vectorToPoseArray(req.pose, &target, &res.message)) {
+            res.success = false;
+            return true;
+        }
+        std::string message;
+        if (!ensureConnected(&message)) {
+            res.success = false;
+            res.message = message;
+            return true;
+        }
+        try {
+            const carm::ArmStatus status = getStatusLocked();
+            if (!checkMotionPreconditions(status, &message)) {
+                res.success = false;
+                res.message = message + "; " + statusToString(status);
+                return true;
+            }
+            if (!checkPoseDeltaLocked(target, "move_line_pose", &message)) {
+                res.success = false;
+                res.message = message;
+                return true;
+            }
+            if (dry_run_) {
+                res.success = true;
+                res.message = "dry_run move_line_pose accepted: target=" +
+                              vectorToString(poseArrayToVector(target));
+                return true;
+            }
+            const bool wait = wait_for_motion_ && req.wait;
+            const int move_ret = arm_->move_line_pose(target, wait);
+            std::array<double, 7> actual{};
+            double max_error = 0.0;
+            std::string verify_message;
+            const bool verified = move_ret >= 1 &&
+                                  waitForPoseTargetLocked(target, &actual, &max_error, &verify_message);
+            res.success = move_ret >= 1 && verified;
+            res.message = "move_line_pose ret=" + std::to_string(move_ret) +
+                          ", verified=" + (verified ? "true" : "false") +
+                          ", verify_message=" + verify_message +
+                          ", max_position_error=" + std::to_string(max_error) +
+                          ", actual=" + vectorToString(poseArrayToVector(actual));
+        } catch (const std::exception& e) {
+            res.success = false;
+            res.message = e.what();
+        }
+        return true;
+    }
+
+    bool handleMoveFlowPose(carm_a3_motion::MoveFlowPose::Request& req,
+                            carm_a3_motion::MoveFlowPose::Response& res) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (!allow_motion_) {
+            res.success = false;
+            res.message = "blocked: allow_motion is false";
+            return true;
+        }
+        std::array<double, 7> target{};
+        if (!vectorToPoseArray(req.pose, &target, &res.message)) {
+            res.success = false;
+            return true;
+        }
+        if (req.line_theta_weight < 0.0 || req.line_theta_weight > 1.0 ||
+            req.accuracy <= 0.0 || req.accuracy > 0.01) {
+            res.success = false;
+            res.message = "line_theta_weight must be [0,1], accuracy must be (0,0.01]";
+            return true;
+        }
+        std::string message;
+        if (!ensureConnected(&message)) {
+            res.success = false;
+            res.message = message;
+            return true;
+        }
+        try {
+            const carm::ArmStatus status = getStatusLocked();
+            if (!checkMotionPreconditions(status, &message)) {
+                res.success = false;
+                res.message = message + "; " + statusToString(status);
+                return true;
+            }
+            if (!checkPoseDeltaLocked(target, "move_flow_pose", &message)) {
+                res.success = false;
+                res.message = message;
+                return true;
+            }
+            if (dry_run_) {
+                res.success = true;
+                res.message = "dry_run move_flow_pose accepted: target=" +
+                              vectorToString(poseArrayToVector(target));
+                return true;
+            }
+            const bool wait = wait_for_motion_ && req.wait;
+            const int move_ret = arm_->move_flow_pose(
+                    target, req.line_theta_weight, req.accuracy, wait);
+            std::array<double, 7> actual{};
+            double max_error = 0.0;
+            std::string verify_message;
+            const bool verified = move_ret >= 1 &&
+                                  waitForPoseTargetLocked(target, &actual, &max_error, &verify_message);
+            res.success = move_ret >= 1 && verified;
+            res.message = "move_flow_pose ret=" + std::to_string(move_ret) +
+                          ", verified=" + (verified ? "true" : "false") +
+                          ", verify_message=" + verify_message +
+                          ", max_position_error=" + std::to_string(max_error) +
+                          ", actual=" + vectorToString(poseArrayToVector(actual));
+        } catch (const std::exception& e) {
+            res.success = false;
+            res.message = e.what();
+        }
+        return true;
+    }
+
     ros::NodeHandle nh_;
     ros::NodeHandle pnh_;
     std::mutex mutex_;
@@ -942,8 +1497,19 @@ private:
     ros::ServiceServer emergency_stop_srv_;
     ros::ServiceServer jog_joint_srv_;
     ros::ServiceServer move_joint_srv_;
+    ros::ServiceServer move_pose_srv_;
+    ros::ServiceServer move_line_joint_srv_;
+    ros::ServiceServer move_line_pose_srv_;
+    ros::ServiceServer move_flow_pose_srv_;
     ros::ServiceServer get_joint_snapshot_srv_;
     ros::ServiceServer get_cartesian_snapshot_srv_;
+    ros::ServiceServer get_extended_state_srv_;
+    ros::ServiceServer get_tool_info_srv_;
+    ros::ServiceServer set_speed_srv_;
+    ros::ServiceServer set_control_mode_srv_;
+    ros::ServiceServer set_collision_config_srv_;
+    ros::ServiceServer set_tool_index_srv_;
+    ros::ServiceServer set_gripper_srv_;
     ros::ServiceServer solve_ik_srv_;
     ros::ServiceServer solve_fk_srv_;
     ros::ServiceServer solve_ik_array_srv_;
@@ -966,6 +1532,8 @@ private:
     bool allow_ready_ = false;
     bool allow_servo_enable_ = false;
     bool allow_motion_ = false;
+    bool allow_settings_ = false;
+    bool allow_gripper_ = false;
     bool dry_run_ = true;
 
     bool require_connected_ = true;
@@ -976,6 +1544,9 @@ private:
     int joint_count_ = 6;
     double max_jog_delta_rad_ = 0.03;
     double max_move_delta_rad_ = 0.15;
+    double max_pose_position_delta_m_ = 0.05;
+    double max_gripper_pos_m_ = 0.08;
+    double max_gripper_tau_n_ = 100.0;
     double default_duration_s_ = 2.0;
     double min_duration_s_ = 0.5;
     double max_duration_s_ = 10.0;
@@ -988,6 +1559,7 @@ private:
     double verify_timeout_s_ = 3.0;
     double verify_poll_s_ = 0.1;
     double verify_joint_tolerance_rad_ = 0.003;
+    double verify_pose_position_tolerance_m_ = 0.005;
 };
 
 int main(int argc, char** argv) {

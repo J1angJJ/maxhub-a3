@@ -1,0 +1,6 @@
+float64[] pose
+float64 duration_s
+bool wait
+---
+bool success
+string message

@@ -54,6 +54,13 @@ Check status:
 rosservice call /carm_a3/motion/status
 ```
 
+Read extended SDK state:
+
+```bash
+rosrun carm_a3_motion motion_cli.py extended
+rosrun carm_a3_motion motion_cli.py tool-info 0
+```
+
 ## First Dry-run Jog
 
 Default launch should block jog commands at `allow_motion=false`. To exercise the command path without physical motion, keep `dry_run=true` and explicitly open the motion gate:
@@ -174,6 +181,55 @@ Current near-zero pose offset notes:
 - `+0.01 m` in `z` succeeded with max joint delta about `0.029 rad`.
 - `+0.01 m` in `z` has been executed successfully with `--execute --max-joint-delta 0.05`; `move_joint` returned `verified=true` with max readback error about `0.0027 rad`.
 - After moving up, `-0.01 m` in `z` failed IK while holding orientation fixed. `ik-offset-scan z` showed `-0.001/-0.002/-0.005 m` are solvable; use `-0.005 m` or smaller for return steps.
+
+## Additional SDK Wrappers
+
+The package wraps the official C++ SDK functions that are useful for the current control stack:
+
+- read-only: version/config, plan joint state, external tau/force, gripper state, current tool index, tool coordinate
+- settings: speed level, control mode, collision config, tool index
+- end effector: gripper position/force command
+- motion: `move_joint`, `move_pose`, `move_line_joint`, `move_line_pose`, `move_flow_pose`
+- kinematics: single and batch FK/IK
+
+Intentionally not exposed yet:
+
+- `track_joint()` / `track_pose()`: continuous command streaming needs a separate watchdog and rate policy.
+- `move_joint_traj()` / `move_pose_traj()`: trajectory execution needs waypoint validation, timing validation, and a stop policy.
+- `trajectory_teach()` / `trajectory_recorder()` / `check_teach()`: useful later, but not required for the current perception-guided motion chain.
+
+Settings are blocked by default:
+
+```bash
+roslaunch carm_a3_motion safe_motion.launch allow_settings:=true dry_run:=true
+rosrun carm_a3_motion motion_cli.py set-speed 1.0 --response-level 20
+rosrun carm_a3_motion motion_cli.py set-collision true --sensitivity-level 0
+rosrun carm_a3_motion motion_cli.py set-tool 0
+rosrun carm_a3_motion motion_cli.py set-control-mode 1
+```
+
+Gripper commands require both `allow_motion:=true` and `allow_gripper:=true`:
+
+```bash
+roslaunch carm_a3_motion safe_motion.launch allow_motion:=true allow_gripper:=true dry_run:=true
+rosrun carm_a3_motion motion_cli.py set-gripper 0.04 --tau 10
+```
+
+Pose and line motion commands use the same `allow_motion` and `dry_run` gates as joint motion. They also reject targets whose translation jump from the current flange pose exceeds `max_pose_position_delta_m`.
+
+```bash
+rosrun carm_a3_motion motion_cli.py move-pose "0,0,0.246,0.707,0,0.707,0"
+rosrun carm_a3_motion motion_cli.py move-line-joint "0.01,0,0,0,0,0"
+rosrun carm_a3_motion motion_cli.py move-line-pose "0,0,0.246,0.707,0,0.707,0"
+rosrun carm_a3_motion motion_cli.py move-flow-pose "0,0,0.246,0.707,0,0.707,0"
+```
+
+For real pose motion, prefer the existing IK path first:
+
+```bash
+rosrun carm_a3_motion motion_cli.py ik-offset 0 0 0.005
+rosrun carm_a3_motion motion_cli.py ik-offset 0 0 0.005 --execute --max-joint-delta 0.03
+```
 
 Emergency stop service:
 

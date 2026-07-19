@@ -5,9 +5,20 @@ import sys
 import rospy
 
 from carm_a3_motion.srv import GetCartesianSnapshot
+from carm_a3_motion.srv import GetExtendedState
 from carm_a3_motion.srv import GetJointSnapshot
+from carm_a3_motion.srv import GetToolInfo
 from carm_a3_motion.srv import JogJoint
+from carm_a3_motion.srv import MoveFlowPose
 from carm_a3_motion.srv import MoveJoint
+from carm_a3_motion.srv import MoveLineJoint
+from carm_a3_motion.srv import MoveLinePose
+from carm_a3_motion.srv import MovePose
+from carm_a3_motion.srv import SetCollisionConfig
+from carm_a3_motion.srv import SetControlMode
+from carm_a3_motion.srv import SetGripper
+from carm_a3_motion.srv import SetSpeed
+from carm_a3_motion.srv import SetToolIndex
 from carm_a3_motion.srv import SolveFK
 from carm_a3_motion.srv import SolveFKArray
 from carm_a3_motion.srv import SolveIK
@@ -112,6 +123,20 @@ def call_cart(_args):
     return 0 if res.success else 1
 
 
+def call_extended(_args):
+    proxy = service_proxy("/carm_a3/motion/get_extended_state", GetExtendedState)
+    res = proxy()
+    print(res)
+    return 0 if res.success else 1
+
+
+def call_tool_info(args):
+    proxy = service_proxy("/carm_a3/motion/get_tool_info", GetToolInfo)
+    res = proxy(args.index)
+    print(res)
+    return 0 if res.success else 1
+
+
 def call_jog(args):
     proxy = service_proxy("/carm_a3/motion/jog_joint", JogJoint)
     res = proxy(args.joint_index, args.delta_rad, args.duration_s)
@@ -122,6 +147,69 @@ def call_jog(args):
 def call_move(args):
     proxy = service_proxy("/carm_a3/motion/move_joint", MoveJoint)
     res = proxy(parse_float_list(args.positions, 6), args.duration_s, args.wait)
+    print(res)
+    return 0 if res.success else 1
+
+
+def call_move_pose(args):
+    proxy = service_proxy("/carm_a3/motion/move_pose", MovePose)
+    res = proxy(parse_float_list(args.pose, 7), args.duration_s, args.wait)
+    print(res)
+    return 0 if res.success else 1
+
+
+def call_move_line_joint(args):
+    proxy = service_proxy("/carm_a3/motion/move_line_joint", MoveLineJoint)
+    res = proxy(parse_float_list(args.positions, 6), args.wait)
+    print(res)
+    return 0 if res.success else 1
+
+
+def call_move_line_pose(args):
+    proxy = service_proxy("/carm_a3/motion/move_line_pose", MoveLinePose)
+    res = proxy(parse_float_list(args.pose, 7), args.wait)
+    print(res)
+    return 0 if res.success else 1
+
+
+def call_move_flow_pose(args):
+    proxy = service_proxy("/carm_a3/motion/move_flow_pose", MoveFlowPose)
+    res = proxy(parse_float_list(args.pose, 7), args.line_theta_weight, args.accuracy, args.wait)
+    print(res)
+    return 0 if res.success else 1
+
+
+def call_set_speed(args):
+    proxy = service_proxy("/carm_a3/motion/set_speed", SetSpeed)
+    res = proxy(args.level, args.response_level)
+    print(res)
+    return 0 if res.success else 1
+
+
+def call_set_collision(args):
+    proxy = service_proxy("/carm_a3/motion/set_collision_config", SetCollisionConfig)
+    res = proxy(args.enable, args.sensitivity_level)
+    print(res)
+    return 0 if res.success else 1
+
+
+def call_set_control_mode(args):
+    proxy = service_proxy("/carm_a3/motion/set_control_mode", SetControlMode)
+    res = proxy(args.mode)
+    print(res)
+    return 0 if res.success else 1
+
+
+def call_set_tool(args):
+    proxy = service_proxy("/carm_a3/motion/set_tool_index", SetToolIndex)
+    res = proxy(args.index)
+    print(res)
+    return 0 if res.success else 1
+
+
+def call_set_gripper(args):
+    proxy = service_proxy("/carm_a3/motion/set_gripper", SetGripper)
+    res = proxy(args.pos, args.tau)
     print(res)
     return 0 if res.success else 1
 
@@ -325,6 +413,13 @@ def main():
     cart = subparsers.add_parser("cart")
     cart.set_defaults(func=call_cart)
 
+    extended = subparsers.add_parser("extended")
+    extended.set_defaults(func=call_extended)
+
+    tool_info = subparsers.add_parser("tool-info")
+    tool_info.add_argument("index", type=int)
+    tool_info.set_defaults(func=call_tool_info)
+
     jog = subparsers.add_parser("jog")
     jog.add_argument("joint_index", type=int)
     jog.add_argument("delta_rad", type=float)
@@ -336,6 +431,52 @@ def main():
     move.add_argument("--duration-s", type=float, default=2.0)
     move.add_argument("--wait", action="store_true")
     move.set_defaults(func=call_move)
+
+    move_pose = subparsers.add_parser("move-pose")
+    move_pose.add_argument("pose", help="x,y,z,qx,qy,qz,qw")
+    move_pose.add_argument("--duration-s", type=float, default=2.0)
+    move_pose.add_argument("--wait", action="store_true")
+    move_pose.set_defaults(func=call_move_pose)
+
+    move_line_joint = subparsers.add_parser("move-line-joint")
+    move_line_joint.add_argument("positions", help="six comma-separated joint values in rad")
+    move_line_joint.add_argument("--wait", action="store_true")
+    move_line_joint.set_defaults(func=call_move_line_joint)
+
+    move_line_pose = subparsers.add_parser("move-line-pose")
+    move_line_pose.add_argument("pose", help="x,y,z,qx,qy,qz,qw")
+    move_line_pose.add_argument("--wait", action="store_true")
+    move_line_pose.set_defaults(func=call_move_line_pose)
+
+    move_flow_pose = subparsers.add_parser("move-flow-pose")
+    move_flow_pose.add_argument("pose", help="x,y,z,qx,qy,qz,qw")
+    move_flow_pose.add_argument("--line-theta-weight", type=float, default=0.5)
+    move_flow_pose.add_argument("--accuracy", type=float, default=0.0001)
+    move_flow_pose.add_argument("--wait", action="store_true")
+    move_flow_pose.set_defaults(func=call_move_flow_pose)
+
+    set_speed = subparsers.add_parser("set-speed")
+    set_speed.add_argument("level", type=float)
+    set_speed.add_argument("--response-level", type=int, default=20)
+    set_speed.set_defaults(func=call_set_speed)
+
+    set_collision = subparsers.add_parser("set-collision")
+    set_collision.add_argument("enable", type=lambda value: value.lower() in ["1", "true", "yes", "on"])
+    set_collision.add_argument("--sensitivity-level", type=int, default=0)
+    set_collision.set_defaults(func=call_set_collision)
+
+    set_control_mode = subparsers.add_parser("set-control-mode")
+    set_control_mode.add_argument("mode", type=int)
+    set_control_mode.set_defaults(func=call_set_control_mode)
+
+    set_tool = subparsers.add_parser("set-tool")
+    set_tool.add_argument("index", type=int)
+    set_tool.set_defaults(func=call_set_tool)
+
+    set_gripper = subparsers.add_parser("set-gripper")
+    set_gripper.add_argument("pos", type=float, help="finger gap in meters")
+    set_gripper.add_argument("--tau", type=float, default=10.0)
+    set_gripper.set_defaults(func=call_set_gripper)
 
     ik = subparsers.add_parser("ik")
     ik.add_argument("pose", help="x,y,z,qx,qy,qz,qw")

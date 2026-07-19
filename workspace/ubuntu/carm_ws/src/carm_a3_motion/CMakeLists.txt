@@ -15,9 +15,20 @@ find_package(catkin REQUIRED COMPONENTS
 add_service_files(
   FILES
   GetCartesianSnapshot.srv
+  GetExtendedState.srv
   GetJointSnapshot.srv
+  GetToolInfo.srv
   JogJoint.srv
+  MoveFlowPose.srv
   MoveJoint.srv
+  MoveLineJoint.srv
+  MoveLinePose.srv
+  MovePose.srv
+  SetCollisionConfig.srv
+  SetControlMode.srv
+  SetGripper.srv
+  SetSpeed.srv
+  SetToolIndex.srv
   SolveFKArray.srv
   SolveFK.srv
   SolveIKArray.srv

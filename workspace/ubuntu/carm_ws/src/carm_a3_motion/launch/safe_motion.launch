@@ -5,6 +5,8 @@
   <arg name="allow_ready" default="" />
   <arg name="allow_servo_enable" default="" />
   <arg name="allow_motion" default="" />
+  <arg name="allow_settings" default="" />
+  <arg name="allow_gripper" default="" />
   <arg name="dry_run" default="" />
   <arg name="auto_ready_on_connect" default="" />
   <arg name="register_callbacks_on_connect" default="" />
@@ -15,6 +17,7 @@
   <arg name="verify_timeout_s" default="" />
   <arg name="verify_poll_s" default="" />
   <arg name="verify_joint_tolerance_rad" default="" />
+  <arg name="verify_pose_position_tolerance_m" default="" />
 
   <node
     name="carm_a3_safe_motion"
@@ -29,6 +32,8 @@
     <param name="allow_ready" value="$(arg allow_ready)" if="$(eval arg('allow_ready') != '')" />
     <param name="allow_servo_enable" value="$(arg allow_servo_enable)" if="$(eval arg('allow_servo_enable') != '')" />
     <param name="allow_motion" value="$(arg allow_motion)" if="$(eval arg('allow_motion') != '')" />
+    <param name="allow_settings" value="$(arg allow_settings)" if="$(eval arg('allow_settings') != '')" />
+    <param name="allow_gripper" value="$(arg allow_gripper)" if="$(eval arg('allow_gripper') != '')" />
     <param name="dry_run" value="$(arg dry_run)" if="$(eval arg('dry_run') != '')" />
     <param name="auto_ready_on_connect" value="$(arg auto_ready_on_connect)" if="$(eval arg('auto_ready_on_connect') != '')" />
     <param name="register_callbacks_on_connect" value="$(arg register_callbacks_on_connect)" if="$(eval arg('register_callbacks_on_connect') != '')" />
@@ -39,5 +44,6 @@
     <param name="verify_timeout_s" value="$(arg verify_timeout_s)" if="$(eval arg('verify_timeout_s') != '')" />
     <param name="verify_poll_s" value="$(arg verify_poll_s)" if="$(eval arg('verify_poll_s') != '')" />
     <param name="verify_joint_tolerance_rad" value="$(arg verify_joint_tolerance_rad)" if="$(eval arg('verify_joint_tolerance_rad') != '')" />
+    <param name="verify_pose_position_tolerance_m" value="$(arg verify_pose_position_tolerance_m)" if="$(eval arg('verify_pose_position_tolerance_m') != '')" />
   </node>
 </launch>

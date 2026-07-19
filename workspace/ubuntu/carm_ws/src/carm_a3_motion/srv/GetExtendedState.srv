@@ -1,0 +1,23 @@
+---
+bool success
+string message
+string version
+int32 dof
+float64[] limit_upper
+float64[] limit_lower
+float64[] joint_vel_limits
+float64[] joint_acc_limits
+float64[] joint_dec_limits
+float64[] joint_jerk_limits
+float64[] plan_positions
+float64[] plan_velocities
+float64[] plan_efforts
+float64[] joint_external_tau
+float64[] cart_external_force
+int32 gripper_state
+float64 gripper_pos
+float64 gripper_vel
+float64 gripper_tau
+float64 plan_gripper_pos
+float64 plan_gripper_tau
+int32 tool_index

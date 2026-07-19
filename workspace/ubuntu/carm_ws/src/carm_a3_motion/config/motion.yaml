@@ -10,6 +10,8 @@ pre_ready_delay_s: 1.0
 allow_ready: false
 allow_servo_enable: false
 allow_motion: false
+allow_settings: false
+allow_gripper: false
 dry_run: true
 
 require_connected: true
@@ -20,6 +22,9 @@ reject_controller_error: true
 joint_count: 6
 max_jog_delta_rad: 0.03
 max_move_delta_rad: 0.15
+max_pose_position_delta_m: 0.05
+max_gripper_pos_m: 0.08
+max_gripper_tau_n: 100.0
 default_duration_s: 2.0
 min_duration_s: 0.5
 max_duration_s: 10.0
@@ -33,3 +38,4 @@ verify_after_motion: true
 verify_timeout_s: 3.0
 verify_poll_s: 0.1
 verify_joint_tolerance_rad: 0.003
+verify_pose_position_tolerance_m: 0.005
