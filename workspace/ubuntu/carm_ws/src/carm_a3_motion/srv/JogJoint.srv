@@ -1,0 +1,6 @@
+int32 joint_index
+float64 delta_rad
+float64 duration_s
+---
+bool success
+string message

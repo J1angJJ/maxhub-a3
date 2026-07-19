@@ -24,6 +24,17 @@ This starts:
 
 The driver still publishes `/joint_states`, but its minimal direct `base_link -> flange` TF is disabled in this bringup. The full robot TF chain comes from URDF + `robot_state_publisher`.
 
+Motion is optional and disabled by default. To add the safety-gated motion services without physical motion:
+
+```bash
+roslaunch carm_a3_bringup readonly_vision_handeye.launch \
+  launch_motion:=true \
+  motion_allow_motion:=true \
+  motion_dry_run:=true
+```
+
+For real motion, prefer launching `carm_a3_motion` directly during first tests so the command surface is obvious.
+
 ## Hand-eye Validation
 
 Start the default chain plus the ArUco detector:

@@ -8,6 +8,10 @@
   <arg name="driver_publish_flange_tf" default="false" />
   <arg name="launch_camera" default="true" />
   <arg name="publish_handeye_tf" default="true" />
+  <arg name="launch_motion" default="false" />
+  <arg name="motion_config" default="$(find carm_a3_motion)/config/motion.yaml" />
+  <arg name="motion_allow_motion" default="" />
+  <arg name="motion_dry_run" default="" />
 
   <include if="$(arg launch_driver)" file="$(find carm_a3_driver)/launch/readonly_state.launch">
     <arg name="config" value="$(arg driver_config)" />
@@ -22,4 +26,10 @@
   </include>
 
   <include if="$(arg publish_handeye_tf)" file="$(find carm_a3_calibration)/launch/publish_handeye_tf.launch" />
+
+  <include if="$(arg launch_motion)" file="$(find carm_a3_motion)/launch/safe_motion.launch">
+    <arg name="config" value="$(arg motion_config)" />
+    <arg name="allow_motion" value="$(arg motion_allow_motion)" />
+    <arg name="dry_run" value="$(arg motion_dry_run)" />
+  </include>
 </launch>

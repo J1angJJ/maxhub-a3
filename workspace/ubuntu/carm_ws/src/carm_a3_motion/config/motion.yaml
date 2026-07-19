@@ -1,0 +1,25 @@
+robot_host: "192.168.31.60"
+robot_port: 8090
+connect_timeout_s: 1.0
+connect_on_start: true
+
+# Safe defaults: launching this node must not move the real arm.
+allow_ready: false
+allow_servo_enable: false
+allow_motion: false
+dry_run: true
+
+require_connected: true
+require_servo_enabled: true
+require_position_mode: true
+reject_controller_error: true
+
+joint_count: 6
+max_jog_delta_rad: 0.03
+max_move_delta_rad: 0.15
+default_duration_s: 2.0
+min_duration_s: 0.5
+max_duration_s: 10.0
+
+speed_level: 1.0
+speed_response_level: 20

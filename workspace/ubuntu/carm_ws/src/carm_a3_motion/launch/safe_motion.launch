@@ -1,0 +1,25 @@
+<launch>
+  <arg name="config" default="$(find carm_a3_motion)/config/motion.yaml" />
+  <arg name="robot_host" default="" />
+  <arg name="robot_port" default="" />
+  <arg name="allow_ready" default="" />
+  <arg name="allow_servo_enable" default="" />
+  <arg name="allow_motion" default="" />
+  <arg name="dry_run" default="" />
+
+  <node
+    name="carm_a3_safe_motion"
+    pkg="carm_a3_motion"
+    type="safe_motion_node"
+    output="screen"
+    required="true"
+    launch-prefix="env LD_LIBRARY_PATH=$(find carm_a3_motion)/../../vendor/arm_control_sdk/lib:$(find carm_a3_motion)/../../vendor/arm_control_sdk/poco/lib:$(optenv LD_LIBRARY_PATH)">
+    <rosparam command="load" file="$(arg config)" />
+    <param name="robot_host" value="$(arg robot_host)" if="$(eval arg('robot_host') != '')" />
+    <param name="robot_port" value="$(arg robot_port)" if="$(eval arg('robot_port') != '')" />
+    <param name="allow_ready" value="$(arg allow_ready)" if="$(eval arg('allow_ready') != '')" />
+    <param name="allow_servo_enable" value="$(arg allow_servo_enable)" if="$(eval arg('allow_servo_enable') != '')" />
+    <param name="allow_motion" value="$(arg allow_motion)" if="$(eval arg('allow_motion') != '')" />
+    <param name="dry_run" value="$(arg dry_run)" if="$(eval arg('dry_run') != '')" />
+  </node>
+</launch>

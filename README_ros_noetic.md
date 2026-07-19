@@ -68,6 +68,49 @@ ping -c 4 192.168.31.60
 curl -I http://192.168.31.60
 ```
 
+## Official Network Environment
+
+机械臂控制器当前网络地址为 `192.168.31.60`。上位机/示教器 Web 前端运行在控制器本机，ROS 节点不是等待机械臂主动推送到虚拟机端口，而是作为客户端主动连接控制器服务。
+
+已做低侵入探测，未发送运动命令或写配置请求：
+
+| Port | Role | Notes |
+| --- | --- | --- |
+| `22/tcp` | SSH | `OpenSSH_8.2p1 Ubuntu` |
+| `80/tcp` | Web teach pendant | Apache `2.4.41 (Ubuntu)`，首页标题为 `Carm Teach Pendant` |
+| `8090/tcp` | CArm SDK / WebSocket controller | 官方 C++ SDK 和前端默认连接 `ws://192.168.31.60:8090` |
+| `1999/tcp` | Backend API | 前端使用的 HTTP API 服务 |
+| `7070/tcp` | Perception default | 前端默认配置里存在，但当前端口未开放或不可达 |
+
+前端默认连接配置：
+
+```text
+carm:       192.168.31.60:8090
+extraArm:   192.168.31.60:8090
+backend:    192.168.31.60:1999
+perception: 192.168.31.60:7070
+```
+
+只读 API 验证：
+
+```bash
+curl http://192.168.31.60:1999/api/device/network
+curl 'http://192.168.31.60:1999/api/config/load?path=config/config.json&module=controller&default=0'
+```
+
+实测控制器基础配置摘要：
+
+- `scenario/model`: `A3_DM_C`
+- `dof`: `6`
+- `control_period`: `0.002 s`
+- `task_period`: `0.02 s`
+- `broadcast_rate`: `0.02 s`
+- `arm_control_version`: `1.0.260203`
+
+`/arm_gui/` 目录索引中可见模型资源目录：`A3_AC_A/`、`A3_DM_A/`、`A3_DM_B/`、`A3_DM_C/`、`A3_DM_S/`、`D3_AC_B/`、`sca5/`、`sca_dual/`。
+
+开发原则：自研 ROS 链路优先使用官方 C++ SDK 连接 `8090`；`1999` 后端接口仅作为只读辅助信息来源。不要直接调用 Web 前端的写配置接口，例如 `/api/config/write`、`/api/device/network` 的 POST，除非明确需要并已确认风险。
+
 ## SDK Inspection
 
 ```bash
@@ -105,6 +148,84 @@ rostopic echo -n 1 /maxhub_a3/diagnostics
 rostopic echo -n 1 /joint_states
 rostopic echo -n 1 /maxhub_a3/flange_pose
 ```
+
+## Run Safe Motion Node
+
+`carm_a3_motion` 是当前自研运动控制入口，独立于 `carm_a3_driver`。它连接同一个官方 C++ SDK，但默认不会让机械臂运动：
+
+- `dry_run: true`
+- `allow_motion: false`
+- `allow_ready: false`
+- `allow_servo_enable: false`
+- 小步 jog 上限：`0.03 rad`
+- 一次完整关节目标移动的单关节差值上限：`0.15 rad`
+
+### Compile
+
+```bash
+cd /home/noetic/maxhub-a3
+source /opt/ros/noetic/setup.bash
+source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash
+cd workspace/ubuntu/carm_ws
+catkin_make
+source devel/setup.bash
+```
+
+### Start In Dry-run Mode
+
+终端 1：
+
+```bash
+source /opt/ros/noetic/setup.bash
+roscore
+```
+
+终端 2：
+
+```bash
+cd /home/noetic/maxhub-a3
+source /opt/ros/noetic/setup.bash
+source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash
+source workspace/ubuntu/carm_ws/devel/setup.bash
+roslaunch carm_a3_motion safe_motion.launch
+```
+
+终端 3：
+
+```bash
+source /opt/ros/noetic/setup.bash
+source /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/devel/setup.bash
+rosservice call /carm_a3/motion/status
+rosservice call /carm_a3/motion/jog_joint "{joint_index: 1, delta_rad: 0.01, duration_s: 2.0}"
+```
+
+默认情况下，`jog_joint` 应返回被 `allow_motion=false` 拦截；这说明安全门控生效。
+
+### First Real Jog
+
+确认机械臂周围安全、急停按钮可触达、原厂示教器可观察状态后，再新开：
+
+```bash
+cd /home/noetic/maxhub-a3
+source /opt/ros/noetic/setup.bash
+source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash
+source workspace/ubuntu/carm_ws/devel/setup.bash
+roslaunch carm_a3_motion safe_motion.launch allow_motion:=true dry_run:=false
+```
+
+如果控制器已经处于伺服使能和 `POSITION` 模式，发送极小关节 jog：
+
+```bash
+rosservice call /carm_a3/motion/jog_joint "{joint_index: 1, delta_rad: 0.01, duration_s: 2.0}"
+```
+
+急停服务始终可调用：
+
+```bash
+rosservice call /carm_a3/motion/emergency_stop
+```
+
+当前节点不会自动执行 `set_ready()`、不会自动使能伺服、不会自动切换控制模式。若状态不满足要求，运动服务会返回错误；这样第一版运动链路先验证“连接、状态检查、门控、小步运动”这条最小闭环。
 
 ## Run USB Camera Node
 
