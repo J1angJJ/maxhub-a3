@@ -290,6 +290,13 @@ rosrun carm_a3_motion motion_cli.py ik-offset 0 0 0.01 --execute --max-joint-del
 rosrun carm_a3_motion motion_cli.py ik-offset-scan z
 ```
 
+实测扫描结果：`z -0.001/-0.002/-0.005 m` 有解，`z -0.010 m` 无解；`z +0.001/+0.002/+0.005/+0.010 m` 都有解。推荐先用 `z -0.005 m` 小步回退：
+
+```bash
+rosrun carm_a3_motion motion_cli.py ik-offset 0 0 -0.005
+rosrun carm_a3_motion motion_cli.py ik-offset 0 0 -0.005 --execute --max-joint-delta 0.05
+```
+
 实测执行结果摘要：
 
 ```text
@@ -1128,6 +1135,7 @@ current cart pose -> z + 0.01 m -> inverse_kine -> move_joint -> joint readback 
 - 使用 `--execute --max-joint-delta 0.05` 后，机械臂实机可见运动。
 - `/carm_a3/motion/move_joint` 返回 `move_ret=1`、`verified=true`。
 - 运动后读回最大误差约 `0.002692 rad`，低于当前 `0.003 rad` 容差。
+- 执行上移后，`z -0.005 m` 有解而 `z -0.010 m` 无解，回退应采用更小步长分段执行。
 
 这说明当前已经具备最小可用的“笛卡尔小偏移 -> IK -> 关节空间安全闭环执行”链路。
 

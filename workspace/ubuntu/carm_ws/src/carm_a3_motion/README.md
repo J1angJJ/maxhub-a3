@@ -149,7 +149,7 @@ Current near-zero pose offset notes:
 - `+0.01 m` in `y` failed IK.
 - `+0.01 m` in `z` succeeded with max joint delta about `0.029 rad`.
 - `+0.01 m` in `z` has been executed successfully with `--execute --max-joint-delta 0.05`; `move_joint` returned `verified=true` with max readback error about `0.0027 rad`.
-- After moving up, `-0.01 m` in `z` failed IK while holding orientation fixed. Use `ik-offset-scan z` to find smaller feasible return steps before executing.
+- After moving up, `-0.01 m` in `z` failed IK while holding orientation fixed. `ik-offset-scan z` showed `-0.001/-0.002/-0.005 m` are solvable; use `-0.005 m` or smaller for return steps.
 
 Emergency stop service:
 

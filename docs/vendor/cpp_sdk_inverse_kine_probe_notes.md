@@ -121,3 +121,18 @@ After this upward move, a direct `z - 0.01 m` IK request while holding orientati
 ```bash
 rosrun carm_a3_motion motion_cli.py ik-offset-scan z
 ```
+
+Scan result after the upward move:
+
+| z offset | IK result | max joint delta |
+| --- | --- | --- |
+| `-0.001 m` | success | `0.00295 rad` |
+| `-0.002 m` | success | `0.00589 rad` |
+| `-0.005 m` | success | `0.01467 rad` |
+| `-0.010 m` | fail | n/a |
+| `+0.001 m` | success | `0.00296 rad` |
+| `+0.002 m` | success | `0.00593 rad` |
+| `+0.005 m` | success | `0.01489 rad` |
+| `+0.010 m` | success | `0.02998 rad` |
+
+Use `-0.005 m` or smaller as the first return step rather than `-0.010 m`.
