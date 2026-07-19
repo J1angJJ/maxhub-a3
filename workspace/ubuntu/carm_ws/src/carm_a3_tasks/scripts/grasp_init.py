@@ -479,7 +479,7 @@ def print_fov_only():
 def prepare_gripper_for_overview():
     if not bool(get_param("gripper/close_before_overview", True)):
         return
-    pos = float(get_param("gripper/overview_pos_m", 0.03))
+    pos = float(get_param("gripper/overview_pos_m", 0.005))
     tau = float(get_param("gripper/overview_tau_n", 5.0))
     proxy = service_proxy("/carm_a3/motion/set_gripper", SetGripper)
     print("closing gripper for overview: pos={:.6g}, tau={:.6g}".format(pos, tau))
