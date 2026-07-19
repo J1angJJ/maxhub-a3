@@ -59,7 +59,7 @@ rosrun carm_a3_tasks grasp_init.py execute
 
 Execution checks the total joint distance with `max_total_joint_delta_rad`, then splits the final joint target into small waypoints using `segment_delta_rad`, so each step still goes through the motion service's joint-delta and verification checks.
 
-`execute` closes the gripper to `gripper/overview_pos_m` before moving to reduce camera occlusion. Disable with `gripper/close_before_overview: false` if needed.
+`execute` closes the gripper to `gripper/overview_pos_m` before moving to reduce camera occlusion. The default is now `0.005 m`; disable with `gripper/close_before_overview: false` if needed.
 
 The script calls:
 
@@ -106,16 +106,22 @@ The launch form loads `config/block_grasp.yaml`:
 roslaunch carm_a3_tasks block_grasp.launch command:=plan color:=red
 ```
 
-After checking the printed base-frame block point, poses, IK results, and clearance:
+After checking the printed base-frame block point, poses, IK results, and clearance, the first execution only moves to the approach pose:
 
 ```bash
 rosrun carm_a3_tasks block_grasp.py execute --color red
 ```
 
-Gripper open/close is intentionally separate:
+Descent to the grasp pose is disabled by default because the current model does not yet include a validated gripper TCP/contact height. Only enable it after the approach pose is visibly safe:
 
 ```bash
-rosrun carm_a3_tasks block_grasp.py execute --color red --use-gripper
+rosrun carm_a3_tasks block_grasp.py execute --color red --allow-descend
 ```
 
-The first version keeps the current flange orientation and uses conservative fixed heights from `config/block_grasp.yaml`. Treat it as a grasp-chain smoke test before tuning the true TCP, grasp height, and gripper width.
+Gripper open/close is intentionally separate and also requires descent to be enabled:
+
+```bash
+rosrun carm_a3_tasks block_grasp.py execute --color red --allow-descend --use-gripper
+```
+
+The first version keeps the current flange orientation and uses conservative fixed heights from `config/block_grasp.yaml`. Treat it as a grasp-chain smoke test before tuning the true TCP, grasp height, and gripper width. `grasp/min_flange_z_m` is a hard planning guard against near-table flange targets.

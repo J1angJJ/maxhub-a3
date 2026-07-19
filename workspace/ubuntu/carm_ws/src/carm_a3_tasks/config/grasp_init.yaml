@@ -35,5 +35,5 @@ camera_check:
 
 gripper:
   close_before_overview: true
-  overview_pos_m: 0.03
+  overview_pos_m: 0.005
   overview_tau_n: 5.0

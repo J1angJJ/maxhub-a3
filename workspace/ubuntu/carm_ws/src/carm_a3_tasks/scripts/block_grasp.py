@@ -170,6 +170,17 @@ def build_grasp_poses(point, current_pose):
     }
 
 
+def validate_pose_heights(poses):
+    min_z = float(get_param("grasp/min_flange_z_m", 0.18))
+    for name, pose in poses.items():
+        if float(pose[2]) < min_z:
+            raise RuntimeError(
+                "{} flange z {:.6g} is below min_flange_z_m {:.6g}; refusing to plan near table".format(
+                    name, float(pose[2]), min_z
+                )
+            )
+
+
 def solve_pose_sequence(ik_proxy, poses, seed):
     tool_index = int(get_param("grasp/tool_index", 0))
     solved = []
@@ -254,6 +265,7 @@ def plan_block_grasp(args):
     print("planned poses x,y,z,qx,qy,qz,qw:")
     for name in ["approach", "grasp", "lift"]:
         print("{}: {}".format(name, vector_to_text(poses[name])))
+    validate_pose_heights(poses)
 
     solved = solve_pose_sequence(ik_proxy, poses, list(joint_res.positions))
     max_total = float(get_param("grasp/max_total_joint_delta_rad", 2.20))
@@ -275,6 +287,12 @@ def plan_block_grasp(args):
 
     move_proxy = service_proxy("/carm_a3/motion/move_joint", MoveJoint)
     execute_sequence.last_positions = list(joint_res.positions)
+
+    if not args.allow_descend:
+        print("safe execution mode: moving to approach only; add --allow-descend for grasp/lift")
+        execute_sequence(move_proxy, solved[:1])
+        return
+
     if args.use_gripper:
         maybe_set_gripper(float(get_param("grasp/open_gripper_pos_m", 0.065)), "open")
     execute_sequence(move_proxy, solved[:2])
@@ -288,6 +306,7 @@ def main():
     parser.add_argument("command", choices=["plan", "execute"])
     parser.add_argument("--color", choices=["red", "green"], default=None)
     parser.add_argument("--execute", action="store_true", help="execute motion for command=plan")
+    parser.add_argument("--allow-descend", action="store_true", help="allow descent from approach to grasp and lift")
     parser.add_argument("--use-gripper", action="store_true", help="open/close gripper during execution")
     args = parser.parse_args(rospy.myargv(argv=sys.argv)[1:])
     if args.command == "execute":

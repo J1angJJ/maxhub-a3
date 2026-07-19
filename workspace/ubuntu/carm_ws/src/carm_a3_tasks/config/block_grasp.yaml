@@ -16,8 +16,9 @@ grasp:
   tool_index: 0
   use_current_orientation: true
   target_quat_xyzw: [0.707, 0.0, 0.707, 0.0]
-  approach_height_m: 0.12
-  grasp_z_m: 0.09
+  approach_height_m: 0.08
+  grasp_z_m: 0.22
+  min_flange_z_m: 0.18
   lift_height_m: 0.10
   max_total_joint_delta_rad: 2.20
   segment_delta_rad: 0.08
