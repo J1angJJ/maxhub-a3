@@ -241,6 +241,7 @@ rosrun carm_a3_motion motion_cli.py cart
 rosrun carm_a3_motion motion_cli.py fk "0,0,0,0,0,0"
 rosrun carm_a3_motion motion_cli.py ik-current
 rosrun carm_a3_motion motion_cli.py ik-probe
+rosrun carm_a3_motion motion_cli.py ik-offset 0.01 0 0
 rosrun carm_a3_motion motion_cli.py ik "0.25,0,0.30,0,0,0,1"
 ```
 
@@ -258,20 +259,20 @@ rosrun carm_a3_motion motion_cli.py ik "0.25,0,0.30,0,0,0,1"
 rosrun carm_a3_motion motion_cli.py ik-probe
 ```
 
-当前已实测：`ik-probe` 对当前 cart pose、plan pose、FK(current joints)、四元数正负号等价形式，以及 `tool_index=0,1,2,3` 全部返回 `inverse_kine ret=-1`。这说明基本 FK -> IK round-trip 失败，厂家 IK 路径暂时列为疑点。
+当前最新实测：增强版 `ik-probe --include-mm` 已确认 IK 可用。当前 cart pose、plan pose、FK(current joints) 都能解回接近当前关节的解。项目约定保持为米制位置和 `x,y,z,qx,qy,qz,qw`；`wxyz` 载荷顺序失败，毫米位置输入失败。
 
-后续可再跑增强版约定扫描：
+只解算当前位姿小偏移，不运动：
 
 ```bash
-rosrun carm_a3_motion motion_cli.py ik-probe --include-mm
+rosrun carm_a3_motion motion_cli.py ik-offset 0.01 0 0
 ```
 
-增强版会额外测试 `xyzw <-> wxyz` 载荷顺序、四元数共轭、以及位置单位是否可能需要毫米。该命令只做 IK 解算，不运动。若仍全部失败，先继续用 joint-space 控制推进，之后从远离零位/奇异位形的姿态再复测 IK。
+该命令读取当前 cart pose，保持当前四元数不变，只对 `x/y/z` 增加米制偏移，然后调用 IK。确认返回 joints 合理后，再决定是否交给 `/carm_a3/motion/move_joint`。
 
-IK issue 草稿见：
+IK 诊断记录见：
 
 ```text
-docs/vendor/cpp_sdk_inverse_kine_issue_draft.md
+docs/vendor/cpp_sdk_inverse_kine_probe_notes.md
 ```
 
 本地环境排查项：

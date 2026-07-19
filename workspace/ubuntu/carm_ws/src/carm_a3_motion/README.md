@@ -120,6 +120,7 @@ rosrun carm_a3_motion motion_cli.py cart
 rosrun carm_a3_motion motion_cli.py fk "0,0,0,0,0,0"
 rosrun carm_a3_motion motion_cli.py ik-current
 rosrun carm_a3_motion motion_cli.py ik-probe
+rosrun carm_a3_motion motion_cli.py ik-offset 0.01 0 0
 rosrun carm_a3_motion motion_cli.py ik "0.25,0,0.30,0,0,0,1"
 rosrun carm_a3_motion motion_cli.py jog 1 0.005 --duration-s 2.0
 ```
@@ -128,13 +129,14 @@ Initial FK/IK notes:
 
 - `fk "0,0,0,0,0,0"` has been verified to return a valid pose near `[0, 0, 0.236, 0.707, 0, 0.707, 0]`.
 - `ik "0.25,0,0.30,0,0,0,1"` can fail with `inverse_kine ret=-1`. This does not prove the IK interface is broken; that pose and orientation are a large jump from the current configuration.
-- `ik-current` currently fails on the current near-zero/singular configuration.
-- `ik-probe` has also failed for current cart pose, plan pose, FK(current joints), quaternion sign variants, and tool indices `0,1,2,3`.
-- The probe now also checks pose-order and quaternion-convention variants. Use `--include-mm` for a read-only units probe if needed.
-- If every `ik-probe` candidate fails, treat the vendor IK path as suspect for the current configuration and continue joint-space control first. Revisit Cartesian IK from a less singular pose.
+- Enhanced `ik-probe --include-mm` verified that IK works for current cart pose, plan pose, and FK(current joints).
+- Keep the project IK convention as meters with pose order `x,y,z,qx,qy,qz,qw`.
+- `wxyz` payload order fails, and millimeter-scaled positions fail.
+- `ik-offset dx dy dz` solves a small Cartesian offset from the current pose without moving the arm.
 
 ```bash
 rosrun carm_a3_motion motion_cli.py ik-probe --include-mm
+rosrun carm_a3_motion motion_cli.py ik-offset 0.01 0 0
 ```
 
 Emergency stop service:

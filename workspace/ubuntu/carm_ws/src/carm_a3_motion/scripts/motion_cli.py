@@ -137,6 +137,36 @@ def call_ik_current(args):
     return 0 if ik_res.success else 1
 
 
+def call_ik_offset(args):
+    cart_proxy = service_proxy("/carm_a3/motion/get_cartesian_snapshot", GetCartesianSnapshot)
+    snapshot_proxy = service_proxy("/carm_a3/motion/get_joint_snapshot", GetJointSnapshot)
+    ik_proxy = service_proxy("/carm_a3/motion/solve_ik", SolveIK)
+
+    cart_res = cart_proxy()
+    print(cart_res)
+    if not cart_res.success:
+        return 1
+
+    target_pose = list(cart_res.pose)
+    target_pose[0] += args.dx
+    target_pose[1] += args.dy
+    target_pose[2] += args.dz
+
+    if args.seed:
+        seed = parse_float_list(args.seed, 6)
+    else:
+        snapshot_res = snapshot_proxy()
+        print(snapshot_res)
+        if not snapshot_res.success:
+            return 1
+        seed = list(snapshot_res.positions)
+
+    print("target_pose: {}".format(target_pose))
+    ik_res = ik_proxy(args.tool_index, target_pose, seed)
+    print(ik_res)
+    return 0 if ik_res.success else 1
+
+
 def call_ik_probe(args):
     snapshot_proxy = service_proxy("/carm_a3/motion/get_joint_snapshot", GetJointSnapshot)
     cart_proxy = service_proxy("/carm_a3/motion/get_cartesian_snapshot", GetCartesianSnapshot)
@@ -219,6 +249,14 @@ def main():
     ik_current.add_argument("--tool-index", type=int, default=0)
     ik_current.add_argument("--seed", default="", help="optional six comma-separated seed joints")
     ik_current.set_defaults(func=call_ik_current)
+
+    ik_offset = subparsers.add_parser("ik-offset")
+    ik_offset.add_argument("dx", type=float, help="x offset in meters")
+    ik_offset.add_argument("dy", type=float, help="y offset in meters")
+    ik_offset.add_argument("dz", type=float, help="z offset in meters")
+    ik_offset.add_argument("--tool-index", type=int, default=0)
+    ik_offset.add_argument("--seed", default="", help="optional six comma-separated seed joints")
+    ik_offset.set_defaults(func=call_ik_offset)
 
     ik_probe = subparsers.add_parser("ik-probe")
     ik_probe.add_argument("--tool-indices", default="0,1,2,3")
