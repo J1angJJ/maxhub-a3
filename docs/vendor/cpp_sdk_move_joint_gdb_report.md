@@ -108,6 +108,46 @@ from /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/vendor/arm_control_sdk/lib/
 #2  OfficialTopicMotionNode::handleMoveJoint(...)
 ```
 
+A full gdb log with `bt`, `thread apply all bt`, and `info sharedlibrary` is archived at:
+
+```text
+docs/vendor/cpp_sdk_move_joint_gdb_full.txt
+```
+
+The full thread dump shows:
+
+- Thread 1 crashes in `carm::CArmKernelImpl::move_joint(...)`.
+- SDK communication worker threads are alive in `libtcp_com.so`, including:
+  - `carm::CommunicationClient::sendRequestFunc()`
+  - `carm::CommunicationClient::sendHeartbeatFunc()`
+  - `carm::CommunicationClient::broadcastDataFunc()`
+  - `carm::CommunicationClient::threadCycle()`
+- The WebSocket receive thread is blocked in vendored Poco/WebSocket receive functions, not crashed:
+  - `Poco::Net::WebSocket::receiveFrame(...)`
+  - `carm::WebSocketClient::recieveMsg[abi:cxx11]()`
+- ROS callback threads are waiting normally in `roscpp`.
+
+This supports the conclusion that the process is connected and the SDK communication machinery is running, while the direct real-motion call path crashes synchronously in the main ROS callback thread.
+
+## Shared Libraries From Full Log
+
+`info sharedlibrary` confirms the motion node is using vendored SDK libraries:
+
+```text
+libarm_control_sdk.so  .../vendor/arm_control_sdk/lib/libarm_control_sdk.so
+libjsoncpp.so.1        .../vendor/arm_control_sdk/lib/libjsoncpp.so.1
+libtcp_com.so          .../vendor/arm_control_sdk/lib/libtcp_com.so
+libcarm_poco_net.so    .../vendor/arm_control_sdk/lib/libcarm_poco_net.so
+libmlog.so             .../vendor/arm_control_sdk/lib/libmlog.so
+libPocoNet.so.71       .../vendor/arm_control_sdk/poco/lib/libPocoNet.so.71
+libPocoUtil.so.71      .../vendor/arm_control_sdk/poco/lib/libPocoUtil.so.71
+libPocoFoundation.so.71 .../vendor/arm_control_sdk/poco/lib/libPocoFoundation.so.71
+libPocoXML.so.71       .../vendor/arm_control_sdk/poco/lib/libPocoXML.so.71
+libPocoJSON.so.71      .../vendor/arm_control_sdk/poco/lib/libPocoJSON.so.71
+```
+
+ROS and system dependencies come from `/opt/ros/noetic` and Ubuntu system paths, as expected.
+
 ## Control Experiment
 
 The same controller state works through WebSocket:

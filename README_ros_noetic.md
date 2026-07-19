@@ -209,6 +209,7 @@ source devel/setup.bash
 
 ```text
 docs/vendor/cpp_sdk_move_joint_gdb_report.md
+docs/vendor/cpp_sdk_move_joint_gdb_full.txt
 ```
 
 ### Build

@@ -154,6 +154,7 @@ Vendor-facing report draft:
 
 ```text
 docs/vendor/cpp_sdk_move_joint_gdb_report.md
+docs/vendor/cpp_sdk_move_joint_gdb_full.txt
 ```
 
 ## Python WebSocket Motion Test

@@ -1,0 +1,170 @@
+Starting program: /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/devel/lib/carm_a3_motion/official_topic_motion_node __name:=carm_a3_official_topic_motion _allow_move_joint:=true _robot_host:=192.168.31.60 _robot_port:=8090
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+[New Thread 0x7ffff4cf9700 (LWP 12483)]
+[New Thread 0x7ffff44f8700 (LWP 12484)]
+[New Thread 0x7ffff3cf7700 (LWP 12485)]
+[New Thread 0x7ffff34f6700 (LWP 12486)]
+[New Thread 0x7ffff2524700 (LWP 12487)]
+[New Thread 0x7ffff1d23700 (LWP 12488)]
+[New Thread 0x7ffff1522700 (LWP 12489)]
+[New Thread 0x7ffff0d21700 (LWP 12490)]
+
+Thread 1 "official_topic_" received signal SIGSEGV, Segmentation fault.
+0x00007ffff7d1dbab in carm::CArmKernelImpl::move_joint(std::vector<double, std::allocator<double> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, double, int, bool) () from /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/vendor/arm_control_sdk/lib/libarm_control_sdk.so
+#0  0x00007ffff7d1dbab in carm::CArmKernelImpl::move_joint(std::vector<double, std::allocator<double> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, double, int, bool) () from /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/vendor/arm_control_sdk/lib/libarm_control_sdk.so
+#1  0x00007ffff7d30458 in carm::CArmSingleCol::move_joint(std::vector<double, std::allocator<double> > const&, double, bool) () from /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/vendor/arm_control_sdk/lib/libarm_control_sdk.so
+#2  0x00005555555a8941 in OfficialTopicMotionNode::handleMoveJoint(boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const> const&) ()
+#3  0x00005555555b8fc1 in boost::_mfi::mf1<void, OfficialTopicMotionNode, boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const> const&>::operator()(OfficialTopicMotionNode*, boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const> const&) const ()
+#4  0x00005555555b77dc in void boost::_bi::list2<boost::_bi::value<OfficialTopicMotionNode*>, boost::arg<1> >::operator()<boost::_mfi::mf1<void, OfficialTopicMotionNode, boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const> const&>, boost::_bi::rrlist1<boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const> const&> >(boost::_bi::type<void>, boost::_mfi::mf1<void, OfficialTopicMotionNode, boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const> const&>&, boost::_bi::rrlist1<boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const> const&>&, int) ()
+#5  0x00005555555b5b23 in void boost::_bi::bind_t<void, boost::_mfi::mf1<void, OfficialTopicMotionNode, boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const> const&>, boost::_bi::list2<boost::_bi::value<OfficialTopicMotionNode*>, boost::arg<1> > >::operator()<boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const> const&>(boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const> const&) ()
+#6  0x00005555555b3d28 in boost::detail::function::void_function_obj_invoker1<boost::_bi::bind_t<void, boost::_mfi::mf1<void, OfficialTopicMotionNode, boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const> const&>, boost::_bi::list2<boost::_bi::value<OfficialTopicMotionNode*>, boost::arg<1> > >, void, boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const> const&>::invoke(boost::detail::function::function_buffer&, boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const> const&) ()
+#7  0x00005555555b944a in boost::function1<void, boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const> const&>::operator()(boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const> const&) const ()
+#8  0x00005555555b7af0 in boost::detail::function::void_function_obj_invoker1<boost::function<void (boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const> const&)>, void, boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const> >::invoke(boost::detail::function::function_buffer&, boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const>) ()
+#9  0x00005555555bcdbf in boost::function1<void, boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const> >::operator()(boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const>) const ()
+#10 0x00005555555bbc43 in ros::SubscriptionCallbackHelperT<boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const> const&, void>::call(ros::SubscriptionCallbackHelperCallParams&) ()
+#11 0x00007ffff7f6e549 in ros::SubscriptionQueue::call() () from /opt/ros/noetic/lib/libroscpp.so
+#12 0x00007ffff7f1c302 in ros::CallbackQueue::callOneCB(ros::CallbackQueue::TLS*) () from /opt/ros/noetic/lib/libroscpp.so
+#13 0x00007ffff7f1dd73 in ros::CallbackQueue::callAvailable(ros::WallDuration) () from /opt/ros/noetic/lib/libroscpp.so
+#14 0x00007ffff7f7143f in ros::SingleThreadedSpinner::spin(ros::CallbackQueue*) () from /opt/ros/noetic/lib/libroscpp.so
+#15 0x00007ffff7f5960f in ros::spin() () from /opt/ros/noetic/lib/libroscpp.so
+#16 0x00005555555a2fa1 in main ()
+
+Thread 9 (Thread 0x7ffff0d21700 (LWP 12490)):
+#0  0x00007ffff79d323f in __GI___clock_nanosleep (clock_id=clock_id@entry=0, flags=flags@entry=0, req=req@entry=0x7ffff0d20d90, rem=rem@entry=0x0) at ../sysdeps/unix/sysv/linux/clock_nanosleep.c:78
+#1  0x00007ffff79d8ec7 in __GI___nanosleep (requested_time=requested_time@entry=0x7ffff0d20d90, remaining=remaining@entry=0x0) at nanosleep.c:27
+#2  0x00007ffff7a0ba7f in usleep (useconds=<optimized out>) at ../sysdeps/posix/usleep.c:32
+#3  0x00007ffff73a24f4 in carm::CommunicationClient::sendRequestFunc() () from /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/vendor/arm_control_sdk/lib/libtcp_com.so
+#4  0x00007ffff7bd9df4 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#5  0x00007ffff7dbf609 in start_thread (arg=<optimized out>) at pthread_create.c:477
+#6  0x00007ffff7a15353 in clone () at ../sysdeps/unix/sysv/linux/x86_64/clone.S:95
+
+Thread 8 (Thread 0x7ffff1522700 (LWP 12489)):
+#0  0x00007ffff79d323f in __GI___clock_nanosleep (clock_id=clock_id@entry=0, flags=flags@entry=0, req=req@entry=0x7ffff1521db0, rem=rem@entry=0x0) at ../sysdeps/unix/sysv/linux/clock_nanosleep.c:78
+#1  0x00007ffff79d8ec7 in __GI___nanosleep (requested_time=requested_time@entry=0x7ffff1521db0, remaining=remaining@entry=0x0) at nanosleep.c:27
+#2  0x00007ffff7a0ba7f in usleep (useconds=<optimized out>) at ../sysdeps/posix/usleep.c:32
+#3  0x00007ffff73a44f5 in carm::CommunicationClient::sendHeartbeatFunc() () from /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/vendor/arm_control_sdk/lib/libtcp_com.so
+#4  0x00007ffff7bd9df4 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#5  0x00007ffff7dbf609 in start_thread (arg=<optimized out>) at pthread_create.c:477
+#6  0x00007ffff7a15353 in clone () at ../sysdeps/unix/sysv/linux/x86_64/clone.S:95
+
+Thread 7 (Thread 0x7ffff1d23700 (LWP 12488)):
+#0  0x00007ffff79d323f in __GI___clock_nanosleep (clock_id=clock_id@entry=0, flags=flags@entry=0, req=req@entry=0x7ffff1d22d90, rem=rem@entry=0x0) at ../sysdeps/unix/sysv/linux/clock_nanosleep.c:78
+#1  0x00007ffff79d8ec7 in __GI___nanosleep (requested_time=requested_time@entry=0x7ffff1d22d90, remaining=remaining@entry=0x0) at nanosleep.c:27
+#2  0x00007ffff7a0ba7f in usleep (useconds=<optimized out>) at ../sysdeps/posix/usleep.c:32
+#3  0x00007ffff73a2164 in carm::CommunicationClient::broadcastDataFunc() () from /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/vendor/arm_control_sdk/lib/libtcp_com.so
+#4  0x00007ffff7bd9df4 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#5  0x00007ffff7dbf609 in start_thread (arg=<optimized out>) at pthread_create.c:477
+#6  0x00007ffff7a15353 in clone () at ../sysdeps/unix/sysv/linux/x86_64/clone.S:95
+
+Thread 6 (Thread 0x7ffff2524700 (LWP 12487)):
+#0  __libc_recv (flags=<optimized out>, len=2, buf=0x7ffff2523c7a, fd=10) at ../sysdeps/unix/sysv/linux/recv.c:28
+#1  __libc_recv (fd=10, buf=0x7ffff2523c7a, len=2, flags=0) at ../sysdeps/unix/sysv/linux/recv.c:23
+#2  0x00007ffff6d459dc in Poco::Net::SocketImpl::receiveBytes(void*, int, int) () from /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/vendor/arm_control_sdk/poco/lib/libPocoNet.so.71
+#3  0x00007ffff6d507eb in Poco::Net::WebSocketImpl::receiveNBytes(void*, int) () from /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/vendor/arm_control_sdk/poco/lib/libPocoNet.so.71
+#4  0x00007ffff6d50b63 in Poco::Net::WebSocketImpl::receiveHeader(char*, bool&) () from /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/vendor/arm_control_sdk/poco/lib/libPocoNet.so.71
+#5  0x00007ffff6d50db8 in Poco::Net::WebSocketImpl::receiveBytes(void*, int, int) () from /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/vendor/arm_control_sdk/poco/lib/libPocoNet.so.71
+#6  0x00007ffff6d4e45f in Poco::Net::WebSocket::receiveFrame(void*, int, int&) () from /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/vendor/arm_control_sdk/poco/lib/libPocoNet.so.71
+#7  0x00007ffff73592c8 in carm::WebSocketClient::recieveMsg[abi:cxx11]() () from /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/vendor/arm_control_sdk/lib/libcarm_poco_net.so
+#8  0x00007ffff73a387b in carm::CommunicationClient::threadCycle() () from /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/vendor/arm_control_sdk/lib/libtcp_com.so
+#9  0x00007ffff7390d28 in carm::ThreadUnit::ThreadFunc(void*) () from /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/vendor/arm_control_sdk/lib/libtcp_com.so
+#10 0x00007ffff7dbf609 in start_thread (arg=<optimized out>) at pthread_create.c:477
+#11 0x00007ffff7a15353 in clone () at ../sysdeps/unix/sysv/linux/x86_64/clone.S:95
+
+Thread 5 (Thread 0x7ffff34f6700 (LWP 12486)):
+#0  futex_abstimed_wait_cancelable (private=<optimized out>, abstime=0x7ffff34f5d60, clockid=<optimized out>, expected=0, futex_word=0x55555563b6a8) at ../sysdeps/nptl/futex-internal.h:320
+#1  __pthread_cond_wait_common (abstime=0x7ffff34f5d60, clockid=<optimized out>, mutex=0x55555563b658, cond=0x55555563b680) at pthread_cond_wait.c:520
+#2  __pthread_cond_timedwait (cond=0x55555563b680, mutex=0x55555563b658, abstime=0x7ffff34f5d60) at pthread_cond_wait.c:665
+#3  0x00007ffff7f1e09f in ros::CallbackQueue::callAvailable(ros::WallDuration) () from /opt/ros/noetic/lib/libroscpp.so
+#4  0x00007ffff7f593af in ros::internalCallbackQueueThreadFunc() () from /opt/ros/noetic/lib/libroscpp.so
+#5  0x00007ffff787a43b in ?? () from /lib/x86_64-linux-gnu/libboost_thread.so.1.71.0
+#6  0x00007ffff7dbf609 in start_thread (arg=<optimized out>) at pthread_create.c:477
+#7  0x00007ffff7a15353 in clone () at ../sysdeps/unix/sysv/linux/x86_64/clone.S:95
+
+Thread 4 (Thread 0x7ffff3cf7700 (LWP 12485)):
+#0  futex_wait_cancelable (private=<optimized out>, expected=0, futex_word=0x55555563a59c) at ../sysdeps/nptl/futex-internal.h:183
+#1  __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x55555563a548, cond=0x55555563a570) at pthread_cond_wait.c:508
+#2  __pthread_cond_wait (cond=0x55555563a570, mutex=0x55555563a548) at pthread_cond_wait.c:647
+#3  0x00007ffff7f56b87 in ros::ROSOutAppender::logThread() () from /opt/ros/noetic/lib/libroscpp.so
+#4  0x00007ffff787a43b in ?? () from /lib/x86_64-linux-gnu/libboost_thread.so.1.71.0
+#5  0x00007ffff7dbf609 in start_thread (arg=<optimized out>) at pthread_create.c:477
+#6  0x00007ffff7a15353 in clone () at ../sysdeps/unix/sysv/linux/x86_64/clone.S:95
+
+Thread 3 (Thread 0x7ffff44f8700 (LWP 12484)):
+#0  0x00007ffff7a08bbf in __GI___poll (fds=0x7fffe4002950, nfds=2, timeout=100) at ../sysdeps/unix/sysv/linux/poll.c:29
+#1  0x00007ffff78e146c in XmlRpc::XmlRpcDispatch::work(double) () from /opt/ros/noetic/lib/libxmlrpcpp.so
+#2  0x00007ffff7eef1aa in ros::XMLRPCManager::serverThreadFunc() () from /opt/ros/noetic/lib/libroscpp.so
+#3  0x00007ffff787a43b in ?? () from /lib/x86_64-linux-gnu/libboost_thread.so.1.71.0
+#4  0x00007ffff7dbf609 in start_thread (arg=<optimized out>) at pthread_create.c:477
+#5  0x00007ffff7a15353 in clone () at ../sysdeps/unix/sysv/linux/x86_64/clone.S:95
+
+Thread 2 (Thread 0x7ffff4cf9700 (LWP 12483)):
+#0  0x00007ffff7a1568e in epoll_wait (epfd=4, events=0x7ffff4cf8b40, maxevents=5, timeout=100) at ../sysdeps/unix/sysv/linux/epoll_wait.c:30
+#1  0x00007ffff7efb8d8 in ros::poll_sockets(int, pollfd*, unsigned long, int) () from /opt/ros/noetic/lib/libroscpp.so
+#2  0x00007ffff7f7725c in ros::PollSet::update(int) () from /opt/ros/noetic/lib/libroscpp.so
+#3  0x00007ffff7f0905d in ros::PollManager::threadFunc() () from /opt/ros/noetic/lib/libroscpp.so
+#4  0x00007ffff787a43b in ?? () from /lib/x86_64-linux-gnu/libboost_thread.so.1.71.0
+#5  0x00007ffff7dbf609 in start_thread (arg=<optimized out>) at pthread_create.c:477
+#6  0x00007ffff7a15353 in clone () at ../sysdeps/unix/sysv/linux/x86_64/clone.S:95
+
+Thread 1 (Thread 0x7ffff4d02780 (LWP 12478)):
+#0  0x00007ffff7d1dbab in carm::CArmKernelImpl::move_joint(std::vector<double, std::allocator<double> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, double, int, bool) () from /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/vendor/arm_control_sdk/lib/libarm_control_sdk.so
+#1  0x00007ffff7d30458 in carm::CArmSingleCol::move_joint(std::vector<double, std::allocator<double> > const&, double, bool) () from /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/vendor/arm_control_sdk/lib/libarm_control_sdk.so
+#2  0x00005555555a8941 in OfficialTopicMotionNode::handleMoveJoint(boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const> const&) ()
+#3  0x00005555555b8fc1 in boost::_mfi::mf1<void, OfficialTopicMotionNode, boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const> const&>::operator()(OfficialTopicMotionNode*, boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const> const&) const ()
+#4  0x00005555555b77dc in void boost::_bi::list2<boost::_bi::value<OfficialTopicMotionNode*>, boost::arg<1> >::operator()<boost::_mfi::mf1<void, OfficialTopicMotionNode, boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const> const&>, boost::_bi::rrlist1<boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const> const&> >(boost::_bi::type<void>, boost::_mfi::mf1<void, OfficialTopicMotionNode, boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const> const&>&, boost::_bi::rrlist1<boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const> const&>&, int) ()
+#5  0x00005555555b5b23 in void boost::_bi::bind_t<void, boost::_mfi::mf1<void, OfficialTopicMotionNode, boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const> const&>, boost::_bi::list2<boost::_bi::value<OfficialTopicMotionNode*>, boost::arg<1> > >::operator()<boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const> const&>(boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const> const&) ()
+#6  0x00005555555b3d28 in boost::detail::function::void_function_obj_invoker1<boost::_bi::bind_t<void, boost::_mfi::mf1<void, OfficialTopicMotionNode, boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const> const&>, boost::_bi::list2<boost::_bi::value<OfficialTopicMotionNode*>, boost::arg<1> > >, void, boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const> const&>::invoke(boost::detail::function::function_buffer&, boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const> const&) ()
+#7  0x00005555555b944a in boost::function1<void, boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const> const&>::operator()(boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const> const&) const ()
+#8  0x00005555555b7af0 in boost::detail::function::void_function_obj_invoker1<boost::function<void (boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const> const&)>, void, boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const> >::invoke(boost::detail::function::function_buffer&, boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const>) ()
+#9  0x00005555555bcdbf in boost::function1<void, boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const> >::operator()(boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const>) const ()
+#10 0x00005555555bbc43 in ros::SubscriptionCallbackHelperT<boost::shared_ptr<sensor_msgs::JointState_<std::allocator<void> > const> const&, void>::call(ros::SubscriptionCallbackHelperCallParams&) ()
+#11 0x00007ffff7f6e549 in ros::SubscriptionQueue::call() () from /opt/ros/noetic/lib/libroscpp.so
+#12 0x00007ffff7f1c302 in ros::CallbackQueue::callOneCB(ros::CallbackQueue::TLS*) () from /opt/ros/noetic/lib/libroscpp.so
+#13 0x00007ffff7f1dd73 in ros::CallbackQueue::callAvailable(ros::WallDuration) () from /opt/ros/noetic/lib/libroscpp.so
+#14 0x00007ffff7f7143f in ros::SingleThreadedSpinner::spin(ros::CallbackQueue*) () from /opt/ros/noetic/lib/libroscpp.so
+#15 0x00007ffff7f5960f in ros::spin() () from /opt/ros/noetic/lib/libroscpp.so
+#16 0x00005555555a2fa1 in main ()
+From                To                  Syms Read   Shared Object Library
+0x00007ffff7fd0100  0x00007ffff7ff2684  Yes         /lib64/ld-linux-x86-64.so.2
+0x00007ffff7ea4240  0x00007ffff7f7b832  Yes (*)     /opt/ros/noetic/lib/libroscpp.so
+0x00007ffff7dbdae0  0x00007ffff7dcd535  Yes         /lib/x86_64-linux-gnu/libpthread.so.0
+0x00007ffff7d84760  0x00007ffff7da4bd1  Yes (*)     /opt/ros/noetic/lib/librosconsole.so
+0x00007ffff7d50180  0x00007ffff7d503d9  Yes (*)     /opt/ros/noetic/lib/libroscpp_serialization.so
+0x00007ffff7cff5d0  0x00007ffff7d3cfca  Yes (*)     /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/vendor/arm_control_sdk/lib/libarm_control_sdk.so
+0x00007ffff7ba1120  0x00007ffff7c89332  Yes (*)     /lib/x86_64-linux-gnu/libstdc++.so.6
+0x00007ffff7aeb5e0  0x00007ffff7afc055  Yes (*)     /lib/x86_64-linux-gnu/libgcc_s.so.1
+0x00007ffff7918630  0x00007ffff7a8d4bd  Yes         /lib/x86_64-linux-gnu/libc.so.6
+0x00007ffff78ddac0  0x00007ffff78ec784  Yes (*)     /opt/ros/noetic/lib/libxmlrpcpp.so
+0x00007ffff78b93c0  0x00007ffff78c7d49  Yes (*)     /opt/ros/noetic/lib/librostime.so
+0x00007ffff789d940  0x00007ffff78a0fc4  Yes (*)     /opt/ros/noetic/lib/libcpp_common.so
+0x00007ffff7877ba0  0x00007ffff7889d4c  Yes (*)     /lib/x86_64-linux-gnu/libboost_thread.so.1.71.0
+0x00007ffff7860520  0x00007ffff7863f51  Yes (*)     /lib/x86_64-linux-gnu/libboost_chrono.so.1.71.0
+0x00007ffff7844bb0  0x00007ffff785379c  Yes (*)     /lib/x86_64-linux-gnu/libboost_filesystem.so.1.71.0
+0x00007ffff76fb3c0  0x00007ffff77a1fa8  Yes         /lib/x86_64-linux-gnu/libm.so.6
+0x00007ffff76dce20  0x00007ffff76e5e6d  Yes (*)     /opt/ros/noetic/lib/librosconsole_log4cxx.so
+0x00007ffff76ca040  0x00007ffff76ca139  Yes (*)     /opt/ros/noetic/lib/librosconsole_backend_interface.so
+0x00007ffff75b1840  0x00007ffff7653cdd  Yes (*)     /lib/x86_64-linux-gnu/liblog4cxx.so.10
+0x00007ffff74043f0  0x00007ffff74c09c9  Yes (*)     /lib/x86_64-linux-gnu/libboost_regex.so.1.71.0
+0x00007ffff73c08c0  0x00007ffff73db5da  Yes (*)     /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/vendor/arm_control_sdk/lib/libjsoncpp.so.1
+0x00007ffff7382810  0x00007ffff73a691d  Yes (*)     /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/vendor/arm_control_sdk/lib/libtcp_com.so
+0x00007ffff7354440  0x00007ffff736634d  Yes (*)     /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/vendor/arm_control_sdk/lib/libcarm_poco_net.so
+0x00007ffff72fe280  0x00007ffff7335efc  Yes (*)     /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/vendor/arm_control_sdk/lib/libmlog.so
+0x00007ffff72eb340  0x00007ffff72ebf79  Yes (*)     /lib/x86_64-linux-gnu/libconsole_bridge.so.0.4
+0x00007ffff72bd8a0  0x00007ffff72db205  Yes (*)     /lib/x86_64-linux-gnu/libapr-1.so.0
+0x00007ffff728c3e0  0x00007ffff72a4b3d  Yes (*)     /lib/x86_64-linux-gnu/libaprutil-1.so.0
+0x00007ffff7070ae0  0x00007ffff71e817b  Yes (*)     /lib/x86_64-linux-gnu/libicui18n.so.66
+0x00007ffff6e00920  0x00007ffff6ee4967  Yes (*)     /lib/x86_64-linux-gnu/libicuuc.so.66
+0x00007ffff6cb3350  0x00007ffff6d510d0  Yes (*)     /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/vendor/arm_control_sdk/poco/lib/libPocoNet.so.71
+0x00007ffff6bdc620  0x00007ffff6c1629c  Yes (*)     /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/vendor/arm_control_sdk/poco/lib/libPocoUtil.so.71
+0x00007ffff6a1c620  0x00007ffff6b2acec  Yes (*)     /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/vendor/arm_control_sdk/poco/lib/libPocoFoundation.so.71
+0x00007ffff696e580  0x00007ffff6971f71  Yes (*)     /lib/x86_64-linux-gnu/libuuid.so.1
+0x00007ffff6965220  0x00007ffff6966179  Yes         /lib/x86_64-linux-gnu/libdl.so.2
+0x00007ffff692b040  0x00007ffff693fc80  Yes (*)     /lib/x86_64-linux-gnu/libcrypt.so.1
+0x00007ffff68ff230  0x00007ffff691abb7  Yes (*)     /lib/x86_64-linux-gnu/libexpat.so.1
+0x00007ffff4e3b040  0x00007ffff4e3b0f9  Yes (*)     /lib/x86_64-linux-gnu/libicudata.so.66
+0x00007ffff4db9be0  0x00007ffff4e11cee  Yes (*)     /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/vendor/arm_control_sdk/poco/lib/libPocoXML.so.71
+0x00007ffff4d377d0  0x00007ffff4d68520  Yes (*)     /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/vendor/arm_control_sdk/poco/lib/libPocoJSON.so.71
+0x00007ffff4d0b720  0x00007ffff4d0ed70  Yes         /lib/x86_64-linux-gnu/librt.so.1
+0x00007ffff7df55c0  0x00007ffff7dfba1c  Yes         /lib/x86_64-linux-gnu/libnss_files.so.2
+(*): Shared library is missing debugging information.
