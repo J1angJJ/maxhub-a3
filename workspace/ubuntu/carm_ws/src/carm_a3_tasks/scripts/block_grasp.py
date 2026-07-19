@@ -271,10 +271,32 @@ def build_grasp_poses(point, current_pose, long_edge):
     }
 
 
-def validate_pose_heights(poses, names):
+def build_ordered_pose_sequence(poses, current_pose, allow_descend):
+    ordered = []
+    if bool(get_param("grasp/keep_camera_view_during_approach", True)):
+        count = int(get_param("grasp/view_transit_waypoints", 4))
+        count = max(0, count)
+        current_xyz = [float(value) for value in current_pose[:3]]
+        current_quat = normalize_quat_xyzw([float(value) for value in current_pose[3:7]])
+        approach_xyz = poses["approach"][:3]
+        for index in range(1, count + 1):
+            ratio = float(index) / float(count + 1)
+            xyz = [
+                current_xyz[i] + (approach_xyz[i] - current_xyz[i]) * ratio
+                for i in range(3)
+            ]
+            ordered.append(("view_transit_{}".format(index), xyz + current_quat))
+
+    ordered.append(("approach", poses["approach"]))
+    if allow_descend:
+        ordered.append(("grasp", poses["grasp"]))
+        ordered.append(("lift", poses["lift"]))
+    return ordered
+
+
+def validate_pose_heights(ordered_poses):
     min_z = float(get_param("grasp/min_flange_z_m", 0.18))
-    for name in names:
-        pose = poses[name]
+    for name, pose in ordered_poses:
         if float(pose[2]) < min_z:
             raise RuntimeError(
                 "{} flange z {:.6g} is below min_flange_z_m {:.6g}; refusing to plan near table".format(
@@ -283,18 +305,18 @@ def validate_pose_heights(poses, names):
             )
 
 
-def solve_pose_sequence(ik_proxy, poses, seed, names):
+def solve_pose_sequence(ik_proxy, ordered_poses, seed):
     tool_index = int(get_param("grasp/tool_index", 0))
     solved = []
     current_seed = list(seed)
-    for name in names:
-        res = ik_proxy(tool_index, poses[name], current_seed)
+    for name, pose in ordered_poses:
+        res = ik_proxy(tool_index, pose, current_seed)
         print("{} ik result:".format(name))
         print(res)
         if not res.success:
             raise RuntimeError("{} IK failed: {}".format(name, res.message))
         positions = list(res.positions)
-        solved.append((name, poses[name], positions, max_abs_delta(current_seed, positions)))
+        solved.append((name, pose, positions, max_abs_delta(current_seed, positions)))
         current_seed = positions
     return solved
 
@@ -376,12 +398,15 @@ def plan_block_grasp(args):
     for name in ["approach", "grasp", "lift"]:
         print("{}: {}".format(name, vector_to_text(poses[name])))
 
-    sequence_names = ["approach", "grasp", "lift"] if args.allow_descend else ["approach"]
+    ordered_poses = build_ordered_pose_sequence(poses, list(cart_res.pose), args.allow_descend)
     if not args.allow_descend:
         print("safe planning mode: planning approach only; add --allow-descend to include grasp/lift")
-    validate_pose_heights(poses, sequence_names)
+    print("ordered execution poses:")
+    for name, pose in ordered_poses:
+        print("{}: {}".format(name, vector_to_text(pose)))
+    validate_pose_heights(ordered_poses)
 
-    solved = solve_pose_sequence(ik_proxy, poses, list(joint_res.positions), sequence_names)
+    solved = solve_pose_sequence(ik_proxy, ordered_poses, list(joint_res.positions))
     max_total = float(get_param("grasp/max_total_joint_delta_rad", 2.20))
     first_delta = max_abs_delta(list(joint_res.positions), solved[0][2])
     max_segment = max([first_delta] + [item[3] for item in solved[1:]])
@@ -411,10 +436,16 @@ def plan_block_grasp(args):
 
     if args.use_gripper:
         maybe_set_gripper(float(get_param("grasp/open_gripper_pos_m", 0.065)), "open")
-    execute_sequence(move_proxy, solved[:2])
+    grasp_index = next(
+        (index for index, item in enumerate(solved) if item[0] == "grasp"),
+        None,
+    )
+    if grasp_index is None:
+        raise RuntimeError("internal error: grasp target missing from solved sequence")
+    execute_sequence(move_proxy, solved[:grasp_index + 1])
     if args.use_gripper:
         maybe_set_gripper(float(get_param("grasp/close_gripper_pos_m", 0.028)), "close")
-    execute_sequence(move_proxy, solved[2:])
+    execute_sequence(move_proxy, solved[grasp_index + 1:])
 
 
 def main():
