@@ -24,6 +24,8 @@ Default launch settings are conservative:
 - `set_speed_before_motion: false`
 - `use_duration: false`
 - `wait_for_motion: false`
+- `verify_after_motion: true`
+- `verify_joint_tolerance_rad: 0.003`
 
 ## Build
 
@@ -85,6 +87,8 @@ Then send a tiny jog:
 rosservice call /carm_a3/motion/jog_joint "{joint_index: 1, delta_rad: 0.01, duration_s: 2.0}"
 ```
 
+The service reads back joint state after the SDK command. A successful real-motion response should contain `move_ret=1`, `verified=true`, `max_error=...`, `target=[...]`, and `actual=[...]`.
+
 Emergency stop service:
 
 ```bash
@@ -92,6 +96,8 @@ rosservice call /carm_a3/motion/emergency_stop
 ```
 
 This command intentionally follows the vendor ROS1 initialization shape before accepting real motion: wait briefly, call `set_ready()`, and register joint, pose, error, and task-completion callbacks. The default launch still keeps this disabled so that a plain launch never changes controller state.
+
+Post-motion verification is enabled by default. It polls `get_joint_pos()` until the target is reached within `verify_joint_tolerance_rad` or `verify_timeout_s` expires. The SDK command can still return `move_ret=1`; the ROS service returns failure if the readback does not converge.
 
 It also does not call `set_speed_level()` by default. Use the current controller/teach-pendant speed for the first real jog. If later testing proves the SDK speed call is stable on this controller firmware, `set_speed_before_motion` can be enabled explicitly.
 

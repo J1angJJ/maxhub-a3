@@ -11,6 +11,10 @@
   <arg name="pre_ready_delay_s" default="" />
   <arg name="use_duration" default="" />
   <arg name="wait_for_motion" default="" />
+  <arg name="verify_after_motion" default="" />
+  <arg name="verify_timeout_s" default="" />
+  <arg name="verify_poll_s" default="" />
+  <arg name="verify_joint_tolerance_rad" default="" />
 
   <node
     name="carm_a3_safe_motion"
@@ -31,5 +35,9 @@
     <param name="pre_ready_delay_s" value="$(arg pre_ready_delay_s)" if="$(eval arg('pre_ready_delay_s') != '')" />
     <param name="use_duration" value="$(arg use_duration)" if="$(eval arg('use_duration') != '')" />
     <param name="wait_for_motion" value="$(arg wait_for_motion)" if="$(eval arg('wait_for_motion') != '')" />
+    <param name="verify_after_motion" value="$(arg verify_after_motion)" if="$(eval arg('verify_after_motion') != '')" />
+    <param name="verify_timeout_s" value="$(arg verify_timeout_s)" if="$(eval arg('verify_timeout_s') != '')" />
+    <param name="verify_poll_s" value="$(arg verify_poll_s)" if="$(eval arg('verify_poll_s') != '')" />
+    <param name="verify_joint_tolerance_rad" value="$(arg verify_joint_tolerance_rad)" if="$(eval arg('verify_joint_tolerance_rad') != '')" />
   </node>
 </launch>

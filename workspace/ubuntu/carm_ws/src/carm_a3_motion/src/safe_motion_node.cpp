@@ -136,6 +136,10 @@ private:
         pnh_.param<double>("speed_level", speed_level_, 1.0);
         pnh_.param<int>("speed_response_level", speed_response_level_, 20);
         pnh_.param<bool>("set_speed_before_motion", set_speed_before_motion_, false);
+        pnh_.param<bool>("verify_after_motion", verify_after_motion_, true);
+        pnh_.param<double>("verify_timeout_s", verify_timeout_s_, 3.0);
+        pnh_.param<double>("verify_poll_s", verify_poll_s_, 0.1);
+        pnh_.param<double>("verify_joint_tolerance_rad", verify_joint_tolerance_rad_, 0.003);
     }
 
     bool connectSdk(std::string* message = nullptr) {
@@ -275,6 +279,55 @@ private:
             return false;
         }
         return true;
+    }
+
+    double maxJointError(const std::vector<double>& actual,
+                         const std::vector<double>& target) const {
+        double max_error = 0.0;
+        const size_t count = std::min(actual.size(), target.size());
+        for (size_t i = 0; i < count; ++i) {
+            max_error = std::max(max_error, std::abs(actual[i] - target[i]));
+        }
+        return max_error;
+    }
+
+    bool waitForJointTargetLocked(const std::vector<double>& target,
+                                  std::vector<double>* actual,
+                                  double* max_error,
+                                  std::string* message) {
+        if (!verify_after_motion_) {
+            *actual = arm_->get_joint_pos();
+            *max_error = maxJointError(*actual, target);
+            *message = "verification disabled";
+            return true;
+        }
+
+        const ros::Time deadline = ros::Time::now() + ros::Duration(verify_timeout_s_);
+        ros::Duration poll_duration(std::max(0.01, verify_poll_s_));
+        while (ros::ok()) {
+            *actual = arm_->get_joint_pos();
+            if (static_cast<int>(actual->size()) < joint_count_) {
+                *message = "SDK returned too few joints during verification: " +
+                           std::to_string(actual->size());
+                return false;
+            }
+            actual->resize(static_cast<size_t>(joint_count_));
+            *max_error = maxJointError(*actual, target);
+            if (*max_error <= verify_joint_tolerance_rad_) {
+                *message = "target verified";
+                return true;
+            }
+            if (ros::Time::now() >= deadline) {
+                std::ostringstream ss;
+                ss << "verification timeout, max_error=" << *max_error
+                   << ", tolerance=" << verify_joint_tolerance_rad_;
+                *message = ss.str();
+                return false;
+            }
+            poll_duration.sleep();
+        }
+        *message = "ROS shutdown during verification";
+        return false;
     }
 
     bool handleStatus(std_srvs::Trigger::Request&, std_srvs::Trigger::Response& res) {
@@ -445,10 +498,22 @@ private:
                      vectorToString(target).c_str());
             const int move_ret = arm_->move_joint(target, sdk_duration, wait_for_motion_);
             ROS_INFO("jog_joint: move_joint returned %d", move_ret);
-            res.success = move_ret >= 1;
+            std::vector<double> actual;
+            double max_error = 0.0;
+            std::string verify_message;
+            const bool verified = move_ret >= 1 &&
+                                  waitForJointTargetLocked(target,
+                                                           &actual,
+                                                           &max_error,
+                                                           &verify_message);
+            res.success = move_ret >= 1 && verified;
             res.message = "jog_joint speed_ret=" + std::to_string(speed_ret) +
                           ", move_ret=" + std::to_string(move_ret) +
-                          ", target=" + vectorToString(target);
+                          ", verified=" + (verified ? "true" : "false") +
+                          ", verify_message=" + verify_message +
+                          ", max_error=" + std::to_string(max_error) +
+                          ", target=" + vectorToString(target) +
+                          ", actual=" + vectorToString(actual);
         } catch (const std::exception& e) {
             res.success = false;
             res.message = e.what();
@@ -526,10 +591,22 @@ private:
                      vectorToString(req.positions).c_str());
             const int move_ret = arm_->move_joint(req.positions, sdk_duration, wait);
             ROS_INFO("move_joint: move_joint returned %d", move_ret);
-            res.success = move_ret >= 1;
+            std::vector<double> actual;
+            double max_error = 0.0;
+            std::string verify_message;
+            const bool verified = move_ret >= 1 &&
+                                  waitForJointTargetLocked(req.positions,
+                                                           &actual,
+                                                           &max_error,
+                                                           &verify_message);
+            res.success = move_ret >= 1 && verified;
             res.message = "move_joint speed_ret=" + std::to_string(speed_ret) +
                           ", move_ret=" + std::to_string(move_ret) +
-                          ", target=" + vectorToString(req.positions);
+                          ", verified=" + (verified ? "true" : "false") +
+                          ", verify_message=" + verify_message +
+                          ", max_error=" + std::to_string(max_error) +
+                          ", target=" + vectorToString(req.positions) +
+                          ", actual=" + vectorToString(actual);
         } catch (const std::exception& e) {
             res.success = false;
             res.message = e.what();
@@ -584,6 +661,10 @@ private:
     double speed_level_ = 1.0;
     int speed_response_level_ = 20;
     bool set_speed_before_motion_ = false;
+    bool verify_after_motion_ = true;
+    double verify_timeout_s_ = 3.0;
+    double verify_poll_s_ = 0.1;
+    double verify_joint_tolerance_rad_ = 0.003;
 };
 
 int main(int argc, char** argv) {

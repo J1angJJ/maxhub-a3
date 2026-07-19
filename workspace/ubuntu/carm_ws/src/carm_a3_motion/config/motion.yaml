@@ -29,3 +29,7 @@ wait_for_motion: false
 speed_level: 1.0
 speed_response_level: 20
 set_speed_before_motion: false
+verify_after_motion: true
+verify_timeout_s: 3.0
+verify_poll_s: 0.1
+verify_joint_tolerance_rad: 0.003

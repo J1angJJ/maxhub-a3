@@ -169,6 +169,8 @@ rostopic echo -n 1 /maxhub_a3/flange_pose
 - `set_speed_before_motion: false`
 - `use_duration: false`
 - `wait_for_motion: false`
+- `verify_after_motion: true`
+- `verify_joint_tolerance_rad: 0.003`
 - 小步 jog 上限：`0.03 rad`
 - 一次完整关节目标移动的单关节差值上限：`0.15 rad`
 
@@ -211,6 +213,14 @@ roslaunch carm_a3_motion safe_motion.launch \
 rosservice call /carm_a3/motion/status
 rosservice call /carm_a3/motion/jog_joint "{joint_index: 1, delta_rad: 0.005, duration_s: 2.0}"
 ```
+
+`jog_joint` 和 `move_joint` 会在 SDK 返回后读取关节状态做闭环确认。正常返回应包含：
+
+```text
+move_ret=1, verified=true, max_error=..., target=[...], actual=[...]
+```
+
+如果 `move_ret=1` 但 `verified=false`，说明控制器接受了命令，但在 `verify_timeout_s` 内没有到达目标容差，应先停止继续加大动作，检查当前模式、速度、碰撞/限位、目标是否被裁剪。
 
 本地环境排查项：
 
