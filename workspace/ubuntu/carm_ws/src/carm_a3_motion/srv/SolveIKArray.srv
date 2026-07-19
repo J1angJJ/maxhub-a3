@@ -1,0 +1,8 @@
+int32 tool_index
+float64[] poses
+float64[] seed_positions
+---
+bool success
+string message
+bool[] point_success
+float64[] positions

@@ -116,6 +116,8 @@ joint unit = rad
 
 - `/carm_a3/motion/solve_fk`
 - `/carm_a3/motion/solve_ik`
+- `/carm_a3/motion/solve_fk_array`
+- `/carm_a3/motion/solve_ik_array`
 - `/carm_a3/motion/get_cartesian_snapshot`
 - `/carm_a3/motion/get_joint_snapshot`
 
@@ -138,6 +140,7 @@ joint unit = rad
 ## 后续建议
 
 - 当前继续使用 C++ SDK FK/IK 作为主路径。
+- 候选位姿扫描优先使用批量 ROS service，它们直接调用 C++ SDK 的 `forward_kine_array()` / `inverse_kine_array()`。
 - 保留 WebSocket motion 节点作为运动备用路径。
 - 暂不直接使用底层 low-level IK/FK，除非后续进入 1 ms 级控制、雅可比、动力学或阻抗/力控实验。
 - 如果后续要做抓取或视觉伺服，优先实现“小步 IK + move_joint + 读回验证”的笛卡尔增量控制，而不是一次性大目标 IK。

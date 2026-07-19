@@ -112,16 +112,37 @@ rosservice call /carm_a3/motion/solve_ik "{tool_index: 0, pose: [0.25, 0.0, 0.30
 
 These helpers do not move the arm. To execute an IK result, inspect the returned `positions` first, then pass it to `/carm_a3/motion/move_joint`.
 
+Batch FK/IK are also wrapped directly from the official C++ SDK:
+
+```bash
+rosservice call /carm_a3/motion/solve_fk_array "{tool_index: 0, positions: [0,0,0,0,0,0, 0.01,0,0,0,0,0]}"
+```
+
+```bash
+rosservice call /carm_a3/motion/solve_ik_array "{tool_index: 0, poses: [0.0,0.0,0.236,0.707,0.0,0.707,0.0], seed_positions: []}"
+```
+
+Array service layout:
+
+- `solve_fk_array.positions`: flattened joint points, 6 values per point.
+- `solve_fk_array.poses`: flattened poses, 7 values per point.
+- `solve_ik_array.poses`: flattened poses, 7 values per point.
+- `solve_ik_array.seed_positions`: empty means reuse current joints for every point; otherwise flattened seeds, 6 values per point.
+- `solve_ik_array.positions`: flattened joint solutions, 6 values per point.
+- `point_success[i]` reports whether point `i` solved; failed points keep the fixed layout with `NaN` values.
+
 The same services can be called with the helper CLI:
 
 ```bash
 rosrun carm_a3_motion motion_cli.py snapshot
 rosrun carm_a3_motion motion_cli.py cart
 rosrun carm_a3_motion motion_cli.py fk "0,0,0,0,0,0"
+rosrun carm_a3_motion motion_cli.py fk-array "0,0,0,0,0,0,0.01,0,0,0,0,0"
 rosrun carm_a3_motion motion_cli.py ik-current
 rosrun carm_a3_motion motion_cli.py ik-probe
 rosrun carm_a3_motion motion_cli.py ik-offset 0.01 0 0
 rosrun carm_a3_motion motion_cli.py ik "0.25,0,0.30,0,0,0,1"
+rosrun carm_a3_motion motion_cli.py ik-array "0,0,0.236,0.707,0,0.707,0"
 rosrun carm_a3_motion motion_cli.py jog 1 0.005 --duration-s 2.0
 ```
 
@@ -134,6 +155,7 @@ Initial FK/IK notes:
 - `wxyz` payload order fails, and millimeter-scaled positions fail.
 - Official C++ SDK, pybind SDK, and pure Python WebSocket SDK all expose FK/IK. The official ROS1 demo does not expose FK/IK as ROS topics, so this package's ROS services are the project-level wrapper.
 - See `docs/vendor/official_kinematics_reference.md` for the official interface notes and the PyPI pose-order inconsistency.
+- `/solve_ik_array` and `/solve_fk_array` call the official C++ SDK batch APIs directly, so use them for candidate scans instead of repeated single-point service calls.
 - `ik-offset dx dy dz` solves a small Cartesian offset from the current pose without moving the arm.
 - `ik-offset --execute` calls `/carm_a3/motion/move_joint` after checking the IK solution's max joint delta. The service still applies its own motion safety limits and post-motion verification.
 

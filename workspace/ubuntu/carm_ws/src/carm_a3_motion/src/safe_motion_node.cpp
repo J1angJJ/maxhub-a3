@@ -1,8 +1,10 @@
 #include <array>
 #include <algorithm>
 #include <atomic>
+#include <cstddef>
 #include <functional>
 #include <cmath>
+#include <limits>
 #include <memory>
 #include <mutex>
 #include <sstream>
@@ -21,7 +23,9 @@
 #include "carm_a3_motion/JogJoint.h"
 #include "carm_a3_motion/MoveJoint.h"
 #include "carm_a3_motion/SolveFK.h"
+#include "carm_a3_motion/SolveFKArray.h"
 #include "carm_a3_motion/SolveIK.h"
+#include "carm_a3_motion/SolveIKArray.h"
 
 namespace {
 
@@ -88,6 +92,12 @@ public:
         solve_fk_srv_ = nh_.advertiseService("/carm_a3/motion/solve_fk",
                                              &SafeMotionNode::handleSolveFK,
                                              this);
+        solve_ik_array_srv_ = nh_.advertiseService("/carm_a3/motion/solve_ik_array",
+                                                   &SafeMotionNode::handleSolveIKArray,
+                                                   this);
+        solve_fk_array_srv_ = nh_.advertiseService("/carm_a3/motion/solve_fk_array",
+                                                   &SafeMotionNode::handleSolveFKArray,
+                                                   this);
 
         ROS_WARN("carm_a3_motion started with allow_motion=%s, dry_run=%s",
                  allow_motion_ ? "true" : "false",
@@ -361,6 +371,32 @@ private:
         return std::vector<double>(pose.begin(), pose.end());
     }
 
+    std::vector<double> flattenJointArray(const std::vector<std::vector<double>>& points,
+                                          size_t point_count) const {
+        const double nan = std::numeric_limits<double>::quiet_NaN();
+        std::vector<double> values(point_count * static_cast<size_t>(joint_count_), nan);
+        for (size_t i = 0; i < std::min(point_count, points.size()); ++i) {
+            const size_t count = std::min(points[i].size(), static_cast<size_t>(joint_count_));
+            std::copy(points[i].begin(),
+                      points[i].begin() + static_cast<std::ptrdiff_t>(count),
+                      values.begin() +
+                              static_cast<std::ptrdiff_t>(i * static_cast<size_t>(joint_count_)));
+        }
+        return values;
+    }
+
+    std::vector<double> flattenPoseArray(const std::vector<std::array<double, 7>>& points,
+                                         size_t point_count) const {
+        const double nan = std::numeric_limits<double>::quiet_NaN();
+        std::vector<double> values(point_count * 7U, nan);
+        for (size_t i = 0; i < std::min(point_count, points.size()); ++i) {
+            std::copy(points[i].begin(),
+                      points[i].end(),
+                      values.begin() + static_cast<std::ptrdiff_t>(i * 7U));
+        }
+        return values;
+    }
+
     bool handleStatus(std_srvs::Trigger::Request&, std_srvs::Trigger::Response& res) {
         std::lock_guard<std::mutex> lock(mutex_);
         std::string message;
@@ -503,6 +539,132 @@ private:
             res.success = ret >= 1;
             res.message = "forward_kine ret=" + std::to_string(ret) +
                           ", pose=[x,y,z,qx,qy,qz,qw]";
+        } catch (const std::exception& e) {
+            res.success = false;
+            res.message = e.what();
+        }
+        return true;
+    }
+
+    bool handleSolveIKArray(carm_a3_motion::SolveIKArray::Request& req,
+                            carm_a3_motion::SolveIKArray::Response& res) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        std::string message;
+        if (!ensureConnected(&message)) {
+            res.success = false;
+            res.message = message;
+            return true;
+        }
+        if (req.poses.empty() || req.poses.size() % 7U != 0U) {
+            res.success = false;
+            res.message = "poses must contain one or more 7-value poses";
+            return true;
+        }
+
+        try {
+            const size_t point_count = req.poses.size() / 7U;
+            std::vector<std::array<double, 7>> poses;
+            poses.reserve(point_count);
+            for (size_t i = 0; i < point_count; ++i) {
+                std::array<double, 7> pose{};
+                std::copy(req.poses.begin() + static_cast<std::ptrdiff_t>(i * 7U),
+                          req.poses.begin() + static_cast<std::ptrdiff_t>((i + 1U) * 7U),
+                          pose.begin());
+                poses.push_back(pose);
+            }
+
+            std::vector<std::vector<double>> seeds;
+            seeds.reserve(point_count);
+            if (req.seed_positions.empty()) {
+                std::vector<double> seed = arm_->get_joint_pos();
+                if (static_cast<int>(seed.size()) < joint_count_) {
+                    res.success = false;
+                    res.message = "SDK returned too few joints for default seed: " +
+                                  std::to_string(seed.size());
+                    return true;
+                }
+                seed.resize(static_cast<size_t>(joint_count_));
+                for (size_t i = 0; i < point_count; ++i) {
+                    seeds.push_back(seed);
+                }
+            } else {
+                if (req.seed_positions.size() != point_count * static_cast<size_t>(joint_count_)) {
+                    res.success = false;
+                    res.message = "seed_positions must be empty or contain point_count * " +
+                                  std::to_string(joint_count_) + " values";
+                    return true;
+                }
+                for (size_t i = 0; i < point_count; ++i) {
+                    const auto begin = req.seed_positions.begin() +
+                                       static_cast<std::ptrdiff_t>(i * static_cast<size_t>(joint_count_));
+                    seeds.emplace_back(begin, begin + joint_count_);
+                }
+            }
+
+            std::vector<std::vector<double>> solutions;
+            const int ret = arm_->inverse_kine_array(req.tool_index, poses, seeds, solutions);
+            res.point_success.assign(point_count, false);
+            bool all_success = ret >= 1 && solutions.size() == point_count;
+            for (size_t i = 0; i < std::min(point_count, solutions.size()); ++i) {
+                res.point_success[i] = static_cast<int>(solutions[i].size()) >= joint_count_;
+                all_success = all_success && res.point_success[i];
+                if (static_cast<int>(solutions[i].size()) > joint_count_) {
+                    solutions[i].resize(static_cast<size_t>(joint_count_));
+                }
+            }
+            res.positions = flattenJointArray(solutions, point_count);
+            res.success = all_success;
+            res.message = "inverse_kine_array ret=" + std::to_string(ret) +
+                          ", points=" + std::to_string(point_count) +
+                          ", solved=" + std::to_string(solutions.size()) +
+                          ", positions layout=point_count*joint_count, failed points contain NaN";
+        } catch (const std::exception& e) {
+            res.success = false;
+            res.message = e.what();
+        }
+        return true;
+    }
+
+    bool handleSolveFKArray(carm_a3_motion::SolveFKArray::Request& req,
+                            carm_a3_motion::SolveFKArray::Response& res) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        std::string message;
+        if (!ensureConnected(&message)) {
+            res.success = false;
+            res.message = message;
+            return true;
+        }
+        if (req.positions.empty() ||
+            req.positions.size() % static_cast<size_t>(joint_count_) != 0U) {
+            res.success = false;
+            res.message = "positions must contain one or more " +
+                          std::to_string(joint_count_) + "-value joint points";
+            return true;
+        }
+
+        try {
+            const size_t point_count = req.positions.size() / static_cast<size_t>(joint_count_);
+            std::vector<std::vector<double>> joints;
+            joints.reserve(point_count);
+            for (size_t i = 0; i < point_count; ++i) {
+                const auto begin = req.positions.begin() +
+                                   static_cast<std::ptrdiff_t>(i * static_cast<size_t>(joint_count_));
+                joints.emplace_back(begin, begin + joint_count_);
+            }
+
+            std::vector<std::array<double, 7>> poses;
+            const int ret = arm_->forward_kine_array(req.tool_index, joints, poses);
+            res.point_success.assign(point_count, false);
+            bool all_success = ret >= 1 && poses.size() == point_count;
+            for (size_t i = 0; i < std::min(point_count, poses.size()); ++i) {
+                res.point_success[i] = true;
+            }
+            res.poses = flattenPoseArray(poses, point_count);
+            res.success = all_success;
+            res.message = "forward_kine_array ret=" + std::to_string(ret) +
+                          ", points=" + std::to_string(point_count) +
+                          ", solved=" + std::to_string(poses.size()) +
+                          ", pose order=x,y,z,qx,qy,qz,qw, failed points contain NaN";
         } catch (const std::exception& e) {
             res.success = false;
             res.message = e.what();
@@ -784,6 +946,8 @@ private:
     ros::ServiceServer get_cartesian_snapshot_srv_;
     ros::ServiceServer solve_ik_srv_;
     ros::ServiceServer solve_fk_srv_;
+    ros::ServiceServer solve_ik_array_srv_;
+    ros::ServiceServer solve_fk_array_srv_;
 
     std::string robot_host_;
     int robot_port_ = 8090;

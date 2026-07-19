@@ -18,7 +18,9 @@ add_service_files(
   GetJointSnapshot.srv
   JogJoint.srv
   MoveJoint.srv
+  SolveFKArray.srv
   SolveFK.srv
+  SolveIKArray.srv
   SolveIK.srv
 )
 

@@ -9,7 +9,9 @@ from carm_a3_motion.srv import GetJointSnapshot
 from carm_a3_motion.srv import JogJoint
 from carm_a3_motion.srv import MoveJoint
 from carm_a3_motion.srv import SolveFK
+from carm_a3_motion.srv import SolveFKArray
 from carm_a3_motion.srv import SolveIK
+from carm_a3_motion.srv import SolveIKArray
 
 
 DEFAULT_TIMEOUT_S = 3.0
@@ -202,7 +204,7 @@ def call_ik_offset(args):
 def call_ik_offset_scan(args):
     cart_proxy = service_proxy("/carm_a3/motion/get_cartesian_snapshot", GetCartesianSnapshot)
     snapshot_proxy = service_proxy("/carm_a3/motion/get_joint_snapshot", GetJointSnapshot)
-    ik_proxy = service_proxy("/carm_a3/motion/solve_ik", SolveIK)
+    ik_array_proxy = service_proxy("/carm_a3/motion/solve_ik_array", SolveIKArray)
 
     cart_res = cart_proxy()
     print(cart_res)
@@ -217,22 +219,50 @@ def call_ik_offset_scan(args):
 
     axis_index = {"x": 0, "y": 1, "z": 2}[args.axis]
     distances = parse_float_list(args.distances)
-    any_success = False
+    poses = []
+    seeds = []
     for distance in distances:
         target_pose = list(cart_res.pose)
         target_pose[axis_index] += distance
-        ik_res = ik_proxy(args.tool_index, target_pose, seed)
-        if ik_res.success:
-            joint_delta = max_abs_delta(seed, ik_res.positions)
+        poses.extend(target_pose)
+        seeds.extend(seed)
+
+    ik_array_res = ik_array_proxy(args.tool_index, poses, seeds)
+    print(ik_array_res.message)
+
+    any_success = False
+    for i, distance in enumerate(distances):
+        start = i * 6
+        end = start + 6
+        positions = list(ik_array_res.positions[start:end])
+        point_success = i < len(ik_array_res.point_success) and ik_array_res.point_success[i]
+        if point_success:
+            joint_delta = max_abs_delta(seed, positions)
             print("axis={} distance={:.9g} success=true max_joint_delta={:.9g}".format(
                 args.axis, distance, joint_delta
             ))
-            print(ik_res)
+            print("positions: [{}]".format(vector_to_text(positions)))
             any_success = True
         else:
             print("axis={} distance={:.9g} success=false".format(args.axis, distance))
-            print(ik_res)
     return 0 if any_success else 1
+
+
+def call_fk_array(args):
+    proxy = service_proxy("/carm_a3/motion/solve_fk_array", SolveFKArray)
+    positions = parse_float_list(args.positions)
+    res = proxy(args.tool_index, positions)
+    print(res)
+    return 0 if res.success else 1
+
+
+def call_ik_array(args):
+    proxy = service_proxy("/carm_a3/motion/solve_ik_array", SolveIKArray)
+    poses = parse_float_list(args.poses)
+    seeds = parse_float_list(args.seed_positions) if args.seed_positions else []
+    res = proxy(args.tool_index, poses, seeds)
+    print(res)
+    return 0 if res.success else 1
 
 
 def call_ik_probe(args):
@@ -349,6 +379,17 @@ def main():
     fk.add_argument("positions", help="six comma-separated joint values in rad")
     fk.add_argument("--tool-index", type=int, default=0)
     fk.set_defaults(func=call_fk)
+
+    fk_array = subparsers.add_parser("fk-array")
+    fk_array.add_argument("positions", help="flattened joint values, 6 values per point")
+    fk_array.add_argument("--tool-index", type=int, default=0)
+    fk_array.set_defaults(func=call_fk_array)
+
+    ik_array = subparsers.add_parser("ik-array")
+    ik_array.add_argument("poses", help="flattened poses, 7 values per point")
+    ik_array.add_argument("--seed-positions", default="", help="optional flattened seeds, 6 values per point")
+    ik_array.add_argument("--tool-index", type=int, default=0)
+    ik_array.set_defaults(func=call_ik_array)
 
     args = parser.parse_args()
     rospy.init_node("carm_a3_motion_cli", anonymous=True)
