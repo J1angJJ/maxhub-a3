@@ -140,6 +140,7 @@ rosrun carm_a3_motion motion_cli.py ik-probe --include-mm
 rosrun carm_a3_motion motion_cli.py ik-offset 0.01 0 0
 rosrun carm_a3_motion motion_cli.py ik-offset 0 0 0.01
 rosrun carm_a3_motion motion_cli.py ik-offset 0 0 0.01 --execute --max-joint-delta 0.05
+rosrun carm_a3_motion motion_cli.py ik-offset-scan z
 ```
 
 Current near-zero pose offset notes:
@@ -148,6 +149,7 @@ Current near-zero pose offset notes:
 - `+0.01 m` in `y` failed IK.
 - `+0.01 m` in `z` succeeded with max joint delta about `0.029 rad`.
 - `+0.01 m` in `z` has been executed successfully with `--execute --max-joint-delta 0.05`; `move_joint` returned `verified=true` with max readback error about `0.0027 rad`.
+- After moving up, `-0.01 m` in `z` failed IK while holding orientation fixed. Use `ik-offset-scan z` to find smaller feasible return steps before executing.
 
 Emergency stop service:
 

@@ -284,6 +284,12 @@ rosrun carm_a3_motion motion_cli.py ik-offset 0 0 0.01 --execute --max-joint-del
 
 该命令仍会经过两层保护：CLI 先限制 IK 解的最大关节变化量，随后 `/carm_a3/motion/move_joint` 再执行自身的单关节 delta 限制和运动后闭环确认。
 
+注意：执行 `z + 0.01 m` 后，保持姿态直接 `z - 0.01 m` 在当前状态下 IK 返回 `ret=-1`。这不是运动执行失败，而是 IK 对该目标不给解。先用扫描命令找较小可行步长：
+
+```bash
+rosrun carm_a3_motion motion_cli.py ik-offset-scan z
+```
+
 实测执行结果摘要：
 
 ```text

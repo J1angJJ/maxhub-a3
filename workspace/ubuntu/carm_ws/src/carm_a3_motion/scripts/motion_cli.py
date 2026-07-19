@@ -199,6 +199,42 @@ def call_ik_offset(args):
     return 0 if move_res.success else 1
 
 
+def call_ik_offset_scan(args):
+    cart_proxy = service_proxy("/carm_a3/motion/get_cartesian_snapshot", GetCartesianSnapshot)
+    snapshot_proxy = service_proxy("/carm_a3/motion/get_joint_snapshot", GetJointSnapshot)
+    ik_proxy = service_proxy("/carm_a3/motion/solve_ik", SolveIK)
+
+    cart_res = cart_proxy()
+    print(cart_res)
+    if not cart_res.success:
+        return 1
+
+    snapshot_res = snapshot_proxy()
+    print(snapshot_res)
+    if not snapshot_res.success:
+        return 1
+    seed = list(snapshot_res.positions)
+
+    axis_index = {"x": 0, "y": 1, "z": 2}[args.axis]
+    distances = parse_float_list(args.distances)
+    any_success = False
+    for distance in distances:
+        target_pose = list(cart_res.pose)
+        target_pose[axis_index] += distance
+        ik_res = ik_proxy(args.tool_index, target_pose, seed)
+        if ik_res.success:
+            joint_delta = max_abs_delta(seed, ik_res.positions)
+            print("axis={} distance={:.9g} success=true max_joint_delta={:.9g}".format(
+                args.axis, distance, joint_delta
+            ))
+            print(ik_res)
+            any_success = True
+        else:
+            print("axis={} distance={:.9g} success=false".format(args.axis, distance))
+            print(ik_res)
+    return 0 if any_success else 1
+
+
 def call_ik_probe(args):
     snapshot_proxy = service_proxy("/carm_a3/motion/get_joint_snapshot", GetJointSnapshot)
     cart_proxy = service_proxy("/carm_a3/motion/get_cartesian_snapshot", GetCartesianSnapshot)
@@ -293,6 +329,16 @@ def main():
     ik_offset.add_argument("--wait", action="store_true")
     ik_offset.add_argument("--execute", action="store_true")
     ik_offset.set_defaults(func=call_ik_offset)
+
+    ik_offset_scan = subparsers.add_parser("ik-offset-scan")
+    ik_offset_scan.add_argument("axis", choices=["x", "y", "z"])
+    ik_offset_scan.add_argument(
+        "--distances",
+        default="-0.001,-0.002,-0.005,-0.01,0.001,0.002,0.005,0.01",
+        help="comma-separated offsets in meters",
+    )
+    ik_offset_scan.add_argument("--tool-index", type=int, default=0)
+    ik_offset_scan.set_defaults(func=call_ik_offset_scan)
 
     ik_probe = subparsers.add_parser("ik-probe")
     ik_probe.add_argument("--tool-indices", default="0,1,2,3")

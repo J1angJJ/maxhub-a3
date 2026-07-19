@@ -115,3 +115,9 @@ max_error=0.002692
 ```
 
 The real arm moved visibly. This confirms the first minimal Cartesian offset control chain.
+
+After this upward move, a direct `z - 0.01 m` IK request while holding orientation fixed returned `inverse_kine ret=-1`. This suggests the local Cartesian feasible set is asymmetric or seed/configuration-sensitive around the current posture. Use read-only offset scanning before executing return motions:
+
+```bash
+rosrun carm_a3_motion motion_cli.py ik-offset-scan z
+```
