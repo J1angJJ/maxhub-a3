@@ -146,8 +146,15 @@ What looks more like an upstream SDK issue:
 - The crash happens inside the official C++ call shape, after all local safety checks and after current joint state was read successfully.
 - It reproduces in the stripped official-topic compatibility node, not just in the service wrapper.
 - The controller accepts the equivalent WebSocket/Python `TASK_MOVJ` command.
+- `gdb` confirms the `SIGSEGV` is inside `libarm_control_sdk.so`: `carm::CArmKernelImpl::move_joint(...)`, called by `carm::CArmSingleCol::move_joint(...)`.
 
 This is good evidence to send to vendor support: C++ SDK state APIs are usable, C++ SDK real-motion `move_joint()` segfaults, while WebSocket `TASK_MOVJ` works on the same controller state.
+
+Vendor-facing report draft:
+
+```text
+docs/vendor/cpp_sdk_move_joint_gdb_report.md
+```
 
 ## Python WebSocket Motion Test
 

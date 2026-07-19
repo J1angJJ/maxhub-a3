@@ -201,8 +201,15 @@ source devel/setup.bash
 - C++ 状态 API 和 WebSocket 通讯均正常，只有 C++ `move_joint()` 真实运动调用崩。
 - 官方 ROS1 demo 调用形态也崩，不是我们的 service 封装导致。
 - Python/WebSocket 等价 `TASK_MOVJ` 成功。
+- gdb 已确认段错误栈落在 `libarm_control_sdk.so` 内的 `carm::CArmKernelImpl::move_joint(...)`，上一层为 `carm::CArmSingleCol::move_joint(...)`。
 
 可反馈售后的简述：Ubuntu 20.04 / ROS Noetic / A3_DM_C，C++ SDK `CArmSingleCol::move_joint(target, -1, false)` 段错误；`get_status()`、`get_joint_pos()` 正常；同一状态下 WebSocket `webRecieveTasks` `TASK_MOVJ` 成功。
+
+售后报告草稿见：
+
+```text
+docs/vendor/cpp_sdk_move_joint_gdb_report.md
+```
 
 ### Build
 
