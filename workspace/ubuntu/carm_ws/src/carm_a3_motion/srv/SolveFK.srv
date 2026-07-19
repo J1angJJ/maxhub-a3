@@ -1,0 +1,6 @@
+int32 tool_index
+float64[] positions
+---
+bool success
+string message
+float64[] pose

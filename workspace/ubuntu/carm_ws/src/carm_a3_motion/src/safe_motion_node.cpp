@@ -16,8 +16,11 @@
 
 #include "arm_control_sdk/carm_cobot.h"
 #include "arm_control_sdk/data_type_def.h"
+#include "carm_a3_motion/GetJointSnapshot.h"
 #include "carm_a3_motion/JogJoint.h"
 #include "carm_a3_motion/MoveJoint.h"
+#include "carm_a3_motion/SolveFK.h"
+#include "carm_a3_motion/SolveIK.h"
 
 namespace {
 
@@ -72,6 +75,15 @@ public:
         move_joint_srv_ = nh_.advertiseService("/carm_a3/motion/move_joint",
                                                &SafeMotionNode::handleMoveJoint,
                                                this);
+        get_joint_snapshot_srv_ = nh_.advertiseService("/carm_a3/motion/get_joint_snapshot",
+                                                       &SafeMotionNode::handleGetJointSnapshot,
+                                                       this);
+        solve_ik_srv_ = nh_.advertiseService("/carm_a3/motion/solve_ik",
+                                             &SafeMotionNode::handleSolveIK,
+                                             this);
+        solve_fk_srv_ = nh_.advertiseService("/carm_a3/motion/solve_fk",
+                                             &SafeMotionNode::handleSolveFK,
+                                             this);
 
         ROS_WARN("carm_a3_motion started with allow_motion=%s, dry_run=%s",
                  allow_motion_ ? "true" : "false",
@@ -330,6 +342,21 @@ private:
         return false;
     }
 
+    bool vectorToPoseArray(const std::vector<double>& values,
+                           std::array<double, 7>* pose,
+                           std::string* message) const {
+        if (values.size() != 7) {
+            *message = "pose must contain exactly 7 values: x,y,z,qx,qy,qz,qw";
+            return false;
+        }
+        std::copy(values.begin(), values.end(), pose->begin());
+        return true;
+    }
+
+    std::vector<double> poseArrayToVector(const std::array<double, 7>& pose) const {
+        return std::vector<double>(pose.begin(), pose.end());
+    }
+
     bool handleStatus(std_srvs::Trigger::Request&, std_srvs::Trigger::Response& res) {
         std::lock_guard<std::mutex> lock(mutex_);
         std::string message;
@@ -348,6 +375,109 @@ private:
                << ",callbacks=" << (callbacks_registered_ ? "true" : "false")
                << ",last_joint_count=" << last_joint_count_.load();
             res.message = ss.str();
+        } catch (const std::exception& e) {
+            res.success = false;
+            res.message = e.what();
+        }
+        return true;
+    }
+
+    bool handleGetJointSnapshot(carm_a3_motion::GetJointSnapshot::Request&,
+                                carm_a3_motion::GetJointSnapshot::Response& res) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        std::string message;
+        if (!ensureConnected(&message)) {
+            res.success = false;
+            res.message = message;
+            return true;
+        }
+        try {
+            res.positions = arm_->get_joint_pos();
+            res.velocities = arm_->get_joint_vel();
+            res.efforts = arm_->get_joint_tau();
+            if (static_cast<int>(res.positions.size()) < joint_count_) {
+                res.success = false;
+                res.message = "SDK returned too few joints: " +
+                              std::to_string(res.positions.size());
+                return true;
+            }
+            res.positions.resize(static_cast<size_t>(joint_count_));
+            res.velocities.resize(std::min(res.velocities.size(), static_cast<size_t>(joint_count_)));
+            res.efforts.resize(std::min(res.efforts.size(), static_cast<size_t>(joint_count_)));
+            res.success = true;
+            res.message = "joint snapshot ok";
+        } catch (const std::exception& e) {
+            res.success = false;
+            res.message = e.what();
+        }
+        return true;
+    }
+
+    bool handleSolveIK(carm_a3_motion::SolveIK::Request& req,
+                       carm_a3_motion::SolveIK::Response& res) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        std::string message;
+        if (!ensureConnected(&message)) {
+            res.success = false;
+            res.message = message;
+            return true;
+        }
+        std::array<double, 7> pose{};
+        if (!vectorToPoseArray(req.pose, &pose, &message)) {
+            res.success = false;
+            res.message = message;
+            return true;
+        }
+        try {
+            std::vector<double> seed = req.seed_positions;
+            if (seed.empty()) {
+                seed = arm_->get_joint_pos();
+            }
+            if (static_cast<int>(seed.size()) < joint_count_) {
+                res.success = false;
+                res.message = "seed_positions must be empty or contain at least " +
+                              std::to_string(joint_count_) + " values";
+                return true;
+            }
+            seed.resize(static_cast<size_t>(joint_count_));
+            std::vector<double> solution;
+            const int ret = arm_->inverse_kine(req.tool_index, pose, seed, solution);
+            res.success = ret >= 1 && static_cast<int>(solution.size()) >= joint_count_;
+            if (static_cast<int>(solution.size()) >= joint_count_) {
+                solution.resize(static_cast<size_t>(joint_count_));
+            }
+            res.positions = solution;
+            res.message = "inverse_kine ret=" + std::to_string(ret) +
+                          ", seed=" + vectorToString(seed) +
+                          ", solution=" + vectorToString(solution);
+        } catch (const std::exception& e) {
+            res.success = false;
+            res.message = e.what();
+        }
+        return true;
+    }
+
+    bool handleSolveFK(carm_a3_motion::SolveFK::Request& req,
+                       carm_a3_motion::SolveFK::Response& res) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        std::string message;
+        if (!ensureConnected(&message)) {
+            res.success = false;
+            res.message = message;
+            return true;
+        }
+        if (static_cast<int>(req.positions.size()) != joint_count_) {
+            res.success = false;
+            res.message = "positions must contain exactly " + std::to_string(joint_count_) + " values";
+            return true;
+        }
+        try {
+            std::array<double, 7> pose{};
+            const int ret = arm_->forward_kine(req.tool_index, req.positions, pose);
+            res.pose = poseArrayToVector(pose);
+            res.success = ret >= 1;
+            res.message = "forward_kine ret=" + std::to_string(ret) +
+                          ", pose=[x,y,z,qx,qy,qz,qw]";
         } catch (const std::exception& e) {
             res.success = false;
             res.message = e.what();
@@ -625,6 +755,9 @@ private:
     ros::ServiceServer emergency_stop_srv_;
     ros::ServiceServer jog_joint_srv_;
     ros::ServiceServer move_joint_srv_;
+    ros::ServiceServer get_joint_snapshot_srv_;
+    ros::ServiceServer solve_ik_srv_;
+    ros::ServiceServer solve_fk_srv_;
 
     std::string robot_host_;
     int robot_port_ = 8090;

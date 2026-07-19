@@ -14,8 +14,11 @@ find_package(catkin REQUIRED COMPONENTS
 
 add_service_files(
   FILES
+  GetJointSnapshot.srv
   JogJoint.srv
   MoveJoint.srv
+  SolveFK.srv
+  SolveIK.srv
 )
 
 generate_messages(
@@ -93,6 +96,7 @@ set_target_properties(official_topic_motion_node PROPERTIES
 )
 
 catkin_install_python(PROGRAMS
+  scripts/motion_cli.py
   scripts/py_ws_motion_node.py
   scripts/raw_ws_motion_node.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

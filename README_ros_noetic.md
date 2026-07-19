@@ -222,6 +222,24 @@ move_ret=1, verified=true, max_error=..., target=[...], actual=[...]
 
 如果 `move_ret=1` 但 `verified=false`，说明控制器接受了命令，但在 `verify_timeout_s` 内没有到达目标容差，应先停止继续加大动作，检查当前模式、速度、碰撞/限位、目标是否被裁剪。
 
+已增加上层规划会用到的只读服务：
+
+```bash
+rosservice call /carm_a3/motion/get_joint_snapshot
+rosservice call /carm_a3/motion/solve_fk "{tool_index: 0, positions: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}"
+rosservice call /carm_a3/motion/solve_ik "{tool_index: 0, pose: [0.25, 0.0, 0.30, 0.0, 0.0, 0.0, 1.0], seed_positions: []}"
+```
+
+`solve_ik` 的 pose 顺序为 `x,y,z,qx,qy,qz,qw`，`seed_positions` 为空时默认使用当前关节作为参考解。IK/FK 服务本身不运动；确认返回的 `positions` 后，再交给 `/carm_a3/motion/move_joint` 执行。
+
+也可以用 CLI：
+
+```bash
+rosrun carm_a3_motion motion_cli.py snapshot
+rosrun carm_a3_motion motion_cli.py fk "0,0,0,0,0,0"
+rosrun carm_a3_motion motion_cli.py ik "0.25,0,0.30,0,0,0,1"
+```
+
 本地环境排查项：
 
 - 确认每个终端都重新 `source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash`。

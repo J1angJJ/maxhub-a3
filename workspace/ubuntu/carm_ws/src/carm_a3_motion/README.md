@@ -89,6 +89,37 @@ rosservice call /carm_a3/motion/jog_joint "{joint_index: 1, delta_rad: 0.01, dur
 
 The service reads back joint state after the SDK command. A successful real-motion response should contain `move_ret=1`, `verified=true`, `max_error=...`, `target=[...]`, and `actual=[...]`.
 
+## Joint Snapshot, FK, and IK
+
+The C++ service node also exposes read-only helpers for upper-level planners:
+
+```bash
+rosservice call /carm_a3/motion/get_joint_snapshot
+```
+
+Forward kinematics, using joint values in radians:
+
+```bash
+rosservice call /carm_a3/motion/solve_fk "{tool_index: 0, positions: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}"
+```
+
+Inverse kinematics, using pose order `x,y,z,qx,qy,qz,qw`. Leave `seed_positions` empty to use the current robot joints as the reference solution:
+
+```bash
+rosservice call /carm_a3/motion/solve_ik "{tool_index: 0, pose: [0.25, 0.0, 0.30, 0.0, 0.0, 0.0, 1.0], seed_positions: []}"
+```
+
+These helpers do not move the arm. To execute an IK result, inspect the returned `positions` first, then pass it to `/carm_a3/motion/move_joint`.
+
+The same services can be called with the helper CLI:
+
+```bash
+rosrun carm_a3_motion motion_cli.py snapshot
+rosrun carm_a3_motion motion_cli.py fk "0,0,0,0,0,0"
+rosrun carm_a3_motion motion_cli.py ik "0.25,0,0.30,0,0,0,1"
+rosrun carm_a3_motion motion_cli.py jog 1 0.005 --duration-s 2.0
+```
+
 Emergency stop service:
 
 ```bash
