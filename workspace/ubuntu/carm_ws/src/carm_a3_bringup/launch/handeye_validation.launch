@@ -1,0 +1,14 @@
+<launch>
+  <arg name="launch_driver" default="true" />
+  <arg name="launch_camera" default="true" />
+  <arg name="publish_handeye_tf" default="true" />
+  <arg name="launch_aruco_sampler" default="true" />
+
+  <include file="$(find carm_a3_bringup)/launch/readonly_vision_handeye.launch">
+    <arg name="launch_driver" value="$(arg launch_driver)" />
+    <arg name="launch_camera" value="$(arg launch_camera)" />
+    <arg name="publish_handeye_tf" value="$(arg publish_handeye_tf)" />
+  </include>
+
+  <include if="$(arg launch_aruco_sampler)" file="$(find carm_a3_calibration)/launch/aruco_handeye_sampler.launch" />
+</launch>

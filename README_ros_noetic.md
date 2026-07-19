@@ -468,6 +468,33 @@ rosrun tf tf_echo base_link aruco_marker
 
 缓慢改变机械臂/相机姿态时，如果 `base_link -> aruco_marker` 的平移基本稳定，说明当前 `flange -> camera` 外参方向和数量级大体可信。如果漂移很明显，优先重新检查 ArUco 尺寸、相机画面方向、样本姿态覆盖和 TF 方向约定。
 
+## Bringup Launch
+
+`carm_a3_bringup` 用于组合启动当前已验证的只读链路。它不会执行机械臂运动。
+
+启动默认链路：
+
+```bash
+cd /home/noetic/maxhub-a3
+source /opt/ros/noetic/setup.bash
+source workspace/ubuntu/carm_ws/devel/setup.bash
+roslaunch carm_a3_bringup readonly_vision_handeye.launch
+```
+
+该命令会启动：
+
+- `carm_a3_driver` 只读状态节点和 `base_link -> flange` TF。
+- `carm_a3_vision` 原装 USB 相机节点和 `640x480` 内参。
+- `flange -> carm_a3_camera_optical_frame` 手眼静态 TF。
+
+手眼验证链路：
+
+```bash
+roslaunch carm_a3_bringup handeye_validation.launch
+```
+
+该命令会在默认链路基础上启动 ArUco 实时检测，并发布 `carm_a3_camera_optical_frame -> aruco_marker`。
+
 ## Read-only Test Plan
 
 编译成功后，下一步只测试“连接与状态读取”，不做使能、不回零、不运动。

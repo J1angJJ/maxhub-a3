@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>carm_a3_bringup</name>
+  <version>0.1.0</version>
+  <description>Launch files that compose CArm / MAXHUB A3 ROS nodes.</description>
+
+  <maintainer email="noetic@todo.invalid">noetic</maintainer>
+  <license>UNLICENSED</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <exec_depend>carm_a3_driver</exec_depend>
+  <exec_depend>carm_a3_vision</exec_depend>
+  <exec_depend>carm_a3_calibration</exec_depend>
+</package>

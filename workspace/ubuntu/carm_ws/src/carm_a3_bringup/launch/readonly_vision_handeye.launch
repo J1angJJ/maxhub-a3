@@ -1,0 +1,20 @@
+<launch>
+  <arg name="driver_config" default="$(find carm_a3_driver)/config/robot.yaml" />
+  <arg name="camera_config" default="$(find carm_a3_vision)/config/camera.yaml" />
+  <arg name="camera_info_url" default="file://$(find carm_a3_vision)/config/camera_info.yaml" />
+
+  <arg name="launch_driver" default="true" />
+  <arg name="launch_camera" default="true" />
+  <arg name="publish_handeye_tf" default="true" />
+
+  <include if="$(arg launch_driver)" file="$(find carm_a3_driver)/launch/readonly_state.launch">
+    <arg name="config" value="$(arg driver_config)" />
+  </include>
+
+  <include if="$(arg launch_camera)" file="$(find carm_a3_vision)/launch/camera.launch">
+    <arg name="config" value="$(arg camera_config)" />
+    <arg name="camera_info_url" value="$(arg camera_info_url)" />
+  </include>
+
+  <include if="$(arg publish_handeye_tf)" file="$(find carm_a3_calibration)/launch/publish_handeye_tf.launch" />
+</launch>

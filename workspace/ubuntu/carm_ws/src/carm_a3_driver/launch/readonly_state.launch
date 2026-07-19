@@ -7,7 +7,7 @@
     name="maxhub_a3_readonly_state_publisher"
     output="screen"
     required="true">
-    <env name="LD_LIBRARY_PATH" value="$(find carm_a3_driver)/../../vendor/arm_control_sdk/lib:$(find carm_a3_driver)/../../vendor/arm_control_sdk/poco/lib:$(env LD_LIBRARY_PATH)" />
+    <env name="LD_LIBRARY_PATH" value="$(find carm_a3_driver)/../../vendor/arm_control_sdk/lib:$(find carm_a3_driver)/../../vendor/arm_control_sdk/poco/lib:$(optenv LD_LIBRARY_PATH)" />
     <rosparam command="load" file="$(arg config)" />
   </node>
 </launch>

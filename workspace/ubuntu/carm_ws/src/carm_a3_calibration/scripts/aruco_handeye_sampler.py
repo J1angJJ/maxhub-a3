@@ -66,11 +66,11 @@ def transform_to_dict(transform):
     }
 
 
-def marker_pose_to_dict(camera_frame, stamp, rvec, tvec):
+def marker_pose_to_dict(camera_frame, marker_frame, stamp, rvec, tvec):
     rot_mat, _ = cv2.Rodrigues(np.asarray(rvec, dtype=np.float64).reshape(3, 1))
     return {
         "parent_frame": camera_frame,
-        "child_frame": "aruco_marker",
+        "child_frame": marker_frame,
         "stamp": {
             "secs": int(stamp.secs),
             "nsecs": int(stamp.nsecs),
@@ -222,7 +222,7 @@ class ArucoHandeyeSampler:
                 "size_m": self.marker_size_m,
             },
             "base_T_flange": transform_to_dict(transform),
-            "camera_T_marker": marker_pose_to_dict(self.camera_frame, msg.header.stamp, rvecs[0][0], marker_t),
+            "camera_T_marker": marker_pose_to_dict(self.camera_frame, self.marker_frame, msg.header.stamp, rvecs[0][0], marker_t),
         }
         with self.lock:
             self.latest_sample = sample
