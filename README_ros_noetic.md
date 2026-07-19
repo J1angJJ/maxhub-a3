@@ -234,6 +234,42 @@ rosservice call /carm_a3/motion/emergency_stop
 
 实机首测默认也不传到达时间、不等待 SDK 同步完成，等价于官方 ROS1 示例中的 `move_joint(target, -1, false)`。如果日志能看到 `jog_joint: calling move_joint duration=-1.000 wait=false` 后仍崩溃，说明问题集中在 SDK 的 `move_joint()` 真实运动调用本身，而不是 ROS service 或参数门控。
 
+### Official Topic Compatibility Test
+
+如果 `safe_motion_node` 仍然在 `move_joint()` 内部段错误，可以启动尽量贴近官方 ROS1 demo 的 topic 对照节点。它不读当前关节、不拼 jog target、不走 service；收到 `sensor_msgs/JointState` 后直接调用：
+
+```cpp
+move_joint(msg->position, -1, false)
+```
+
+终端 1：
+
+```bash
+cd /home/noetic/maxhub-a3
+source /opt/ros/noetic/setup.bash
+source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash
+source workspace/ubuntu/carm_ws/devel/setup.bash
+roslaunch carm_a3_motion official_topic_motion.launch allow_move_joint:=true
+```
+
+终端 2：
+
+```bash
+source /opt/ros/noetic/setup.bash
+source /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/devel/setup.bash
+rosservice call /carm_a3/official_motion/status
+rostopic pub -1 /carm_a3/official_motion/move_joint sensor_msgs/JointState "header:
+  seq: 0
+  stamp: {secs: 0, nsecs: 0}
+  frame_id: ''
+name: ['joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6']
+position: [0.005, 0.0, 0.0, 0.0, 0.0, 0.0]
+velocity: []
+effort: []"
+```
+
+若该节点也在 `official_topic_motion calling move_joint(position, -1, false)` 后退出，优先判断为 C++ SDK 真实运动接口在当前控制器/固件上崩溃；下一步应改走官方 Python/WebSocket 轻量接口或厂家原始 demo 二进制做对照。
+
 ## Run USB Camera Node
 
 原装相机已通过 `guvcview` 验证 USB 透传和 30 fps 预览。当前物理安装方向导致画面上下颠倒，`carm_a3_vision` 默认启用 `rotate_180: true` 做软件校正。

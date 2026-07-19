@@ -82,3 +82,39 @@ This node does not automatically call `set_ready()` or servo enable before motio
 It also does not call `set_speed_level()` by default. Use the current controller/teach-pendant speed for the first real jog. If later testing proves the SDK speed call is stable on this controller firmware, `set_speed_before_motion` can be enabled explicitly.
 
 The first real-motion path intentionally matches the official ROS1 demo style: `move_joint(target, -1, false)`. Duration and synchronous waiting are disabled by default because early testing showed SDK crashes in some blocking/control helper paths.
+
+## Official Topic Compatibility Test
+
+If `safe_motion_node` crashes inside `move_joint()`, use this node to test the official ROS1 demo calling style with as little local wrapping as possible. It subscribes to a topic and calls:
+
+```cpp
+move_joint(msg->position, -1, false)
+```
+
+Start with the motion gate closed:
+
+```bash
+roslaunch carm_a3_motion official_topic_motion.launch
+rosservice call /carm_a3/official_motion/status
+```
+
+Then open only the topic motion gate:
+
+```bash
+roslaunch carm_a3_motion official_topic_motion.launch allow_move_joint:=true
+```
+
+Publish the current near-zero pose plus a tiny joint-1 jog:
+
+```bash
+rostopic pub -1 /carm_a3/official_motion/move_joint sensor_msgs/JointState "header:
+  seq: 0
+  stamp: {secs: 0, nsecs: 0}
+  frame_id: ''
+name: ['joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6']
+position: [0.005, 0.0, 0.0, 0.0, 0.0, 0.0]
+velocity: []
+effort: []"
+```
+
+If this node also crashes immediately after `official_topic_motion calling move_joint(position, -1, false)`, the failure is very likely inside the C++ SDK real-motion call path on this controller/firmware, not in the ROS service wrapper.

@@ -1,0 +1,19 @@
+<launch>
+  <arg name="robot_host" default="192.168.31.60" />
+  <arg name="robot_port" default="8090" />
+  <arg name="auto_ready" default="false" />
+  <arg name="allow_move_joint" default="false" />
+
+  <node
+    name="carm_a3_official_topic_motion"
+    pkg="carm_a3_motion"
+    type="official_topic_motion_node"
+    output="screen"
+    required="true"
+    launch-prefix="env LD_LIBRARY_PATH=$(find carm_a3_motion)/../../vendor/arm_control_sdk/lib:$(find carm_a3_motion)/../../vendor/arm_control_sdk/poco/lib:$(optenv LD_LIBRARY_PATH)">
+    <param name="robot_host" value="$(arg robot_host)" />
+    <param name="robot_port" type="int" value="$(arg robot_port)" />
+    <param name="auto_ready" type="bool" value="$(arg auto_ready)" />
+    <param name="allow_move_joint" type="bool" value="$(arg allow_move_joint)" />
+  </node>
+</launch>

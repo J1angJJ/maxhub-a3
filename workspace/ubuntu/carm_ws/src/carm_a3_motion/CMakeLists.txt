@@ -6,6 +6,7 @@ add_compile_options(-std=c++14)
 find_package(catkin REQUIRED COMPONENTS
   message_generation
   roscpp
+  sensor_msgs
   std_msgs
   std_srvs
 )
@@ -38,7 +39,7 @@ set(ARM_CONTROL_SDK_LIB_DIR "${arm_control_sdk_ROOT_DIR}/lib")
 set(ARM_CONTROL_SDK_POCO_LIB_DIR "${arm_control_sdk_ROOT_DIR}/poco/lib")
 
 catkin_package(
-  CATKIN_DEPENDS message_runtime roscpp std_msgs std_srvs
+  CATKIN_DEPENDS message_runtime roscpp sensor_msgs std_msgs std_srvs
 )
 
 include_directories(
@@ -50,7 +51,16 @@ add_executable(safe_motion_node
   src/safe_motion_node.cpp
 )
 
+add_executable(official_topic_motion_node
+  src/official_topic_motion_node.cpp
+)
+
 add_dependencies(safe_motion_node
+  ${${PROJECT_NAME}_EXPORTED_TARGETS}
+  ${catkin_EXPORTED_TARGETS}
+)
+
+add_dependencies(official_topic_motion_node
   ${${PROJECT_NAME}_EXPORTED_TARGETS}
   ${catkin_EXPORTED_TARGETS}
 )
@@ -63,7 +73,20 @@ target_link_libraries(safe_motion_node
   "${ARM_CONTROL_SDK_POCO_LIB_DIR}/libPocoFoundation.so.71"
 )
 
+target_link_libraries(official_topic_motion_node
+  ${catkin_LIBRARIES}
+  ${arm_control_sdk_LIBRARIES}
+  "${ARM_CONTROL_SDK_POCO_LIB_DIR}/libPocoNet.so.71"
+  "${ARM_CONTROL_SDK_POCO_LIB_DIR}/libPocoUtil.so.71"
+  "${ARM_CONTROL_SDK_POCO_LIB_DIR}/libPocoFoundation.so.71"
+)
+
 set_target_properties(safe_motion_node PROPERTIES
+  BUILD_RPATH "${ARM_CONTROL_SDK_LIB_DIR};${ARM_CONTROL_SDK_POCO_LIB_DIR}"
+  INSTALL_RPATH "${ARM_CONTROL_SDK_LIB_DIR};${ARM_CONTROL_SDK_POCO_LIB_DIR}"
+)
+
+set_target_properties(official_topic_motion_node PROPERTIES
   BUILD_RPATH "${ARM_CONTROL_SDK_LIB_DIR};${ARM_CONTROL_SDK_POCO_LIB_DIR}"
   INSTALL_RPATH "${ARM_CONTROL_SDK_LIB_DIR};${ARM_CONTROL_SDK_POCO_LIB_DIR}"
 )
