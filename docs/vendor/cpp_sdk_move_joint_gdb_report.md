@@ -181,6 +181,37 @@ CArmSingleCol::move_joint(target, -1, false)
 
 该问题不太像 ROS service 封装导致，因为一个尽量贴近官方 ROS1 demo 调用方式的 stripped topic 节点也能复现同样崩溃。
 
+## 后续待复测：完整官方初始化流程
+
+当前 gdb 复现使用了 `_allow_move_joint:=true`，但没有启用 `_auto_ready:=true`，也没有注册任务完成和错误回调。厂家原 ROS1 节点的启动顺序更完整：
+
+```text
+创建 CArmSingleCol
+等待约 1 秒
+set_ready()
+注册 joint / pose / error / completion 回调
+接收 move_joint(..., -1, false)
+```
+
+这可能影响 SDK 内部任务状态初始化。SDK 即便未就绪也不应段错误，而应返回错误码；但为了排除本地初始化流程差异，需要复测完整官方流程。
+
+复测命令：
+
+```bash
+gdb --args devel/lib/carm_a3_motion/official_topic_motion_node \
+  __name:=carm_a3_official_topic_motion \
+  _allow_move_joint:=true \
+  _auto_ready:=true \
+  _register_callbacks:=true \
+  _pre_ready_delay_s:=1.0 \
+  _robot_host:=192.168.31.60 \
+  _robot_port:=8090
+```
+
+如果完整初始化后 C++ `move_joint()` 不再崩溃，则说明 SDK 的运动接口依赖 `set_ready()` 或回调注册带来的内部任务状态；仍建议厂家增强未初始化状态下的错误处理，避免段错误。
+
+如果完整初始化后仍然崩溃，则更能确认问题位于当前 C++ SDK / 控制器固件组合的 `move_joint()` 路径。
+
 ## 希望厂家协助确认的问题
 
 请协助确认当前 C++ SDK 版本是否兼容 `A3_DM_C` 控制器固件，以及 `CArmSingleCol::move_joint(target, -1, false)` 是否存在已知崩溃路径。相同控制器状态下，等价 WebSocket `TASK_MOVJ` 命令可以成功执行。

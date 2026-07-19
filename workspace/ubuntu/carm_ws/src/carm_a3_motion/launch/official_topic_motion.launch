@@ -2,6 +2,8 @@
   <arg name="robot_host" default="192.168.31.60" />
   <arg name="robot_port" default="8090" />
   <arg name="auto_ready" default="false" />
+  <arg name="register_callbacks" default="false" />
+  <arg name="pre_ready_delay_s" default="1.0" />
   <arg name="allow_move_joint" default="false" />
 
   <node
@@ -14,6 +16,8 @@
     <param name="robot_host" value="$(arg robot_host)" />
     <param name="robot_port" type="int" value="$(arg robot_port)" />
     <param name="auto_ready" type="bool" value="$(arg auto_ready)" />
+    <param name="register_callbacks" type="bool" value="$(arg register_callbacks)" />
+    <param name="pre_ready_delay_s" type="double" value="$(arg pre_ready_delay_s)" />
     <param name="allow_move_joint" type="bool" value="$(arg allow_move_joint)" />
   </node>
 </launch>

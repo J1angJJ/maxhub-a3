@@ -1,7 +1,10 @@
+#include <array>
+#include <functional>
 #include <memory>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #include <ros/ros.h>
 #include <sensor_msgs/JointState.h>
@@ -35,6 +38,8 @@ public:
         pnh_.param<int>("robot_port", robot_port_, 8090);
         pnh_.param<double>("connect_timeout_s", connect_timeout_s_, 1.0);
         pnh_.param<bool>("auto_ready", auto_ready_, false);
+        pnh_.param<bool>("register_callbacks", register_callbacks_, false);
+        pnh_.param<double>("pre_ready_delay_s", pre_ready_delay_s_, 1.0);
         pnh_.param<bool>("allow_move_joint", allow_move_joint_, false);
 
         arm_.reset(new carm::CArmSingleCol(robot_host_, robot_port_, connect_timeout_s_));
@@ -43,11 +48,22 @@ public:
             ROS_INFO("official_topic_motion connect ret=%d", ret);
         }
 
+        if (pre_ready_delay_s_ > 0.0) {
+            ROS_INFO("official_topic_motion sleeping %.3f s before optional set_ready", pre_ready_delay_s_);
+            ros::Duration(pre_ready_delay_s_).sleep();
+        }
+
         if (auto_ready_) {
             const int ret = arm_->set_ready();
             ROS_WARN("official_topic_motion auto set_ready ret=%d", ret);
         } else {
             ROS_WARN("official_topic_motion auto_ready=false; not calling set_ready()");
+        }
+
+        if (register_callbacks_) {
+            registerOfficialCallbacks();
+        } else {
+            ROS_WARN("official_topic_motion register_callbacks=false; not registering SDK callbacks");
         }
 
         status_srv_ = nh_.advertiseService("/carm_a3/official_motion/status",
@@ -73,11 +89,40 @@ public:
 
     ~OfficialTopicMotionNode() {
         if (arm_ && arm_->is_connected()) {
+            if (register_callbacks_) {
+                arm_->release_joint_cbk();
+                arm_->release_pose_cbk();
+                arm_->release_error_cbk("official_error");
+                arm_->release_completion_cbk("official_completion");
+            }
             arm_->disconnect();
         }
     }
 
 private:
+    void registerOfficialCallbacks() {
+        arm_->register_joint_cbk(std::bind(&OfficialTopicMotionNode::handleJointCallback,
+                                           this,
+                                           std::placeholders::_1,
+                                           std::placeholders::_2,
+                                           std::placeholders::_3,
+                                           std::placeholders::_4));
+        arm_->register_pose_cbk(std::bind(&OfficialTopicMotionNode::handlePoseCallback,
+                                          this,
+                                          std::placeholders::_1,
+                                          std::placeholders::_2));
+        arm_->register_error_cbk("official_error",
+                                 std::bind(&OfficialTopicMotionNode::handleErrorCallback,
+                                           this,
+                                           std::placeholders::_1,
+                                           std::placeholders::_2));
+        arm_->register_completion_cbk("official_completion",
+                                      std::bind(&OfficialTopicMotionNode::handleCompletionCallback,
+                                                this,
+                                                std::placeholders::_1));
+        ROS_WARN("official_topic_motion registered SDK joint/pose/error/completion callbacks");
+    }
+
     bool handleStatus(std_srvs::Trigger::Request&, std_srvs::Trigger::Response& res) {
         if (!arm_ || !arm_->is_connected()) {
             res.success = false;
@@ -127,6 +172,29 @@ private:
         ROS_WARN("official_topic_motion move_joint ret=%d", ret);
     }
 
+    void handleJointCallback(double stamp,
+                             std::vector<double> positions,
+                             std::vector<double>,
+                             std::vector<double>) {
+        last_joint_stamp_ = stamp;
+        last_joint_count_ = positions.size();
+    }
+
+    void handlePoseCallback(double stamp, std::array<double, 7>) {
+        last_pose_stamp_ = stamp;
+    }
+
+    void handleErrorCallback(int code, const std::string message) {
+        ROS_ERROR("official_topic_motion SDK error callback code=%d message=%s",
+                  code,
+                  message.c_str());
+    }
+
+    void handleCompletionCallback(const std::string task_key) {
+        ROS_WARN("official_topic_motion SDK completion callback task_key=%s",
+                 task_key.c_str());
+    }
+
     ros::NodeHandle nh_;
     ros::NodeHandle pnh_;
     std::unique_ptr<carm::CArmSingleCol> arm_;
@@ -140,7 +208,12 @@ private:
     int robot_port_ = 8090;
     double connect_timeout_s_ = 1.0;
     bool auto_ready_ = false;
+    bool register_callbacks_ = false;
+    double pre_ready_delay_s_ = 1.0;
     bool allow_move_joint_ = false;
+    double last_joint_stamp_ = 0.0;
+    double last_pose_stamp_ = 0.0;
+    size_t last_joint_count_ = 0;
 };
 
 int main(int argc, char** argv) {

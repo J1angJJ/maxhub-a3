@@ -205,6 +205,16 @@ source devel/setup.bash
 
 可反馈售后的简述：Ubuntu 20.04 / ROS Noetic / A3_DM_C，C++ SDK `CArmSingleCol::move_joint(target, -1, false)` 段错误；`get_status()`、`get_joint_pos()` 正常；同一状态下 WebSocket `webRecieveTasks` `TASK_MOVJ` 成功。
 
+注意：当前 gdb 复现最初未执行完整厂家初始化流程。后续已给 `official_topic_motion_node` 增加 `auto_ready`、`register_callbacks` 和 `pre_ready_delay_s` 参数，可用以下方式复测更接近厂家 ROS1 节点的流程：
+
+```bash
+roslaunch carm_a3_motion official_topic_motion.launch \
+  allow_move_joint:=true \
+  auto_ready:=true \
+  register_callbacks:=true \
+  pre_ready_delay_s:=1.0
+```
+
 售后报告草稿见：
 
 ```text

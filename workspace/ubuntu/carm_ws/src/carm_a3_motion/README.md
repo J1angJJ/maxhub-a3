@@ -150,6 +150,18 @@ What looks more like an upstream SDK issue:
 
 This is good evidence to send to vendor support: C++ SDK state APIs are usable, C++ SDK real-motion `move_joint()` segfaults, while WebSocket `TASK_MOVJ` works on the same controller state.
 
+The first crash reproduction did not run the complete vendor ROS1 initialization flow. To test that path:
+
+```bash
+roslaunch carm_a3_motion official_topic_motion.launch \
+  allow_move_joint:=true \
+  auto_ready:=true \
+  register_callbacks:=true \
+  pre_ready_delay_s:=1.0
+```
+
+This calls `set_ready()` after a short delay and registers joint, pose, error, and completion callbacks before accepting `move_joint`.
+
 Vendor-facing report draft:
 
 ```text
