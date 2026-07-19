@@ -321,6 +321,21 @@ roslaunch carm_a3_tasks pregrasp_overview.launch
 /carm_a3/perception/color_blocks/debug_image
 ```
 
+注意：该观测 launch 默认不启动 `carm_a3_motion`，避免和真实运动 gate 同名冲突。需要执行运动时，只保留一个真实 motion 节点：
+
+```bash
+cd /home/noetic/maxhub-a3
+source /opt/ros/noetic/setup.bash
+source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash
+source workspace/ubuntu/carm_ws/devel/setup.bash
+roslaunch carm_a3_motion safe_motion.launch \
+  allow_motion:=true \
+  dry_run:=false \
+  auto_ready_on_connect:=true \
+  register_callbacks_on_connect:=true \
+  pre_ready_delay_s:=1.0
+```
+
 当前假设：
 
 - `base_link` 原点位于桌面正方形近边中点。

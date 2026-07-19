@@ -17,13 +17,24 @@ Assumption:
 
 ## Start Overview Camera Stack
 
-This launch starts the read-only robot state, robot model TF, camera, hand-eye TF, color block segmentation, and an `image_view` window:
+This launch starts the robot model TF, camera, hand-eye TF, color block segmentation, and an `image_view` window. It does not start the motion SDK node by default, so it will not collide with the real motion gate:
 
 ```bash
 roslaunch carm_a3_tasks pregrasp_overview.launch
 ```
 
 Keep this running while planning or executing the pre-grasp pose.
+
+Start exactly one motion SDK node in another terminal when you need planning services or execution:
+
+```bash
+roslaunch carm_a3_motion safe_motion.launch \
+  allow_motion:=true \
+  dry_run:=false \
+  auto_ready_on_connect:=true \
+  register_callbacks_on_connect:=true \
+  pre_ready_delay_s:=1.0
+```
 
 To only print the FOV-derived target without calling IK:
 
@@ -54,7 +65,7 @@ The script calls:
 - `/carm_a3/motion/solve_ik`
 - `/carm_a3/motion/move_joint` only with `execute`
 
-The older one-shot launch also starts the camera stack and image window by default, then runs the selected command:
+The older one-shot launch also starts the camera stack and image window by default, then runs the selected command. It also leaves motion disabled unless `launch_motion:=true` is passed explicitly:
 
 ```bash
 roslaunch carm_a3_tasks grasp_init.launch command:=plan
