@@ -549,6 +549,8 @@ source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash
 echo "$LD_LIBRARY_PATH" | tr ':' '\n' | grep arm_control_sdk
 ```
 
+如果启动时看到 `libtcp_com.so: cannot open shared object file`，说明当前终端没有加载厂家 SDK 运行时库路径。当前 `readonly_state.launch` 已内置 vendor SDK 的 `LD_LIBRARY_PATH`；拉取更新并重新编译后可直接启动。临时处理仍可手动执行上面的 `source .../setup.bash`。
+
 ### 5. Inspect Topics
 
 终端 3：
