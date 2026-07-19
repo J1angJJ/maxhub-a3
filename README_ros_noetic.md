@@ -328,6 +328,7 @@ roslaunch carm_a3_tasks pregrasp_overview.launch
 - 相机内参来自 `carm_a3_vision/config/camera_info.yaml`。
 - 眼在手上外参来自 `carm_a3_calibration/config/handeye_flange_camera.yaml`。
 - FOV 求解会以桌面中心为相机光轴目标，给 `60 x 60 cm` 区域加 `coverage_margin_m` 余量，再把相机目标位姿换算成 `flange` 目标位姿。
+- 如果理想正俯视位姿 IK 无解，`plan` 会自动搜索附近的相机中心和倾斜看向桌面中心的候选位姿，选择一个 IK 可达且覆盖尽量好的结果。
 
 只打印 FOV 求解出的法兰目标，不调用 IK：
 
@@ -369,6 +370,8 @@ roslaunch carm_a3_tasks grasp_init.launch command:=plan
 如果桌面不在画面中心，先调整 `workspace/ubuntu/carm_ws/src/carm_a3_tasks/config/grasp_init.yaml` 中的 `workspace/table_region_m`、`overview/coverage_margin_m`、`overview/max_camera_height_m` 或临时关闭 `overview/use_fov_solver` 后手动改 `overview/target_xyz_m` 和 `overview/target_quat_xyzw`。
 
 注意：如果日志提示所需相机高度超过 `max_camera_height_m`，说明几何上无法在当前高度限制内完整覆盖桌面加余量；此时脚本会裁剪到最大高度，但实际画面可能只覆盖部分区域。
+
+你当前实测的理想俯视解为相机中心 `[0.30, 0.00, 0.65]`，理论覆盖约 `0.72 x 0.96 m`，但该法兰姿态 IK 返回无解。这更像是腕部姿态/工作空间约束，而不是相机链路错误。更新后的 `plan` 会在这个情况发生时自动进入可达候选搜索。
 
 也可以用 CLI：
 

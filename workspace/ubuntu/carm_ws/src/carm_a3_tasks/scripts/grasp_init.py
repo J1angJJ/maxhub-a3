@@ -102,6 +102,17 @@ def vec_sub(a_values, b_values):
     return [a - b for a, b in zip(a_values, b_values)]
 
 
+def vec_norm(values):
+    return math.sqrt(sum(value * value for value in values))
+
+
+def normalize_vec(values):
+    norm = vec_norm(values)
+    if norm <= 1e-9:
+        raise ValueError("cannot normalize near-zero vector")
+    return np.asarray([value / norm for value in values], dtype=float)
+
+
 def load_camera_model():
     path = get_param(
         "camera_check/camera_info_yaml",
@@ -166,6 +177,46 @@ def camera_down_rotation():
     ]
 
 
+def table_center(region, table_z):
+    return [
+        (region["x_min"] + region["x_max"]) * 0.5,
+        (region["y_min"] + region["y_max"]) * 0.5,
+        table_z,
+    ]
+
+
+def look_at_camera_rotation(camera_center, target_point, right_hint):
+    # Camera optical +Z points to target. Camera +X is image right; +Y is image down.
+    z_cam = normalize_vec([target_point[i] - camera_center[i] for i in range(3)])
+    right = np.asarray(right_hint, dtype=float)
+    right = right - z_cam * float(np.dot(right, z_cam))
+    if vec_norm(right) <= 1e-6:
+        right = np.asarray([0.0, -1.0, 0.0], dtype=float)
+        right = right - z_cam * float(np.dot(right, z_cam))
+    x_cam = normalize_vec(right)
+    y_cam = normalize_vec(np.cross(z_cam, x_cam))
+    return np.column_stack((x_cam, y_cam, z_cam))
+
+
+def footprint_coverage(camera, camera_height):
+    covered_y = 2.0 * camera_height * math.tan(camera["hfov"] / 2.0)
+    covered_x = 2.0 * camera_height * math.tan(camera["vfov"] / 2.0)
+    return covered_x, covered_y
+
+
+def required_coverage(region, margin):
+    table_x = region["x_max"] - region["x_min"]
+    table_y = region["y_max"] - region["y_min"]
+    return table_x + 2.0 * margin, table_y + 2.0 * margin
+
+
+def pose_from_camera_target(camera_center, base_r_camera, flange_t_camera, flange_r_camera):
+    base_r_flange = mat_mul(base_r_camera, mat_transpose(flange_r_camera))
+    base_t_flange = vec_sub(camera_center, mat_vec_mul(base_r_flange, flange_t_camera))
+    quat = matrix_to_quat_xyzw(base_r_flange)
+    return base_t_flange + quat
+
+
 def solve_fov_overview_pose():
     camera = load_camera_model()
     flange_t_camera, flange_r_camera = load_handeye()
@@ -175,10 +226,7 @@ def solve_fov_overview_pose():
     min_height = float(get_param("overview/min_camera_height_m", 0.25))
     max_height = float(get_param("overview/max_camera_height_m", 0.65))
 
-    table_x = region["x_max"] - region["x_min"]
-    table_y = region["y_max"] - region["y_min"]
-    need_x = table_x + 2.0 * margin
-    need_y = table_y + 2.0 * margin
+    need_x, need_y = required_coverage(region, margin)
 
     # With the chosen camera-down yaw, image horizontal spans table Y and image vertical spans table X.
     height_for_y = need_y / (2.0 * math.tan(camera["hfov"] / 2.0))
@@ -193,21 +241,15 @@ def solve_fov_overview_pose():
         )
         camera_height = max_height
 
-    camera_center = [
-        (region["x_min"] + region["x_max"]) * 0.5,
-        (region["y_min"] + region["y_max"]) * 0.5,
-        table_z + camera_height,
-    ]
+    center = table_center(region, table_z)
+    camera_center = [center[0], center[1], table_z + camera_height]
 
     base_r_camera = camera_down_rotation()
-    base_r_flange = mat_mul(base_r_camera, mat_transpose(flange_r_camera))
-    base_t_flange = vec_sub(camera_center, mat_vec_mul(base_r_flange, flange_t_camera))
-    quat = matrix_to_quat_xyzw(base_r_flange)
+    pose = pose_from_camera_target(camera_center, base_r_camera, flange_t_camera, flange_r_camera)
 
-    covered_y = 2.0 * camera_height * math.tan(camera["hfov"] / 2.0)
-    covered_x = 2.0 * camera_height * math.tan(camera["vfov"] / 2.0)
+    covered_x, covered_y = footprint_coverage(camera, camera_height)
     return {
-        "pose": base_t_flange + quat,
+        "pose": pose,
         "camera_center": camera_center,
         "camera_height": camera_height,
         "hfov_deg": math.degrees(camera["hfov"]),
@@ -217,6 +259,104 @@ def solve_fov_overview_pose():
         "required_x_m": need_x,
         "required_y_m": need_y,
     }
+
+
+def fov_search_candidates():
+    camera = load_camera_model()
+    flange_t_camera, flange_r_camera = load_handeye()
+    region = table_region()
+    table_z = float(get_param("workspace/table_z_m", 0.0))
+    margin = float(get_param("overview/coverage_margin_m", 0.08))
+    min_height = float(get_param("overview/min_camera_height_m", 0.25))
+    max_height = float(get_param("overview/max_camera_height_m", 0.65))
+    height_step = float(get_param("overview/search_height_step_m", 0.05))
+    x_offsets = get_param("overview/search_x_offsets_m", [0.0, -0.05, -0.10, -0.15, 0.05])
+    y_offsets = get_param("overview/search_y_offsets_m", [0.0, -0.05, 0.05])
+    right_hints = [
+        [0.0, -1.0, 0.0],
+        [0.0, 1.0, 0.0],
+    ]
+
+    if height_step <= 0.0:
+        raise ValueError("overview/search_height_step_m must be > 0")
+
+    need_x, need_y = required_coverage(region, margin)
+    center = table_center(region, table_z)
+    height_count = int(math.floor((max_height - min_height) / height_step)) + 1
+    heights = [max_height - i * height_step for i in range(max(1, height_count))]
+    if min_height not in heights:
+        heights.append(min_height)
+
+    candidates = []
+    for height in heights:
+        height = max(min_height, min(max_height, height))
+        covered_x, covered_y = footprint_coverage(camera, height)
+        coverage_ratio = min(covered_x / need_x, covered_y / need_y)
+        for x_offset in x_offsets:
+            for y_offset in y_offsets:
+                camera_center = [
+                    center[0] + float(x_offset),
+                    center[1] + float(y_offset),
+                    table_z + height,
+                ]
+                for right_hint in right_hints:
+                    base_r_camera = look_at_camera_rotation(camera_center, center, right_hint)
+                    pose = pose_from_camera_target(
+                        camera_center,
+                        base_r_camera,
+                        flange_t_camera,
+                        flange_r_camera,
+                    )
+                    candidates.append({
+                        "pose": pose,
+                        "camera_center": camera_center,
+                        "camera_height": height,
+                        "covered_x_m": covered_x,
+                        "covered_y_m": covered_y,
+                        "required_x_m": need_x,
+                        "required_y_m": need_y,
+                        "coverage_ratio": coverage_ratio,
+                    })
+    return candidates
+
+
+def choose_reachable_fov_pose(ik_proxy, tool_index, seed):
+    best = None
+    best_score = None
+    attempts = 0
+    for candidate in fov_search_candidates():
+        attempts += 1
+        ik_res = ik_proxy(tool_index, candidate["pose"], seed)
+        if not ik_res.success:
+            continue
+        joint_delta = max_abs_delta(seed, ik_res.positions)
+        coverage_penalty = max(0.0, 1.0 - candidate["coverage_ratio"]) * 10.0
+        score = joint_delta + coverage_penalty + candidate["camera_height"] * 0.05
+        if best is None or score < best_score:
+            best = (candidate, ik_res, joint_delta)
+            best_score = score
+
+    print("fov reachable search attempts: {}".format(attempts))
+    if best is None:
+        return None, None, None
+    candidate, ik_res, joint_delta = best
+    print(
+        "selected fov candidate: camera_center={}, height={:.6g}, coverage_ratio={:.3f}, joint_delta={:.6g}".format(
+            vector_to_text(candidate["camera_center"]),
+            candidate["camera_height"],
+            candidate["coverage_ratio"],
+            joint_delta,
+        )
+    )
+    print(
+        "selected coverage: x={:.6g}/{:.6g} m, y={:.6g}/{:.6g} m".format(
+            candidate["covered_x_m"],
+            candidate["required_x_m"],
+            candidate["covered_y_m"],
+            candidate["required_y_m"],
+        )
+    )
+    return candidate["pose"], ik_res, joint_delta
 
 
 def load_overview_pose(current_pose):
@@ -285,6 +425,11 @@ def plan_overview():
     if not joint_res.success:
         return None, 1
 
+    tool_index = int(get_param("overview/tool_index", 0))
+    seed = list(joint_res.positions)
+    use_fov_solver = bool(get_param("overview/use_fov_solver", True))
+    search_reachable = bool(get_param("overview/search_reachable", True))
+
     target_pose = load_overview_pose(list(cart_res.pose))
     print("overview target pose x,y,z,qx,qy,qz,qw:")
     print(vector_to_text(target_pose))
@@ -292,15 +437,23 @@ def plan_overview():
     for warning in validate_workspace_target(target_pose):
         print("warning: {}".format(warning), file=sys.stderr)
 
-    tool_index = int(get_param("overview/tool_index", 0))
-    seed = list(joint_res.positions)
     ik_res = ik_proxy(tool_index, target_pose, seed)
     print("ik result:")
     print(ik_res)
     if not ik_res.success:
-        return None, 1
+        if not (use_fov_solver and search_reachable):
+            return None, 1
+        print("primary fov pose is not reachable; searching reachable FOV candidates")
+        target_pose, ik_res, joint_delta = choose_reachable_fov_pose(ik_proxy, tool_index, seed)
+        if ik_res is None:
+            return None, 1
+        print("reachable overview target pose x,y,z,qx,qy,qz,qw:")
+        print(vector_to_text(target_pose))
+        print("reachable ik result:")
+        print(ik_res)
+    else:
+        joint_delta = max_abs_delta(seed, ik_res.positions)
 
-    joint_delta = max_abs_delta(seed, ik_res.positions)
     print("max_joint_delta: {:.9g}".format(joint_delta))
 
     return {

@@ -17,6 +17,10 @@ overview:
   coverage_margin_m: 0.08
   min_camera_height_m: 0.25
   max_camera_height_m: 0.65
+  search_reachable: true
+  search_height_step_m: 0.05
+  search_x_offsets_m: [0.0, -0.05, -0.10, -0.15, 0.05]
+  search_y_offsets_m: [0.0, -0.05, 0.05]
   tool_index: 0
   max_joint_delta_rad: 0.35
   segment_delta_rad: 0.10

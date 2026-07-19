@@ -13,6 +13,7 @@ Assumption:
 - Camera intrinsics are loaded from `carm_a3_vision/config/camera_info.yaml`.
 - Hand-eye is loaded from `carm_a3_calibration/config/handeye_flange_camera.yaml`.
 - FOV mode adds `coverage_margin_m` around the table, computes the needed camera height, then converts the camera pose to a flange target.
+- If the ideal straight-down FOV pose has no IK solution, `plan` can search nearby camera centers and tilted look-at poses, then choose a reachable candidate.
 
 ## Start Overview Camera Stack
 
@@ -60,3 +61,10 @@ roslaunch carm_a3_tasks grasp_init.launch command:=plan
 ```
 
 If the table is not centered in view, tune `config/grasp_init.yaml` before using this as the grasp workflow's fixed start pose. If the log says the required camera height exceeds `max_camera_height_m`, the requested FOV coverage is geometrically larger than the configured height allows; reduce margin, accept partial coverage, or choose a different viewing orientation.
+
+Useful search parameters:
+
+- `overview/search_reachable`: enable IK-backed fallback search.
+- `overview/search_height_step_m`: vertical scan step.
+- `overview/search_x_offsets_m`: camera center offsets along table X.
+- `overview/search_y_offsets_m`: camera center offsets along table Y.
