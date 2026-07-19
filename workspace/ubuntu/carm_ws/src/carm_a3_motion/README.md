@@ -118,3 +118,50 @@ effort: []"
 ```
 
 If this node also crashes immediately after `official_topic_motion calling move_joint(position, -1, false)`, the failure is very likely inside the C++ SDK real-motion call path on this controller/firmware, not in the ROS service wrapper.
+
+## Python WebSocket Motion Test
+
+If both C++ motion nodes crash inside `move_joint()`, use the pure Python WebSocket path. This node loads the vendor `carm.py` file directly and sends the same `TASK_MOVJ` command that the web/ Python SDK uses, avoiding the C++ `move_joint()` shared-library path.
+
+Install dependency if needed:
+
+```bash
+pip3 install --user websocket-client
+```
+
+Build after pulling this package:
+
+```bash
+cd /home/noetic/maxhub-a3
+source /opt/ros/noetic/setup.bash
+cd workspace/ubuntu/carm_ws
+catkin_make
+source devel/setup.bash
+```
+
+Start with the motion gate closed:
+
+```bash
+roslaunch carm_a3_motion py_ws_motion.launch
+rosservice call /carm_a3/py_motion/status
+```
+
+Dry-run the WebSocket target construction:
+
+```bash
+roslaunch carm_a3_motion py_ws_motion.launch allow_motion:=true dry_run:=true
+rosservice call /carm_a3/py_motion/jog_joint "{joint_index: 1, delta_rad: 0.005, duration_s: 2.0}"
+```
+
+Real tiny jog:
+
+```bash
+roslaunch carm_a3_motion py_ws_motion.launch allow_motion:=true dry_run:=false
+rosservice call /carm_a3/py_motion/jog_joint "{joint_index: 1, delta_rad: 0.005, duration_s: 2.0}"
+```
+
+If `use_sdk_clip:=true` fails before sending, try the raw JSON path:
+
+```bash
+roslaunch carm_a3_motion py_ws_motion.launch allow_motion:=true dry_run:=false use_sdk_clip:=false
+```

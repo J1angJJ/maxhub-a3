@@ -5,6 +5,7 @@ add_compile_options(-std=c++14)
 
 find_package(catkin REQUIRED COMPONENTS
   message_generation
+  rospy
   roscpp
   sensor_msgs
   std_msgs
@@ -39,7 +40,7 @@ set(ARM_CONTROL_SDK_LIB_DIR "${arm_control_sdk_ROOT_DIR}/lib")
 set(ARM_CONTROL_SDK_POCO_LIB_DIR "${arm_control_sdk_ROOT_DIR}/poco/lib")
 
 catkin_package(
-  CATKIN_DEPENDS message_runtime roscpp sensor_msgs std_msgs std_srvs
+  CATKIN_DEPENDS message_runtime rospy roscpp sensor_msgs std_msgs std_srvs
 )
 
 include_directories(
@@ -89,4 +90,9 @@ set_target_properties(safe_motion_node PROPERTIES
 set_target_properties(official_topic_motion_node PROPERTIES
   BUILD_RPATH "${ARM_CONTROL_SDK_LIB_DIR};${ARM_CONTROL_SDK_POCO_LIB_DIR}"
   INSTALL_RPATH "${ARM_CONTROL_SDK_LIB_DIR};${ARM_CONTROL_SDK_POCO_LIB_DIR}"
+)
+
+catkin_install_python(PROGRAMS
+  scripts/py_ws_motion_node.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

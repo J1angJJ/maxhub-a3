@@ -1,0 +1,18 @@
+<launch>
+  <arg name="robot_host" default="192.168.31.60" />
+  <arg name="allow_motion" default="false" />
+  <arg name="dry_run" default="true" />
+  <arg name="use_sdk_clip" default="true" />
+
+  <node
+    name="carm_a3_py_ws_motion"
+    pkg="carm_a3_motion"
+    type="py_ws_motion_node.py"
+    output="screen"
+    required="true">
+    <param name="robot_host" value="$(arg robot_host)" />
+    <param name="allow_motion" type="bool" value="$(arg allow_motion)" />
+    <param name="dry_run" type="bool" value="$(arg dry_run)" />
+    <param name="use_sdk_clip" type="bool" value="$(arg use_sdk_clip)" />
+  </node>
+</launch>

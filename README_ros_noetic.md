@@ -270,6 +270,53 @@ effort: []"
 
 若该节点也在 `official_topic_motion calling move_joint(position, -1, false)` 后退出，优先判断为 C++ SDK 真实运动接口在当前控制器/固件上崩溃；下一步应改走官方 Python/WebSocket 轻量接口或厂家原始 demo 二进制做对照。
 
+### Python WebSocket Motion Test
+
+当 C++ SDK 的真实 `move_joint()` 确认会段错误时，改用厂家纯 Python/WebSocket 轻量接口做对照。该节点直接加载 vendored SDK 里的 `carm.py`，发送 `TASK_MOVJ`，不导入 `carm_py` C++ 扩展。
+
+如系统 Python 缺依赖，先安装：
+
+```bash
+pip3 install --user websocket-client
+```
+
+编译：
+
+```bash
+cd /home/noetic/maxhub-a3
+source /opt/ros/noetic/setup.bash
+cd workspace/ubuntu/carm_ws
+catkin_make
+source devel/setup.bash
+```
+
+先查状态：
+
+```bash
+roslaunch carm_a3_motion py_ws_motion.launch
+rosservice call /carm_a3/py_motion/status
+```
+
+dry-run：
+
+```bash
+roslaunch carm_a3_motion py_ws_motion.launch allow_motion:=true dry_run:=true
+rosservice call /carm_a3/py_motion/jog_joint "{joint_index: 1, delta_rad: 0.005, duration_s: 2.0}"
+```
+
+真动极小步：
+
+```bash
+roslaunch carm_a3_motion py_ws_motion.launch allow_motion:=true dry_run:=false
+rosservice call /carm_a3/py_motion/jog_joint "{joint_index: 1, delta_rad: 0.005, duration_s: 2.0}"
+```
+
+如果 `use_sdk_clip:=true` 路径出错，再试绕过厂家 Python SDK 的关节裁剪函数，直接发原始 JSON：
+
+```bash
+roslaunch carm_a3_motion py_ws_motion.launch allow_motion:=true dry_run:=false use_sdk_clip:=false
+```
+
 ## Run USB Camera Node
 
 原装相机已通过 `guvcview` 验证 USB 透传和 30 fps 预览。当前物理安装方向导致画面上下颠倒，`carm_a3_vision` 默认启用 `rotate_180: true` 做软件校正。
