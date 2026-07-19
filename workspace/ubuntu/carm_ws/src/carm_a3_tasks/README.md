@@ -30,6 +30,7 @@ Start exactly one motion SDK node in another terminal when you need planning ser
 ```bash
 roslaunch carm_a3_motion safe_motion.launch \
   allow_motion:=true \
+  allow_gripper:=true \
   dry_run:=false \
   auto_ready_on_connect:=true \
   register_callbacks_on_connect:=true \
@@ -58,6 +59,8 @@ rosrun carm_a3_tasks grasp_init.py execute
 
 Execution checks the total joint distance with `max_total_joint_delta_rad`, then splits the final joint target into small waypoints using `segment_delta_rad`, so each step still goes through the motion service's joint-delta and verification checks.
 
+`execute` closes the gripper to `gripper/overview_pos_m` before moving to reduce camera occlusion. Disable with `gripper/close_before_overview: false` if needed.
+
 The script calls:
 
 - `/carm_a3/motion/get_cartesian_snapshot`
@@ -81,6 +84,9 @@ Useful search parameters:
 - `overview/search_y_offsets_m`: camera center offsets along table Y.
 - `overview/max_total_joint_delta_rad`: maximum full initialization joint distance.
 - `overview/segment_delta_rad`: maximum interpolation step size before each `move_joint` service call.
+- `gripper/close_before_overview`: close the gripper before moving to the overview pose.
+- `gripper/overview_pos_m`: gripper gap used for overview.
+- `gripper/overview_tau_n`: conservative gripping force used for overview.
 
 ## Color Block Grasp Draft
 

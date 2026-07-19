@@ -32,3 +32,8 @@ camera_check:
   handeye_yaml: "$(find carm_a3_calibration)/config/handeye_flange_camera.yaml"
   color_blocks_topic: "/carm_a3/perception/color_blocks"
   debug_image_topic: "/carm_a3/perception/color_blocks/debug_image"
+
+gripper:
+  close_before_overview: true
+  overview_pos_m: 0.03
+  overview_tau_n: 5.0

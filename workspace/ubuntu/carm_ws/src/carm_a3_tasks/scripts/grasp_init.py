@@ -12,6 +12,7 @@ from tf.transformations import quaternion_from_matrix, quaternion_matrix
 from carm_a3_motion.srv import GetCartesianSnapshot
 from carm_a3_motion.srv import GetJointSnapshot
 from carm_a3_motion.srv import MoveJoint
+from carm_a3_motion.srv import SetGripper
 from carm_a3_motion.srv import SolveIK
 
 
@@ -475,6 +476,23 @@ def print_fov_only():
         print("{}: {:.9g}".format(key, solution[key]))
 
 
+def prepare_gripper_for_overview():
+    if not bool(get_param("gripper/close_before_overview", True)):
+        return
+    pos = float(get_param("gripper/overview_pos_m", 0.03))
+    tau = float(get_param("gripper/overview_tau_n", 5.0))
+    proxy = service_proxy("/carm_a3/motion/set_gripper", SetGripper)
+    print("closing gripper for overview: pos={:.6g}, tau={:.6g}".format(pos, tau))
+    res = proxy(pos, tau)
+    print(res)
+    if not res.success:
+        raise RuntimeError(
+            "overview gripper close failed; start safe_motion.launch with allow_gripper:=true or set gripper/close_before_overview:=false: {}".format(
+                res.message
+            )
+        )
+
+
 def main():
     parser = argparse.ArgumentParser(description="Plan or execute the CArm A3 pre-grasp overview pose")
     parser.add_argument("command", choices=["fov", "plan", "execute"])
@@ -518,6 +536,7 @@ def main():
             print("not executing; rerun with 'execute' after checking the plan and camera clearance")
             return 0
 
+        prepare_gripper_for_overview()
         move_proxy = service_proxy("/carm_a3/motion/move_joint", MoveJoint)
         duration = args.duration_s
         if duration is None:
