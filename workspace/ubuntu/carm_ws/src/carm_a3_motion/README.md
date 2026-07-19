@@ -133,11 +133,20 @@ Initial FK/IK notes:
 - Keep the project IK convention as meters with pose order `x,y,z,qx,qy,qz,qw`.
 - `wxyz` payload order fails, and millimeter-scaled positions fail.
 - `ik-offset dx dy dz` solves a small Cartesian offset from the current pose without moving the arm.
+- `ik-offset --execute` calls `/carm_a3/motion/move_joint` after checking the IK solution's max joint delta. The service still applies its own motion safety limits and post-motion verification.
 
 ```bash
 rosrun carm_a3_motion motion_cli.py ik-probe --include-mm
 rosrun carm_a3_motion motion_cli.py ik-offset 0.01 0 0
+rosrun carm_a3_motion motion_cli.py ik-offset 0 0 0.01
+rosrun carm_a3_motion motion_cli.py ik-offset 0 0 0.01 --execute --max-joint-delta 0.05
 ```
+
+Current near-zero pose offset notes:
+
+- `+0.01 m` in `x` failed IK.
+- `+0.01 m` in `y` failed IK.
+- `+0.01 m` in `z` succeeded with max joint delta about `0.029 rad`.
 
 Emergency stop service:
 

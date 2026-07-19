@@ -15,6 +15,10 @@ from carm_a3_motion.srv import SolveIK
 DEFAULT_TIMEOUT_S = 3.0
 
 
+def vector_to_text(values):
+    return ",".join("{:.9g}".format(value) for value in values)
+
+
 def parse_float_list(text, expected=None):
     values = [float(part.strip()) for part in text.split(",") if part.strip()]
     if expected is not None and len(values) != expected:
@@ -22,6 +26,10 @@ def parse_float_list(text, expected=None):
             "expected {} comma-separated values, got {}".format(expected, len(values))
         )
     return values
+
+
+def max_abs_delta(a_values, b_values):
+    return max(abs(a - b) for a, b in zip(a_values, b_values))
 
 
 def parse_int_list(text):
@@ -141,6 +149,9 @@ def call_ik_offset(args):
     cart_proxy = service_proxy("/carm_a3/motion/get_cartesian_snapshot", GetCartesianSnapshot)
     snapshot_proxy = service_proxy("/carm_a3/motion/get_joint_snapshot", GetJointSnapshot)
     ik_proxy = service_proxy("/carm_a3/motion/solve_ik", SolveIK)
+    move_proxy = None
+    if args.execute:
+        move_proxy = service_proxy("/carm_a3/motion/move_joint", MoveJoint)
 
     cart_res = cart_proxy()
     print(cart_res)
@@ -164,7 +175,28 @@ def call_ik_offset(args):
     print("target_pose: {}".format(target_pose))
     ik_res = ik_proxy(args.tool_index, target_pose, seed)
     print(ik_res)
-    return 0 if ik_res.success else 1
+    if not ik_res.success:
+        return 1
+
+    joint_delta = max_abs_delta(seed, ik_res.positions)
+    print("max_joint_delta: {:.9g}".format(joint_delta))
+    if joint_delta > args.max_joint_delta:
+        print(
+            "blocked: max_joint_delta {:.9g} exceeds limit {:.9g}".format(
+                joint_delta, args.max_joint_delta
+            ),
+            file=sys.stderr,
+        )
+        return 1
+
+    if not args.execute:
+        print("not executing; rerun with --execute to call /carm_a3/motion/move_joint")
+        print("move target: {}".format(vector_to_text(ik_res.positions)))
+        return 0
+
+    move_res = move_proxy(ik_res.positions, args.duration_s, args.wait)
+    print(move_res)
+    return 0 if move_res.success else 1
 
 
 def call_ik_probe(args):
@@ -256,6 +288,10 @@ def main():
     ik_offset.add_argument("dz", type=float, help="z offset in meters")
     ik_offset.add_argument("--tool-index", type=int, default=0)
     ik_offset.add_argument("--seed", default="", help="optional six comma-separated seed joints")
+    ik_offset.add_argument("--max-joint-delta", type=float, default=0.05)
+    ik_offset.add_argument("--duration-s", type=float, default=2.0)
+    ik_offset.add_argument("--wait", action="store_true")
+    ik_offset.add_argument("--execute", action="store_true")
     ik_offset.set_defaults(func=call_ik_offset)
 
     ik_probe = subparsers.add_parser("ik-probe")

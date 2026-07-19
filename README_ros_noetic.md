@@ -265,9 +265,24 @@ rosrun carm_a3_motion motion_cli.py ik-probe
 
 ```bash
 rosrun carm_a3_motion motion_cli.py ik-offset 0.01 0 0
+rosrun carm_a3_motion motion_cli.py ik-offset 0 0 0.01
 ```
 
 该命令读取当前 cart pose，保持当前四元数不变，只对 `x/y/z` 增加米制偏移，然后调用 IK。确认返回 joints 合理后，再决定是否交给 `/carm_a3/motion/move_joint`。
+
+当前近零位姿实测：
+
+- `x + 0.01 m` 无解。
+- `y + 0.01 m` 无解。
+- `z + 0.01 m` 有解，最大关节变化约 `0.029 rad`。
+
+确认 `z + 0.01 m` 的返回 joints 合理后，可用显式执行参数走安全 `move_joint`：
+
+```bash
+rosrun carm_a3_motion motion_cli.py ik-offset 0 0 0.01 --execute --max-joint-delta 0.05
+```
+
+该命令仍会经过两层保护：CLI 先限制 IK 解的最大关节变化量，随后 `/carm_a3/motion/move_joint` 再执行自身的单关节 delta 限制和运动后闭环确认。
 
 IK 诊断记录见：
 

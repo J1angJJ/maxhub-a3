@@ -86,3 +86,19 @@ Small Cartesian offset solve only, no motion:
 ```bash
 rosrun carm_a3_motion motion_cli.py ik-offset 0.01 0 0
 ```
+
+## Current Offset Probe
+
+Near the current almost-zero posture, holding the current orientation fixed:
+
+- `x + 0.01 m`: `inverse_kine ret=-1`
+- `y + 0.01 m`: `inverse_kine ret=-1`
+- `z + 0.01 m`: `inverse_kine ret=1`
+
+The successful `z + 0.01 m` solution:
+
+```text
+[0.0197496, 0.0274253, -0.0290872, 0.000123611, 0.00147013, -0.000877553]
+```
+
+The largest joint delta is about `0.029 rad`, so this is a reasonable first Cartesian-IK execution candidate when routed through the safety-gated `move_joint` service.
