@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>carm_a3_tasks</name>
+  <version>0.1.0</version>
+  <description>Task-level helpers for CArm / MAXHUB A3 grasp preparation.</description>
+
+  <maintainer email="noetic@todo.invalid">noetic</maintainer>
+  <license>UNLICENSED</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>carm_a3_motion</build_depend>
+  <build_depend>rospy</build_depend>
+
+  <exec_depend>carm_a3_motion</exec_depend>
+  <exec_depend>rospy</exec_depend>
+</package>

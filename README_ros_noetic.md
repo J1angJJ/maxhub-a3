@@ -301,6 +301,49 @@ rosrun image_view image_view image:=/carm_a3/perception/color_blocks/debug_image
 
 检测话题是 JSON 字符串，包含颜色、像素中心、最小外接矩形四角点、面积、矩形角度和简单置信度。当前阶段先用于 2D 稳定检测和采集样本；后续再加 PnP、桌面平面投影或 YOLO。
 
+## Pre-grasp Overview Initialization
+
+桌面抓取任务建议先进入一个观测位：机械臂抬高，腕部相机能俯看前方 `60 x 60 cm` 桌面区域。当前假设：
+
+- `base_link` 原点位于桌面正方形近边中点。
+- 桌面区域在 `base_link` 下约为 `x: 0.0..0.60 m`、`y: -0.30..0.30 m`。
+- 初始候选观测位在区域中心上方：`[x,y,z] = [0.30, 0.0, 0.36]`。
+- 第一版默认沿用当前法兰四元数，不强行转腕；先让你用相机画面确认桌面是否居中，再微调 orientation。
+
+只规划不运动：
+
+```bash
+rosrun carm_a3_tasks grasp_init.py plan
+```
+
+真实执行前启动 motion gate：
+
+```bash
+roslaunch carm_a3_motion safe_motion.launch \
+  allow_motion:=true \
+  dry_run:=false \
+  auto_ready_on_connect:=true \
+  register_callbacks_on_connect:=true \
+  pre_ready_delay_s:=1.0
+```
+
+执行初始化：
+
+```bash
+rosrun carm_a3_tasks grasp_init.py execute --max-joint-delta 0.35
+```
+
+脚本会先调用 IK；执行时按 `segment_delta_rad` 自动拆成多段 `move_joint`，避免一次命令超过 motion service 的单步关节差值限制。
+
+到位后启动颜色块分割，观察相机画面：
+
+```bash
+roslaunch carm_a3_bringup readonly_vision_handeye.launch launch_color_blocks:=true
+rosrun image_view image_view image:=/carm_a3/perception/color_blocks/debug_image
+```
+
+如果桌面不在画面中心，先调整 `workspace/ubuntu/carm_ws/src/carm_a3_tasks/config/grasp_init.yaml` 中的 `overview/target_xyz_m` 或 `overview/target_quat_xyzw`。
+
 也可以用 CLI：
 
 ```bash

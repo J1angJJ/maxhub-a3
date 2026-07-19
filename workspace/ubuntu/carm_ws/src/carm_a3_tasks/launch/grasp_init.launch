@@ -1,0 +1,11 @@
+<launch>
+  <arg name="config" default="$(find carm_a3_tasks)/config/grasp_init.yaml" />
+
+  <node name="carm_a3_grasp_init"
+        pkg="carm_a3_tasks"
+        type="grasp_init.py"
+        output="screen"
+        args="plan">
+    <rosparam command="load" file="$(arg config)" />
+  </node>
+</launch>
