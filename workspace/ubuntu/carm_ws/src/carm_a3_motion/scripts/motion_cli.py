@@ -24,6 +24,20 @@ def parse_float_list(text, expected=None):
     return values
 
 
+def parse_int_list(text):
+    return [int(part.strip()) for part in text.split(",") if part.strip()]
+
+
+def negate_quaternion(pose):
+    values = list(pose)
+    if len(values) == 7:
+        values[3] = -values[3]
+        values[4] = -values[4]
+        values[5] = -values[5]
+        values[6] = -values[6]
+    return values
+
+
 def service_proxy(name, service_type):
     try:
         rospy.wait_for_service(name, timeout=DEFAULT_TIMEOUT_S)
@@ -81,6 +95,53 @@ def call_ik_current(args):
     return 0 if ik_res.success else 1
 
 
+def call_ik_probe(args):
+    snapshot_proxy = service_proxy("/carm_a3/motion/get_joint_snapshot", GetJointSnapshot)
+    cart_proxy = service_proxy("/carm_a3/motion/get_cartesian_snapshot", GetCartesianSnapshot)
+    fk_proxy = service_proxy("/carm_a3/motion/solve_fk", SolveFK)
+    ik_proxy = service_proxy("/carm_a3/motion/solve_ik", SolveIK)
+
+    snapshot_res = snapshot_proxy()
+    print("joint snapshot:")
+    print(snapshot_res)
+    if not snapshot_res.success:
+        return 1
+
+    cart_res = cart_proxy()
+    print("cartesian snapshot:")
+    print(cart_res)
+    if not cart_res.success:
+        return 1
+
+    seed = list(snapshot_res.positions)
+    tool_indices = parse_int_list(args.tool_indices)
+    any_success = False
+
+    for tool_index in tool_indices:
+        candidates = [
+            ("cart_pose", list(cart_res.pose)),
+            ("cart_pose_negq", negate_quaternion(cart_res.pose)),
+            ("plan_pose", list(cart_res.plan_pose)),
+            ("plan_pose_negq", negate_quaternion(cart_res.plan_pose)),
+        ]
+        fk_res = fk_proxy(tool_index, seed)
+        print("fk_current tool_index={}:".format(tool_index))
+        print(fk_res)
+        if fk_res.success:
+            candidates.append(("fk_current", list(fk_res.pose)))
+            candidates.append(("fk_current_negq", negate_quaternion(fk_res.pose)))
+
+        for name, pose in candidates:
+            ik_res = ik_proxy(tool_index, pose, seed)
+            print("ik_probe tool_index={} candidate={} success={}".format(
+                tool_index, name, ik_res.success
+            ))
+            print(ik_res)
+            any_success = any_success or ik_res.success
+
+    return 0 if any_success else 1
+
+
 def call_fk(args):
     proxy = service_proxy("/carm_a3/motion/solve_fk", SolveFK)
     res = proxy(args.tool_index, parse_float_list(args.positions, 6))
@@ -120,6 +181,10 @@ def main():
     ik_current.add_argument("--tool-index", type=int, default=0)
     ik_current.add_argument("--seed", default="", help="optional six comma-separated seed joints")
     ik_current.set_defaults(func=call_ik_current)
+
+    ik_probe = subparsers.add_parser("ik-probe")
+    ik_probe.add_argument("--tool-indices", default="0,1,2,3")
+    ik_probe.set_defaults(func=call_ik_probe)
 
     fk = subparsers.add_parser("fk")
     fk.add_argument("positions", help="six comma-separated joint values in rad")

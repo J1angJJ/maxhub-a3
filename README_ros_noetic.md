@@ -240,6 +240,7 @@ rosrun carm_a3_motion motion_cli.py snapshot
 rosrun carm_a3_motion motion_cli.py cart
 rosrun carm_a3_motion motion_cli.py fk "0,0,0,0,0,0"
 rosrun carm_a3_motion motion_cli.py ik-current
+rosrun carm_a3_motion motion_cli.py ik-probe
 rosrun carm_a3_motion motion_cli.py ik "0.25,0,0.30,0,0,0,1"
 ```
 
@@ -250,6 +251,14 @@ rosrun carm_a3_motion motion_cli.py ik "0.25,0,0.30,0,0,0,1"
 ```
 
 `ik "0.25,0,0.30,0,0,0,1"` 返回 `inverse_kine ret=-1`，更像是目标位置/姿态离当前构型和工具约束太远，不代表 IK 接口不可用。优先用 `motion_cli.py cart` 获取当前实际 pose，或用已知 FK 输出做 IK round-trip，再逐步尝试小偏移。
+
+如果 `ik-current` 也失败，运行：
+
+```bash
+rosrun carm_a3_motion motion_cli.py ik-probe
+```
+
+它会自动测试当前 cart pose、plan pose、FK(current joints)、四元数正负号等价形式，以及 `tool_index=0,1,2,3`。如果全部失败，先把厂家 IK 路径列为疑点，继续用 joint-space 控制推进，之后从远离零位/奇异位形的姿态再复测 IK。
 
 本地环境排查项：
 
