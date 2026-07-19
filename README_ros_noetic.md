@@ -233,6 +233,74 @@ rosservice call /carm_a3/motion/solve_ik "{tool_index: 0, pose: [0.25, 0.0, 0.30
 
 `solve_ik` 的 pose 顺序为 `x,y,z,qx,qy,qz,qw`，`seed_positions` 为空时默认使用当前关节作为参考解。IK/FK 服务本身不运动；确认返回的 `positions` 后，再交给 `/carm_a3/motion/move_joint` 执行。
 
+### Gripper Smoke Test
+
+夹爪命令默认被 `allow_motion` 和 `allow_gripper` 双 gate 挡住。先 dry-run：
+
+```bash
+roslaunch carm_a3_motion safe_motion.launch \
+  allow_motion:=true \
+  allow_gripper:=true \
+  dry_run:=true
+```
+
+另开终端：
+
+```bash
+source /opt/ros/noetic/setup.bash
+source /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/devel/setup.bash
+rosrun carm_a3_motion motion_cli.py set-gripper 0.04 --tau 10
+```
+
+实测时保持手和物体远离夹爪，先用较小力度：
+
+```bash
+roslaunch carm_a3_motion safe_motion.launch \
+  allow_motion:=true \
+  allow_gripper:=true \
+  dry_run:=false
+```
+
+```bash
+rosrun carm_a3_motion motion_cli.py set-gripper 0.06 --tau 5
+rosrun carm_a3_motion motion_cli.py set-gripper 0.03 --tau 5
+```
+
+如果服务返回失败或夹爪无响应，先运行：
+
+```bash
+rosrun carm_a3_motion motion_cli.py extended
+```
+
+检查 `gripper_state`、`gripper_pos`、`plan_gripper_pos` 是否有变化。
+
+## Traditional Color Block Segmentation
+
+已新增 `carm_a3_perception` 包，用 OpenCV HSV 分割红/绿固定尺寸块。它只发布检测结果和调试图，不控制机械臂。
+
+启动相机和分割：
+
+```bash
+roslaunch carm_a3_vision camera.launch
+roslaunch carm_a3_perception color_blocks.launch
+```
+
+或在 bringup 中一起启动：
+
+```bash
+roslaunch carm_a3_bringup readonly_vision_handeye.launch launch_color_blocks:=true
+```
+
+检查输出：
+
+```bash
+rostopic echo -n 1 /carm_a3/perception/color_blocks
+rostopic echo -n 1 /carm_a3/perception/color_blocks/diagnostics
+rosrun image_view image_view image:=/carm_a3/perception/color_blocks/debug_image
+```
+
+检测话题是 JSON 字符串，包含颜色、像素中心、最小外接矩形四角点、面积、矩形角度和简单置信度。当前阶段先用于 2D 稳定检测和采集样本；后续再加 PnP、桌面平面投影或 YOLO。
+
 也可以用 CLI：
 
 ```bash
@@ -743,7 +811,7 @@ workspace/ubuntu/carm_ws/src/carm_a3_vision/config/camera_info.yaml
 
 ```bash
 sudo apt update
-sudo apt install python3-opencv python3-yaml ros-noetic-tf2-ros
+sudo apt install python3-opencv python3-yaml ros-noetic-cv-bridge ros-noetic-tf2-ros
 ```
 
 终端 1：

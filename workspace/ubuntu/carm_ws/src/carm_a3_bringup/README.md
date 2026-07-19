@@ -39,6 +39,19 @@ For real motion, prefer launching `carm_a3_motion` directly during first tests s
 
 The legacy `carm_a3_driver` read-only node is still available with `launch_motion:=false launch_driver:=true` if rollback is needed.
 
+To add traditional red/green block segmentation:
+
+```bash
+roslaunch carm_a3_bringup readonly_vision_handeye.launch launch_color_blocks:=true
+```
+
+Inspect:
+
+```bash
+rostopic echo -n 1 /carm_a3/perception/color_blocks
+rosrun image_view image_view image:=/carm_a3/perception/color_blocks/debug_image
+```
+
 ## Hand-eye Validation
 
 Start the default chain plus the ArUco detector:

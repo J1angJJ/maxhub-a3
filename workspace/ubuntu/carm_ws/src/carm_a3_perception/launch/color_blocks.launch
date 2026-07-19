@@ -1,0 +1,14 @@
+<launch>
+  <arg name="config" default="$(find carm_a3_perception)/config/color_blocks.yaml" />
+  <arg name="image_topic" default="" />
+  <arg name="publish_debug_image" default="" />
+
+  <node name="carm_a3_color_block_segmenter"
+        pkg="carm_a3_perception"
+        type="color_block_segmenter.py"
+        output="screen">
+    <rosparam command="load" file="$(arg config)" />
+    <param name="image_topic" value="$(arg image_topic)" if="$(eval arg('image_topic') != '')" />
+    <param name="publish_debug_image" value="$(arg publish_debug_image)" if="$(eval arg('publish_debug_image') != '')" />
+  </node>
+</launch>

@@ -1,0 +1,26 @@
+image_topic: "/carm_a3/camera/image_raw"
+camera_info_topic: "/carm_a3/camera/camera_info"
+detections_topic: "/carm_a3/perception/color_blocks"
+debug_image_topic: "/carm_a3/perception/color_blocks/debug_image"
+diagnostics_topic: "/carm_a3/perception/color_blocks/diagnostics"
+frame_id: "carm_a3_camera_optical_frame"
+
+publish_debug_image: true
+min_area_px: 500.0
+max_area_px: 200000.0
+min_extent: 0.35
+min_rect_short_side_px: 12.0
+max_blocks_per_color: 5
+morph_kernel_size: 5
+
+# HSV thresholds for OpenCV hue range [0,179].
+red_ranges:
+  - [0, 80, 50, 10, 255, 255]
+  - [170, 80, 50, 179, 255, 255]
+green_ranges:
+  - [35, 60, 40, 90, 255, 255]
+
+block_size_m:
+  x: 0.05
+  y: 0.05
+  z: 0.10
