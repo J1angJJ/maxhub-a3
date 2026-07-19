@@ -226,6 +226,7 @@ move_ret=1, verified=true, max_error=..., target=[...], actual=[...]
 
 ```bash
 rosservice call /carm_a3/motion/get_joint_snapshot
+rosservice call /carm_a3/motion/get_cartesian_snapshot
 rosservice call /carm_a3/motion/solve_fk "{tool_index: 0, positions: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}"
 rosservice call /carm_a3/motion/solve_ik "{tool_index: 0, pose: [0.25, 0.0, 0.30, 0.0, 0.0, 0.0, 1.0], seed_positions: []}"
 ```
@@ -236,9 +237,19 @@ rosservice call /carm_a3/motion/solve_ik "{tool_index: 0, pose: [0.25, 0.0, 0.30
 
 ```bash
 rosrun carm_a3_motion motion_cli.py snapshot
+rosrun carm_a3_motion motion_cli.py cart
 rosrun carm_a3_motion motion_cli.py fk "0,0,0,0,0,0"
+rosrun carm_a3_motion motion_cli.py ik-current
 rosrun carm_a3_motion motion_cli.py ik "0.25,0,0.30,0,0,0,1"
 ```
+
+已验证 `fk "0,0,0,0,0,0"` 可返回有效位姿，约为：
+
+```text
+[-2.9e-07, 0.0, 0.236, 0.707, 0.0, 0.707, 0.0]
+```
+
+`ik "0.25,0,0.30,0,0,0,1"` 返回 `inverse_kine ret=-1`，更像是目标位置/姿态离当前构型和工具约束太远，不代表 IK 接口不可用。优先用 `motion_cli.py cart` 获取当前实际 pose，或用已知 FK 输出做 IK round-trip，再逐步尝试小偏移。
 
 本地环境排查项：
 

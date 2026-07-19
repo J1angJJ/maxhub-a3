@@ -95,6 +95,7 @@ The C++ service node also exposes read-only helpers for upper-level planners:
 
 ```bash
 rosservice call /carm_a3/motion/get_joint_snapshot
+rosservice call /carm_a3/motion/get_cartesian_snapshot
 ```
 
 Forward kinematics, using joint values in radians:
@@ -115,10 +116,18 @@ The same services can be called with the helper CLI:
 
 ```bash
 rosrun carm_a3_motion motion_cli.py snapshot
+rosrun carm_a3_motion motion_cli.py cart
 rosrun carm_a3_motion motion_cli.py fk "0,0,0,0,0,0"
+rosrun carm_a3_motion motion_cli.py ik-current
 rosrun carm_a3_motion motion_cli.py ik "0.25,0,0.30,0,0,0,1"
 rosrun carm_a3_motion motion_cli.py jog 1 0.005 --duration-s 2.0
 ```
+
+Initial FK/IK notes:
+
+- `fk "0,0,0,0,0,0"` has been verified to return a valid pose near `[0, 0, 0.236, 0.707, 0, 0.707, 0]`.
+- `ik "0.25,0,0.30,0,0,0,1"` can fail with `inverse_kine ret=-1`. This does not prove the IK interface is broken; that pose and orientation are a large jump from the current configuration.
+- First validate IK with `/carm_a3/motion/get_cartesian_snapshot` or FK output from a known joint state, then try small pose offsets while keeping orientation close to the current pose.
 
 Emergency stop service:
 

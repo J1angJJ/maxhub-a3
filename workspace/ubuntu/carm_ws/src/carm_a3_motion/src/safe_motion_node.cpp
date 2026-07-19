@@ -16,6 +16,7 @@
 
 #include "arm_control_sdk/carm_cobot.h"
 #include "arm_control_sdk/data_type_def.h"
+#include "carm_a3_motion/GetCartesianSnapshot.h"
 #include "carm_a3_motion/GetJointSnapshot.h"
 #include "carm_a3_motion/JogJoint.h"
 #include "carm_a3_motion/MoveJoint.h"
@@ -78,6 +79,9 @@ public:
         get_joint_snapshot_srv_ = nh_.advertiseService("/carm_a3/motion/get_joint_snapshot",
                                                        &SafeMotionNode::handleGetJointSnapshot,
                                                        this);
+        get_cartesian_snapshot_srv_ = nh_.advertiseService("/carm_a3/motion/get_cartesian_snapshot",
+                                                           &SafeMotionNode::handleGetCartesianSnapshot,
+                                                           this);
         solve_ik_srv_ = nh_.advertiseService("/carm_a3/motion/solve_ik",
                                              &SafeMotionNode::handleSolveIK,
                                              this);
@@ -406,6 +410,27 @@ private:
             res.efforts.resize(std::min(res.efforts.size(), static_cast<size_t>(joint_count_)));
             res.success = true;
             res.message = "joint snapshot ok";
+        } catch (const std::exception& e) {
+            res.success = false;
+            res.message = e.what();
+        }
+        return true;
+    }
+
+    bool handleGetCartesianSnapshot(carm_a3_motion::GetCartesianSnapshot::Request&,
+                                    carm_a3_motion::GetCartesianSnapshot::Response& res) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        std::string message;
+        if (!ensureConnected(&message)) {
+            res.success = false;
+            res.message = message;
+            return true;
+        }
+        try {
+            res.pose = poseArrayToVector(arm_->get_cart_pose());
+            res.plan_pose = poseArrayToVector(arm_->get_plan_cart_pose());
+            res.success = true;
+            res.message = "cartesian snapshot ok, pose order=x,y,z,qx,qy,qz,qw";
         } catch (const std::exception& e) {
             res.success = false;
             res.message = e.what();
@@ -756,6 +781,7 @@ private:
     ros::ServiceServer jog_joint_srv_;
     ros::ServiceServer move_joint_srv_;
     ros::ServiceServer get_joint_snapshot_srv_;
+    ros::ServiceServer get_cartesian_snapshot_srv_;
     ros::ServiceServer solve_ik_srv_;
     ros::ServiceServer solve_fk_srv_;
 

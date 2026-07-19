@@ -4,6 +4,7 @@ import sys
 
 import rospy
 
+from carm_a3_motion.srv import GetCartesianSnapshot
 from carm_a3_motion.srv import GetJointSnapshot
 from carm_a3_motion.srv import JogJoint
 from carm_a3_motion.srv import MoveJoint
@@ -38,6 +39,13 @@ def call_snapshot(_args):
     return 0 if res.success else 1
 
 
+def call_cart(_args):
+    proxy = service_proxy("/carm_a3/motion/get_cartesian_snapshot", GetCartesianSnapshot)
+    res = proxy()
+    print(res)
+    return 0 if res.success else 1
+
+
 def call_jog(args):
     proxy = service_proxy("/carm_a3/motion/jog_joint", JogJoint)
     res = proxy(args.joint_index, args.delta_rad, args.duration_s)
@@ -60,6 +68,19 @@ def call_ik(args):
     return 0 if res.success else 1
 
 
+def call_ik_current(args):
+    cart_proxy = service_proxy("/carm_a3/motion/get_cartesian_snapshot", GetCartesianSnapshot)
+    ik_proxy = service_proxy("/carm_a3/motion/solve_ik", SolveIK)
+    cart_res = cart_proxy()
+    print(cart_res)
+    if not cart_res.success:
+        return 1
+    seed = parse_float_list(args.seed, 6) if args.seed else []
+    ik_res = ik_proxy(args.tool_index, cart_res.pose, seed)
+    print(ik_res)
+    return 0 if ik_res.success else 1
+
+
 def call_fk(args):
     proxy = service_proxy("/carm_a3/motion/solve_fk", SolveFK)
     res = proxy(args.tool_index, parse_float_list(args.positions, 6))
@@ -73,6 +94,9 @@ def main():
 
     snapshot = subparsers.add_parser("snapshot")
     snapshot.set_defaults(func=call_snapshot)
+
+    cart = subparsers.add_parser("cart")
+    cart.set_defaults(func=call_cart)
 
     jog = subparsers.add_parser("jog")
     jog.add_argument("joint_index", type=int)
@@ -91,6 +115,11 @@ def main():
     ik.add_argument("--tool-index", type=int, default=0)
     ik.add_argument("--seed", default="", help="optional six comma-separated seed joints")
     ik.set_defaults(func=call_ik)
+
+    ik_current = subparsers.add_parser("ik-current")
+    ik_current.add_argument("--tool-index", type=int, default=0)
+    ik_current.add_argument("--seed", default="", help="optional six comma-separated seed joints")
+    ik_current.set_defaults(func=call_ik_current)
 
     fk = subparsers.add_parser("fk")
     fk.add_argument("positions", help="six comma-separated joint values in rad")
