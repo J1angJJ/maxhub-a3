@@ -1,0 +1,23 @@
+<launch>
+  <arg name="config" default="$(find carm_a3_tasks)/config/block_grasp.yaml" />
+  <arg name="command" default="plan" />
+  <arg name="color" default="" />
+  <arg name="launch_camera_stack" default="true" />
+  <arg name="launch_image_view" default="true" />
+  <arg name="image_view_topic" default="/carm_a3/perception/color_blocks/debug_image" />
+
+  <include if="$(arg launch_camera_stack)" file="$(find carm_a3_tasks)/launch/pregrasp_overview.launch">
+    <arg name="launch_motion" value="false" />
+    <arg name="launch_image_view" value="$(arg launch_image_view)" />
+    <arg name="image_view_topic" value="$(arg image_view_topic)" />
+  </include>
+
+  <node name="carm_a3_block_grasp"
+        pkg="carm_a3_tasks"
+        type="block_grasp.py"
+        output="screen"
+        args="$(arg command)">
+    <rosparam command="load" file="$(arg config)" />
+    <param name="perception/target_color" value="$(arg color)" />
+  </node>
+</launch>

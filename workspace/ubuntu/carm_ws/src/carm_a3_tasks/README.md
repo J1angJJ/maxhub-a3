@@ -81,3 +81,35 @@ Useful search parameters:
 - `overview/search_y_offsets_m`: camera center offsets along table Y.
 - `overview/max_total_joint_delta_rad`: maximum full initialization joint distance.
 - `overview/segment_delta_rad`: maximum interpolation step size before each `move_joint` service call.
+
+## Color Block Grasp Draft
+
+`block_grasp.py` reads the red/green block detection JSON, projects the selected pixel center through the calibrated wrist camera into the table plane, then plans approach, grasp, and lift poses. It does not execute by default.
+
+Start the camera/perception window and keep one real motion gate running in another terminal, then plan:
+
+```bash
+rosrun carm_a3_tasks block_grasp.py plan
+rosrun carm_a3_tasks block_grasp.py plan --color red
+rosrun carm_a3_tasks block_grasp.py plan --color green
+```
+
+The launch form loads `config/block_grasp.yaml`:
+
+```bash
+roslaunch carm_a3_tasks block_grasp.launch command:=plan color:=red
+```
+
+After checking the printed base-frame block point, poses, IK results, and clearance:
+
+```bash
+rosrun carm_a3_tasks block_grasp.py execute --color red
+```
+
+Gripper open/close is intentionally separate:
+
+```bash
+rosrun carm_a3_tasks block_grasp.py execute --color red --use-gripper
+```
+
+The first version keeps the current flange orientation and uses conservative fixed heights from `config/block_grasp.yaml`. Treat it as a grasp-chain smoke test before tuning the true TCP, grasp height, and gripper width.

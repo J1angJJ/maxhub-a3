@@ -390,7 +390,45 @@ roslaunch carm_a3_tasks grasp_init.launch command:=plan
 
 当前搜索到的可达候选示例为相机中心 `[0.20, 0.00, 0.60]`，覆盖比例约 `0.874`，IK 最大总关节变化约 `1.82 rad`。这类初始化属于从近零位移动到观测姿态的较大整段调整，应依赖 `segment_delta_rad` 分段慢速执行，而不是用 `0.35 rad` 的总量阈值拦截。
 
-原厂相机安装位置会在默认显示窗口下方拍到夹爪，末端大约位于画面高度的下三分之一附近；夹爪从完全打开到完全闭合都会遮挡一部分画面。后续颜色块检测和抓取协同应加入 gripper mask / ROI 过滤，避免把夹爪或末端边缘误识别为红绿块。
+原厂相机安装位置会在默认显示窗口下方拍到夹爪，末端大约位于画面高度的下三分之一附近；夹爪从完全打开到完全闭合都会遮挡一部分画面。夹爪目前为黑色，尚未观察到红/绿误判，因此不建议直接屏蔽画面下三分之一。后续抓取协同优先保留全视野，只在需要时加入黑色遮挡质量检查或局部动态 mask。
+
+## Color Block Grasp Draft
+
+第一版抓取脚本只做最小闭环：从红/绿分割结果里选一个检测框，用相机内参和当前 `base_link -> carm_a3_camera_optical_frame` TF 将像素中心投影到桌面高度附近，再生成 approach、grasp、lift 三个位姿并调用 IK。默认只规划，不运动。
+
+先保持观测窗口和真实 motion gate 已经启动，然后规划：
+
+```bash
+rosrun carm_a3_tasks block_grasp.py plan
+rosrun carm_a3_tasks block_grasp.py plan --color red
+rosrun carm_a3_tasks block_grasp.py plan --color green
+```
+
+也可以用 launch 加载配置：
+
+```bash
+roslaunch carm_a3_tasks block_grasp.launch command:=plan color:=red
+```
+
+确认输出里的 `estimated block center in base frame`、三段 pose、IK 解和周围净空都合理后，再只执行位姿移动：
+
+```bash
+rosrun carm_a3_tasks block_grasp.py execute --color red
+```
+
+夹爪开合需要额外显式开启：
+
+```bash
+rosrun carm_a3_tasks block_grasp.py execute --color red --use-gripper
+```
+
+当前抓取配置在：
+
+```text
+workspace/ubuntu/carm_ws/src/carm_a3_tasks/config/block_grasp.yaml
+```
+
+第一版仍使用当前法兰姿态和保守固定高度，主要用于验证“检测 -> 桌面投影 -> IK -> 分段运动 -> 可选夹爪”的任务链路。后续需要根据实际夹爪 TCP、抓取方向、方块摆放姿态和 J2 控制表现继续调参。
 
 也可以用 CLI：
 
