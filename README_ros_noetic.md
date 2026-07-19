@@ -390,6 +390,8 @@ roslaunch carm_a3_tasks grasp_init.launch command:=plan
 
 当前搜索到的可达候选示例为相机中心 `[0.20, 0.00, 0.60]`，覆盖比例约 `0.874`，IK 最大总关节变化约 `1.82 rad`。这类初始化属于从近零位移动到观测姿态的较大整段调整，应依赖 `segment_delta_rad` 分段慢速执行，而不是用 `0.35 rad` 的总量阈值拦截。
 
+原厂相机安装位置会在默认显示窗口下方拍到夹爪，末端大约位于画面高度的下三分之一附近；夹爪从完全打开到完全闭合都会遮挡一部分画面。后续颜色块检测和抓取协同应加入 gripper mask / ROI 过滤，避免把夹爪或末端边缘误识别为红绿块。
+
 也可以用 CLI：
 
 ```bash
@@ -1295,6 +1297,20 @@ current cart pose -> z + 0.01 m -> inverse_kine -> move_joint -> joint readback 
 - 执行上移后，`z -0.005 m` 有解而 `z -0.010 m` 无解，回退应采用更小步长分段执行。
 
 这说明当前已经具备最小可用的“笛卡尔小偏移 -> IK -> 关节空间安全闭环执行”链路。
+
+### 2026-07-20 Pre-grasp Overview Motion Passed
+
+Ubuntu 20.04 + ROS Noetic 下已完成 FOV 观测位规划和分段执行链路：
+
+- `pregrasp_overview.launch` 默认启动相机、手眼 TF、颜色分割和 `image_view`，不再启动 motion 节点，避免和真实运动 gate 同名冲突。
+- `grasp_init.py plan` 可在理想正俯视 IK 无解时搜索可达候选。
+- `grasp_init.py execute` 可按 `segment_delta_rad` 拆分 waypoint，并通过 `/carm_a3/motion/move_joint` 分段执行。
+- 实机执行效果良好，可作为红绿块识别抓取前的初始化姿态。
+
+当前已知现象：
+
+- 原厂腕部相机视野中存在夹爪遮挡，默认窗口下方和高度约三分之一附近容易看到末端/夹爪；视觉算法需要增加 ROI 或动态 mask。
+- 程序控制时 J2 关节疑似存在轻微死区或松动感，而手动拖动模式下没有明显该现象。后续运动测试应记录 `/joint_states` 目标和实际值、执行速度、负载和姿态，确认是控制器保持策略、重力补偿、机械间隙，还是小步命令被内部滤波/死区吞掉。
 
 ## Safety
 
