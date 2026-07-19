@@ -11,6 +11,9 @@
   <arg name="auto_ready_on_connect" default="" />
   <arg name="register_callbacks_on_connect" default="" />
   <arg name="pre_ready_delay_s" default="" />
+  <arg name="publish_state" default="" />
+  <arg name="state_publish_rate_hz" default="" />
+  <arg name="publish_flange_tf" default="" />
   <arg name="use_duration" default="" />
   <arg name="wait_for_motion" default="" />
   <arg name="verify_after_motion" default="" />
@@ -38,6 +41,9 @@
     <param name="auto_ready_on_connect" value="$(arg auto_ready_on_connect)" if="$(eval arg('auto_ready_on_connect') != '')" />
     <param name="register_callbacks_on_connect" value="$(arg register_callbacks_on_connect)" if="$(eval arg('register_callbacks_on_connect') != '')" />
     <param name="pre_ready_delay_s" value="$(arg pre_ready_delay_s)" if="$(eval arg('pre_ready_delay_s') != '')" />
+    <param name="publish_state" value="$(arg publish_state)" if="$(eval arg('publish_state') != '')" />
+    <param name="state_publish_rate_hz" value="$(arg state_publish_rate_hz)" if="$(eval arg('state_publish_rate_hz') != '')" />
+    <param name="publish_flange_tf" value="$(arg publish_flange_tf)" if="$(eval arg('publish_flange_tf') != '')" />
     <param name="use_duration" value="$(arg use_duration)" if="$(eval arg('use_duration') != '')" />
     <param name="wait_for_motion" value="$(arg wait_for_motion)" if="$(eval arg('wait_for_motion') != '')" />
     <param name="verify_after_motion" value="$(arg verify_after_motion)" if="$(eval arg('verify_after_motion') != '')" />

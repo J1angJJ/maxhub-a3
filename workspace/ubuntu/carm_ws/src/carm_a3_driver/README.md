@@ -1,10 +1,10 @@
 # carm_a3_driver
 
-ROS Noetic driver package for CArm / MAXHUB A3.
+ROS Noetic legacy read-only driver package for CArm / MAXHUB A3.
 
-This package should contain the robot-facing ROS interface: SDK connection, state publishers, diagnostics, and later carefully gated motion or gripper command nodes.
+This package is kept as a compatibility fallback. The recommended robot-facing SDK node is now `carm_a3_motion/safe_motion_node`, which publishes read-only state and exposes safety-gated command services through one SDK connection.
 
-The first node is read-only. It may connect to the robot, read state, publish `/joint_states`, publish `/maxhub_a3/flange_pose`, and broadcast the minimal `base_link -> flange` TF. It must not enable, reset, move, stop, or control the gripper.
+The legacy node here is read-only. It may connect to the robot, read state, publish `/joint_states`, publish `/maxhub_a3/flange_pose`, and broadcast the minimal `base_link -> flange` TF. It must not enable, reset, move, stop, or control the gripper.
 
 Future higher-level work should stay in separate packages when it grows beyond driver responsibilities:
 
@@ -25,6 +25,14 @@ source devel/setup.bash
 ```
 
 ## Run
+
+Prefer the unified node:
+
+```bash
+roslaunch carm_a3_motion safe_motion.launch
+```
+
+Run this legacy fallback only when comparing behavior or rolling back:
 
 ```bash
 cd /home/noetic/maxhub-a3

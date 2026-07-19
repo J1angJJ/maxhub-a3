@@ -2,7 +2,7 @@
 
 Safety-gated motion services for CArm / MAXHUB A3 on ROS Noetic.
 
-This package is intentionally separate from `carm_a3_driver`. The driver can stay useful for read-only state publishing, while this package owns commands that can change the physical robot state.
+This package is the unified robot-facing SDK node. It owns the single recommended SDK connection, publishes read-only robot state, and exposes safety-gated command services. The older `carm_a3_driver` package is kept only as a compatibility fallback.
 
 Current recommended path:
 
@@ -13,6 +13,7 @@ Current recommended path:
 
 Default launch settings are conservative:
 
+- `publish_state: true`
 - `dry_run: true`
 - `allow_motion: false`
 - `allow_ready: false`
@@ -54,12 +55,17 @@ Check status:
 rosservice call /carm_a3/motion/status
 ```
 
-Read extended SDK state:
+Read published state and extended SDK state:
 
 ```bash
+rostopic echo -n 1 /joint_states
+rostopic echo -n 1 /maxhub_a3/flange_pose
+rostopic echo -n 1 /maxhub_a3/diagnostics
 rosrun carm_a3_motion motion_cli.py extended
 rosrun carm_a3_motion motion_cli.py tool-info 0
 ```
+
+The node publishes `/joint_states`, `/maxhub_a3/flange_pose`, and `/maxhub_a3/diagnostics` from the same SDK session used by motion services. Keep `publish_flange_tf:=false` when `carm_a3_description` and `robot_state_publisher` are active, so the URDF remains the source for the full `base_link -> flange` chain.
 
 ## First Dry-run Jog
 

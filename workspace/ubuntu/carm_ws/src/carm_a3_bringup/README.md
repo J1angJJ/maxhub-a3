@@ -2,7 +2,7 @@
 
 Launch composition package for CArm / MAXHUB A3 ROS workflows.
 
-This package does not implement robot control. It only starts existing read-only, vision, and calibration nodes together.
+This package does not implement robot control. It starts existing state, vision, motion, and calibration nodes together.
 
 ## Read-only Vision Hand-eye
 
@@ -17,18 +17,17 @@ roslaunch carm_a3_bringup readonly_vision_handeye.launch
 
 This starts:
 
-- `carm_a3_driver` read-only state publisher.
+- `carm_a3_motion` unified SDK node with motion gates closed; it publishes `/joint_states`, `/maxhub_a3/flange_pose`, and `/maxhub_a3/diagnostics`.
 - `carm_a3_description` robot model through `robot_state_publisher`.
 - `carm_a3_vision` USB camera node with calibrated `640x480` camera info.
 - `flange -> carm_a3_camera_optical_frame` static hand-eye TF.
 
-The driver still publishes `/joint_states`, but its minimal direct `base_link -> flange` TF is disabled in this bringup. The full robot TF chain comes from URDF + `robot_state_publisher`.
+The unified SDK node does not publish the minimal direct `base_link -> flange` TF in this bringup. The full robot TF chain comes from URDF + `robot_state_publisher`.
 
-Motion is optional and disabled by default. To add the safety-gated motion services without physical motion:
+The motion node starts by default, but physical motion is disabled by default. To explicitly dry-run the safety-gated motion services:
 
 ```bash
 roslaunch carm_a3_bringup readonly_vision_handeye.launch \
-  launch_motion:=true \
   motion_allow_motion:=true \
   motion_auto_ready_on_connect:=true \
   motion_register_callbacks_on_connect:=true \
@@ -37,6 +36,8 @@ roslaunch carm_a3_bringup readonly_vision_handeye.launch \
 ```
 
 For real motion, prefer launching `carm_a3_motion` directly during first tests so the command surface is obvious. If using this bringup for real motion, keep the same official-style initialization arguments and set `motion_dry_run:=false` only after dry-run service calls look correct.
+
+The legacy `carm_a3_driver` read-only node is still available with `launch_motion:=false launch_driver:=true` if rollback is needed.
 
 ## Hand-eye Validation
 

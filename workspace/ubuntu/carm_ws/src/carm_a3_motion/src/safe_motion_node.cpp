@@ -12,9 +12,14 @@
 #include <string>
 #include <vector>
 
+#include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/TransformStamped.h>
 #include <ros/ros.h>
+#include <sensor_msgs/JointState.h>
+#include <std_msgs/String.h>
 #include <std_srvs/SetBool.h>
 #include <std_srvs/Trigger.h>
+#include <tf2_ros/transform_broadcaster.h>
 
 #include "arm_control_sdk/carm_cobot.h"
 #include "arm_control_sdk/data_type_def.h"
@@ -72,6 +77,10 @@ class SafeMotionNode {
 public:
     SafeMotionNode() : nh_(), pnh_("~") {
         loadParams();
+
+        joint_pub_ = nh_.advertise<sensor_msgs::JointState>("/joint_states", 10);
+        flange_pose_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("/maxhub_a3/flange_pose", 10);
+        diagnostics_pub_ = nh_.advertise<std_msgs::String>("/maxhub_a3/diagnostics", 10, true);
 
         status_srv_ = nh_.advertiseService("/carm_a3/motion/status",
                                            &SafeMotionNode::handleStatus,
@@ -154,6 +163,14 @@ public:
         if (connect_on_start_) {
             connectSdk();
         }
+        if (publish_state_) {
+            const double period_s = state_publish_rate_hz_ > 0.0 ?
+                                            1.0 / state_publish_rate_hz_ :
+                                            0.2;
+            state_timer_ = nh_.createTimer(ros::Duration(period_s),
+                                           &SafeMotionNode::onStateTimer,
+                                           this);
+        }
     }
 
     ~SafeMotionNode() {
@@ -184,6 +201,14 @@ private:
         pnh_.param<bool>("auto_ready_on_connect", auto_ready_on_connect_, false);
         pnh_.param<bool>("register_callbacks_on_connect", register_callbacks_on_connect_, false);
         pnh_.param<double>("pre_ready_delay_s", pre_ready_delay_s_, 1.0);
+        pnh_.param<bool>("publish_state", publish_state_, true);
+        pnh_.param<double>("state_publish_rate_hz", state_publish_rate_hz_, 5.0);
+        pnh_.param<std::string>("base_frame_id", base_frame_id_, "base_link");
+        pnh_.param<std::string>("joint_state_frame_id", joint_state_frame_id_, base_frame_id_);
+        pnh_.param<std::string>("flange_frame_id", flange_frame_id_, "flange");
+        pnh_.param<bool>("publish_flange_tf", publish_flange_tf_, false);
+        joint_names_ = {"joint1", "joint2", "joint3", "joint4", "joint5", "joint6"};
+        pnh_.getParam("joint_names", joint_names_);
 
         pnh_.param<bool>("allow_ready", allow_ready_, false);
         pnh_.param<bool>("allow_servo_enable", allow_servo_enable_, false);
@@ -236,6 +261,7 @@ private:
             if (!arm_->is_connected()) {
                 return false;
             }
+            publishDiagnostics("connected=true");
             initializeSdkSessionLocked();
             return true;
         } catch (const std::exception& e) {
@@ -477,6 +503,97 @@ private:
 
     std::vector<double> poseArrayToVector(const std::array<double, 7>& pose) const {
         return std::vector<double>(pose.begin(), pose.end());
+    }
+
+    std::vector<double> trimToJointNameCount(const std::vector<double>& values) const {
+        const size_t n = std::min(values.size(), joint_names_.size());
+        return std::vector<double>(values.begin(), values.begin() + static_cast<std::ptrdiff_t>(n));
+    }
+
+    std::vector<std::string> trimJointNames(const size_t value_count) const {
+        const size_t n = std::min(value_count, joint_names_.size());
+        return std::vector<std::string>(joint_names_.begin(),
+                                        joint_names_.begin() + static_cast<std::ptrdiff_t>(n));
+    }
+
+    void publishDiagnostics(const std::string& text) {
+        if (!diagnostics_pub_) {
+            return;
+        }
+        std_msgs::String msg;
+        msg.data = text;
+        diagnostics_pub_.publish(msg);
+    }
+
+    void onStateTimer(const ros::TimerEvent&) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        std::string message;
+        if (!ensureConnected(&message)) {
+            publishDiagnostics(message);
+            return;
+        }
+        try {
+            publishArmStatusLocked();
+            publishJointStateLocked();
+            publishFlangePoseLocked();
+        } catch (const std::exception& e) {
+            ROS_WARN_THROTTLE(2.0, "state publishing failed: %s", e.what());
+            publishDiagnostics(std::string("state_publish_failed: ") + e.what());
+        } catch (...) {
+            ROS_WARN_THROTTLE(2.0, "state publishing failed: unknown exception");
+            publishDiagnostics("state_publish_failed: unknown exception");
+        }
+    }
+
+    void publishArmStatusLocked() {
+        const carm::ArmStatus status = getStatusLocked();
+        publishDiagnostics(statusToString(status));
+    }
+
+    void publishJointStateLocked() {
+        const std::vector<double> positions = arm_->get_joint_pos();
+        if (positions.empty()) {
+            ROS_WARN_THROTTLE(2.0, "SDK returned empty joint positions");
+            return;
+        }
+        const std::vector<double> velocities = arm_->get_joint_vel();
+        const std::vector<double> efforts = arm_->get_joint_tau();
+
+        sensor_msgs::JointState msg;
+        msg.header.stamp = ros::Time::now();
+        msg.header.frame_id = joint_state_frame_id_;
+        msg.name = trimJointNames(positions.size());
+        msg.position = trimToJointNameCount(positions);
+        msg.velocity = trimToJointNameCount(velocities);
+        msg.effort = trimToJointNameCount(efforts);
+        joint_pub_.publish(msg);
+    }
+
+    void publishFlangePoseLocked() {
+        const std::array<double, 7> pose = arm_->get_cart_pose();
+
+        geometry_msgs::PoseStamped msg;
+        msg.header.stamp = ros::Time::now();
+        msg.header.frame_id = base_frame_id_;
+        msg.pose.position.x = pose[0];
+        msg.pose.position.y = pose[1];
+        msg.pose.position.z = pose[2];
+        msg.pose.orientation.x = pose[3];
+        msg.pose.orientation.y = pose[4];
+        msg.pose.orientation.z = pose[5];
+        msg.pose.orientation.w = pose[6];
+        flange_pose_pub_.publish(msg);
+
+        if (publish_flange_tf_) {
+            geometry_msgs::TransformStamped tf_msg;
+            tf_msg.header = msg.header;
+            tf_msg.child_frame_id = flange_frame_id_;
+            tf_msg.transform.translation.x = pose[0];
+            tf_msg.transform.translation.y = pose[1];
+            tf_msg.transform.translation.z = pose[2];
+            tf_msg.transform.rotation = msg.pose.orientation;
+            tf_broadcaster_.sendTransform(tf_msg);
+        }
     }
 
     std::vector<double> flattenJointArray(const std::vector<std::vector<double>>& points,
@@ -1491,6 +1608,12 @@ private:
     std::mutex mutex_;
     std::unique_ptr<carm::CArmSingleCol> arm_;
 
+    ros::Publisher joint_pub_;
+    ros::Publisher flange_pose_pub_;
+    ros::Publisher diagnostics_pub_;
+    ros::Timer state_timer_;
+    tf2_ros::TransformBroadcaster tf_broadcaster_;
+
     ros::ServiceServer status_srv_;
     ros::ServiceServer set_ready_srv_;
     ros::ServiceServer set_servo_srv_;
@@ -1519,6 +1642,13 @@ private:
     int robot_port_ = 8090;
     double connect_timeout_s_ = 1.0;
     bool connect_on_start_ = true;
+    bool publish_state_ = true;
+    double state_publish_rate_hz_ = 5.0;
+    std::string base_frame_id_;
+    std::string joint_state_frame_id_;
+    std::string flange_frame_id_;
+    bool publish_flange_tf_ = false;
+    std::vector<std::string> joint_names_;
     bool auto_ready_on_connect_ = false;
     bool register_callbacks_on_connect_ = false;
     double pre_ready_delay_s_ = 1.0;

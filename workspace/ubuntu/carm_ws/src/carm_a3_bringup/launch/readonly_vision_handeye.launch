@@ -3,12 +3,12 @@
   <arg name="camera_config" default="$(find carm_a3_vision)/config/camera.yaml" />
   <arg name="camera_info_url" default="file://$(find carm_a3_vision)/config/camera_info.yaml" />
 
-  <arg name="launch_driver" default="true" />
+  <arg name="launch_driver" default="false" />
   <arg name="launch_robot_model" default="true" />
   <arg name="driver_publish_flange_tf" default="false" />
   <arg name="launch_camera" default="true" />
   <arg name="publish_handeye_tf" default="true" />
-  <arg name="launch_motion" default="false" />
+  <arg name="launch_motion" default="true" />
   <arg name="motion_config" default="$(find carm_a3_motion)/config/motion.yaml" />
   <arg name="motion_allow_motion" default="" />
   <arg name="motion_allow_settings" default="" />
@@ -17,6 +17,8 @@
   <arg name="motion_auto_ready_on_connect" default="" />
   <arg name="motion_register_callbacks_on_connect" default="" />
   <arg name="motion_pre_ready_delay_s" default="" />
+  <arg name="motion_publish_state" default="true" />
+  <arg name="motion_publish_flange_tf" default="false" />
 
   <include if="$(arg launch_driver)" file="$(find carm_a3_driver)/launch/readonly_state.launch">
     <arg name="config" value="$(arg driver_config)" />
@@ -41,5 +43,7 @@
     <arg name="auto_ready_on_connect" value="$(arg motion_auto_ready_on_connect)" />
     <arg name="register_callbacks_on_connect" value="$(arg motion_register_callbacks_on_connect)" />
     <arg name="pre_ready_delay_s" value="$(arg motion_pre_ready_delay_s)" />
+    <arg name="publish_state" value="$(arg motion_publish_state)" />
+    <arg name="publish_flange_tf" value="$(arg motion_publish_flange_tf)" />
   </include>
 </launch>

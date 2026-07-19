@@ -1,6 +1,6 @@
 # ROS Noetic Bring-up Notes
 
-本文档记录 Ubuntu 20.04 + ROS Noetic 下的下一步开发流程。当前阶段目标是在 `carm_a3_driver` 中建立只读 ROS 节点：连接机械臂、读取状态、发布话题，但不使能、不回零、不运动。
+本文档记录 Ubuntu 20.04 + ROS Noetic 下的开发流程。当前推荐入口是 `carm_a3_motion/safe_motion_node`：同一个 SDK 会话负责只读状态发布和安全门控运动服务。默认启动不使能、不回零、不运动。
 
 ## Recommended Order
 
@@ -14,15 +14,15 @@
 4. 再参考 `private/carm_demo/carm_ros` 迁移 C++ ROS 节点，并移除自动使能和硬编码 IP。
 5. 最后再建立显式确认的低速运动节点。
 
-`carm_a3_driver` 只负责机器人底层接口、状态、诊断和安全运动入口。后续手眼标定、YOLO 抓取协作、强化学习等内容如果展开，建议拆成独立 ROS 包，避免驱动包变成大杂烩。
+`carm_a3_motion` 负责机器人底层 SDK 会话、状态、诊断和安全运动入口。`carm_a3_driver` 仅作为旧只读节点兼容保留。后续手眼标定、YOLO 抓取协作、强化学习等内容如果展开，建议拆成独立 ROS 包，避免底层控制包变成大杂烩。
 
 `carm_a3_vision` 负责原装 USB 相机的 ROS 图像采集、方向校正和后续视觉链路入口。当前版本不依赖 OpenCV、`cv_bridge`、`usb_cam` 或 `v4l2_camera`，直接通过 V4L2 读取 `/dev/video0` 并发布 `rgb8` 图像。
 
 当前 TF 状态：
 
 - `carm_a3_description` 已迁入厂家/下载模型，可通过 `robot_state_publisher` 根据 `/joint_states` 发布完整机械臂关节链 TF。
-- `carm_a3_driver` 单独启动时仍可根据 SDK 末端位姿发布最小动态 TF：`base_link -> flange`。
-- `carm_a3_bringup` 默认关闭 driver 的最小直连 `base_link -> flange`，改用 URDF + `/joint_states` 发布完整链路。
+- `carm_a3_motion` 单独启动时可发布 `/joint_states`、`/maxhub_a3/flange_pose`，也可选择发布最小动态 TF：`base_link -> flange`。
+- `carm_a3_bringup` 默认关闭最小直连 `base_link -> flange`，改用 URDF + `/joint_states` 发布完整链路。
 - `carm_a3_vision` 的图像 `frame_id` 为 `carm_a3_camera_optical_frame`。
 - `carm_a3_calibration` 已保存并验证 `flange -> carm_a3_camera_optical_frame` 手眼静态 TF。
 - 当前 URDF 来自 `carm_a3.zip`，应在 RViz 和实机姿态下继续核对关节方向、零位和 mesh 姿态。
@@ -136,7 +136,7 @@ cd /home/noetic/maxhub-a3
 source /opt/ros/noetic/setup.bash
 source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash
 source workspace/ubuntu/carm_ws/devel/setup.bash
-roslaunch carm_a3_driver readonly_state.launch
+roslaunch carm_a3_motion safe_motion.launch
 ```
 
 终端 3：
@@ -151,7 +151,7 @@ rostopic echo -n 1 /maxhub_a3/flange_pose
 
 ## Motion Control Paths
 
-`carm_a3_motion` 是当前自研运动控制入口，独立于 `carm_a3_driver`。当前有三类并行路径，互不覆盖：
+`carm_a3_motion` 是当前统一 SDK 入口，合并了原 `carm_a3_driver` 的只读状态发布能力和自研运动控制服务。当前仍保留几类并行诊断路径，互不覆盖：
 
 - C++ SDK 路径：`safe_motion.launch`，用于下一阶段主测。真实运动前必须显式启用官方风格初始化：延迟、`set_ready()`、注册 joint / pose / error / completion 回调。
 - WebSocket fallback：`py_ws_motion.launch`，使用厂家纯 Python/WebSocket SDK，已验证控制器接受 `TASK_MOVJ`，实机有细微动作。
@@ -189,7 +189,7 @@ source devel/setup.bash
 
 早期未完整初始化时曾复现实测：
 
-- `carm_a3_driver` 的 C++ SDK 状态读取正常。
+- C++ SDK 状态读取正常。
 - `safe_motion_node` 在真实 `move_joint(target, -1, false)` 内部 `exit code -11`。
 - `official_topic_motion_node` 直接复刻官方 ROS1 demo 的 `move_joint(msg->position, -1, false)`，在没有 `set_ready()` 和回调注册时同样在该调用后段错误。
 - 同一控制器状态下，Python/WebSocket `TASK_MOVJ` 能被接受并完成任务，实机有细微动作。
@@ -584,7 +584,7 @@ workspace/ubuntu/carm_ws/src/carm_a3_vision/config/camera.yaml
 
 ## TF Check
 
-启动 `carm_a3_driver` 后检查 TF：
+启动统一 SDK 节点后检查 TF：
 
 ```bash
 source /opt/ros/noetic/setup.bash
@@ -598,7 +598,7 @@ rosrun tf tf_echo base_link flange
 - `/tf` 中能看到 `base_link -> flange`。
 - `tf_echo base_link flange` 能持续输出平移和四元数。
 
-这是 driver 单独启动时的最小 TF，用于早期 bring-up 和故障排查。
+这是统一 SDK 节点单独启动时的可选最小 TF，用于早期 bring-up 和故障排查。默认 bringup 使用 URDF + `/joint_states` 发布完整链路，不启用直连 `base_link -> flange`。
 
 当前 bringup 已加入 URDF 模型。启动：
 
@@ -753,14 +753,14 @@ source /opt/ros/noetic/setup.bash
 roscore
 ```
 
-终端 2，启动机械臂只读 TF：
+终端 2，启动统一 SDK 节点发布机械臂状态：
 
 ```bash
 cd /home/noetic/maxhub-a3
 source /opt/ros/noetic/setup.bash
 source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash
 source workspace/ubuntu/carm_ws/devel/setup.bash
-roslaunch carm_a3_driver readonly_state.launch
+roslaunch carm_a3_motion safe_motion.launch
 ```
 
 终端 3，启动相机：
@@ -888,7 +888,7 @@ roslaunch carm_a3_bringup readonly_vision_handeye.launch
 
 该命令会启动：
 
-- `carm_a3_driver` 只读状态节点和 `base_link -> flange` TF。
+- `carm_a3_motion` 统一 SDK 节点，默认只发布状态并保持运动 gate 关闭。
 - `carm_a3_vision` 原装 USB 相机节点和 `640x480` 内参。
 - `flange -> carm_a3_camera_optical_frame` 手眼静态 TF。
 
@@ -920,14 +920,14 @@ source workspace/ubuntu/carm_ws/devel/setup.bash
 ```bash
 echo "$arm_control_sdk_DIR"
 echo "$LD_LIBRARY_PATH" | tr ':' '\n' | grep arm_control_sdk
-rospack find carm_a3_driver
+rospack find carm_a3_motion
 ```
 
 期望：
 
 - `arm_control_sdk_DIR` 指向 `workspace/ubuntu/carm_ws/vendor/arm_control_sdk`。
 - `LD_LIBRARY_PATH` 中包含 `arm_control_sdk/lib` 和 `arm_control_sdk/poco/lib`。
-- `rospack find carm_a3_driver` 能找到 `workspace/ubuntu/carm_ws/src/carm_a3_driver`。
+- `rospack find carm_a3_motion` 能找到 `workspace/ubuntu/carm_ws/src/carm_a3_motion`。
 
 ### 2. Network Reachability
 
@@ -955,7 +955,7 @@ roscore
 
 期望：`roscore` 正常启动，无端口占用报错。
 
-### 4. Start Read-only Driver
+### 4. Start Unified SDK Node
 
 终端 2：
 
@@ -964,13 +964,13 @@ cd /home/noetic/maxhub-a3
 source /opt/ros/noetic/setup.bash
 source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash
 source workspace/ubuntu/carm_ws/devel/setup.bash
-roslaunch carm_a3_driver readonly_state.launch
+roslaunch carm_a3_motion safe_motion.launch
 ```
 
 期望：
 
 - 日志显示目标控制器为 `192.168.31.60:8090`。
-- 日志明确提示节点不会调用 ready、enable、motion、stop 或 gripper API。
+- 默认参数保持 `dry_run=true`、`allow_motion=false`、`allow_ready=false`、`allow_servo_enable=false`。
 - `/maxhub_a3/diagnostics` 中出现 `connected=true` 或相近状态。
 
 如果出现动态库错误，重新 source SDK：
@@ -981,7 +981,7 @@ source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash
 echo "$LD_LIBRARY_PATH" | tr ':' '\n' | grep arm_control_sdk
 ```
 
-如果启动时看到 `libtcp_com.so: cannot open shared object file`，说明当前终端没有加载厂家 SDK 运行时库路径。当前 `readonly_state.launch` 已内置 vendor SDK 的 `LD_LIBRARY_PATH`；拉取更新并重新编译后可直接启动。临时处理仍可手动执行上面的 `source .../setup.bash`。
+如果启动时看到 `libtcp_com.so: cannot open shared object file`，说明当前终端没有加载厂家 SDK 运行时库路径。当前 `safe_motion.launch` 已内置 vendor SDK 的 `LD_LIBRARY_PATH`；拉取更新并重新编译后可直接启动。临时处理仍可手动执行上面的 `source .../setup.bash`。
 
 ### 5. Inspect Topics
 
@@ -1052,7 +1052,7 @@ rostopic echo -n 1 /maxhub_a3/flange_pose > workspace/ubuntu/logs/readonly_test/
 Ubuntu 20.04 + ROS Noetic 下已完成首次只读链路测试：
 
 - `carm_ws` 工作区编译成功。
-- `carm_a3_driver` 可通过 `roslaunch carm_a3_driver readonly_state.launch` 启动。
+- `carm_a3_motion` 可通过 `roslaunch carm_a3_motion safe_motion.launch` 启动并发布只读状态。
 - 机械臂网络地址 `192.168.31.60` 可访问。
 - 只读节点可连接底层 C++ SDK。
 - `/joint_states` 可输出关节状态。

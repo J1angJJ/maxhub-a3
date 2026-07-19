@@ -5,6 +5,12 @@ connect_on_start: true
 auto_ready_on_connect: false
 register_callbacks_on_connect: false
 pre_ready_delay_s: 1.0
+publish_state: true
+state_publish_rate_hz: 5.0
+base_frame_id: "base_link"
+joint_state_frame_id: "base_link"
+flange_frame_id: "flange"
+publish_flange_tf: false
 
 # Safe defaults: launching this node must not move the real arm.
 allow_ready: false

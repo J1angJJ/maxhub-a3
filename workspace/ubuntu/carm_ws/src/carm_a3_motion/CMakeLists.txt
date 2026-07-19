@@ -4,12 +4,14 @@ project(carm_a3_motion)
 add_compile_options(-std=c++14)
 
 find_package(catkin REQUIRED COMPONENTS
+  geometry_msgs
   message_generation
   rospy
   roscpp
   sensor_msgs
   std_msgs
   std_srvs
+  tf2_ros
 )
 
 add_service_files(
@@ -57,7 +59,7 @@ set(ARM_CONTROL_SDK_LIB_DIR "${arm_control_sdk_ROOT_DIR}/lib")
 set(ARM_CONTROL_SDK_POCO_LIB_DIR "${arm_control_sdk_ROOT_DIR}/poco/lib")
 
 catkin_package(
-  CATKIN_DEPENDS message_runtime rospy roscpp sensor_msgs std_msgs std_srvs
+  CATKIN_DEPENDS geometry_msgs message_runtime rospy roscpp sensor_msgs std_msgs std_srvs tf2_ros
 )
 
 include_directories(
