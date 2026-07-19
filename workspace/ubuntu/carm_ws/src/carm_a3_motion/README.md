@@ -13,6 +13,8 @@ Default launch settings are conservative:
 - per-joint jog limit: `0.03 rad`
 - full joint move per-command delta limit: `0.15 rad`
 - `set_speed_before_motion: false`
+- `use_duration: false`
+- `wait_for_motion: false`
 
 ## Build
 
@@ -78,3 +80,5 @@ rosservice call /carm_a3/motion/emergency_stop
 This node does not automatically call `set_ready()` or servo enable before motion. If the controller is not already in a safe position-control state, motion services return an error.
 
 It also does not call `set_speed_level()` by default. Use the current controller/teach-pendant speed for the first real jog. If later testing proves the SDK speed call is stable on this controller firmware, `set_speed_before_motion` can be enabled explicitly.
+
+The first real-motion path intentionally matches the official ROS1 demo style: `move_joint(target, -1, false)`. Duration and synchronous waiting are disabled by default because early testing showed SDK crashes in some blocking/control helper paths.

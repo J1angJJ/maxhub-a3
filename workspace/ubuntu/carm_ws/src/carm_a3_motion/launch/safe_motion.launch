@@ -6,6 +6,8 @@
   <arg name="allow_servo_enable" default="" />
   <arg name="allow_motion" default="" />
   <arg name="dry_run" default="" />
+  <arg name="use_duration" default="" />
+  <arg name="wait_for_motion" default="" />
 
   <node
     name="carm_a3_safe_motion"
@@ -21,5 +23,7 @@
     <param name="allow_servo_enable" value="$(arg allow_servo_enable)" if="$(eval arg('allow_servo_enable') != '')" />
     <param name="allow_motion" value="$(arg allow_motion)" if="$(eval arg('allow_motion') != '')" />
     <param name="dry_run" value="$(arg dry_run)" if="$(eval arg('dry_run') != '')" />
+    <param name="use_duration" value="$(arg use_duration)" if="$(eval arg('use_duration') != '')" />
+    <param name="wait_for_motion" value="$(arg wait_for_motion)" if="$(eval arg('wait_for_motion') != '')" />
   </node>
 </launch>

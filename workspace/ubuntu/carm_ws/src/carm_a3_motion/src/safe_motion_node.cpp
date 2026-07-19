@@ -119,6 +119,8 @@ private:
         pnh_.param<double>("default_duration_s", default_duration_s_, 2.0);
         pnh_.param<double>("min_duration_s", min_duration_s_, 0.5);
         pnh_.param<double>("max_duration_s", max_duration_s_, 10.0);
+        pnh_.param<bool>("use_duration", use_duration_, false);
+        pnh_.param<bool>("wait_for_motion", wait_for_motion_, false);
         pnh_.param<double>("speed_level", speed_level_, 1.0);
         pnh_.param<int>("speed_response_level", speed_response_level_, 20);
         pnh_.param<bool>("set_speed_before_motion", set_speed_before_motion_, false);
@@ -314,6 +316,7 @@ private:
                 return true;
             }
 
+            ROS_INFO("jog_joint: reading current joint positions");
             std::vector<double> current = arm_->get_joint_pos();
             if (static_cast<int>(current.size()) < joint_count_) {
                 res.success = false;
@@ -334,7 +337,13 @@ private:
             if (set_speed_before_motion_) {
                 speed_ret = arm_->set_speed_level(speed_level_, speed_response_level_);
             }
-            const int move_ret = arm_->move_joint(target, duration, true);
+            const double sdk_duration = use_duration_ ? duration : -1.0;
+            ROS_INFO("jog_joint: calling move_joint duration=%.3f wait=%s target=%s",
+                     sdk_duration,
+                     wait_for_motion_ ? "true" : "false",
+                     vectorToString(target).c_str());
+            const int move_ret = arm_->move_joint(target, sdk_duration, wait_for_motion_);
+            ROS_INFO("jog_joint: move_joint returned %d", move_ret);
             res.success = move_ret >= 1;
             res.message = "jog_joint speed_ret=" + std::to_string(speed_ret) +
                           ", move_ret=" + std::to_string(move_ret) +
@@ -379,6 +388,7 @@ private:
                 return true;
             }
 
+            ROS_INFO("move_joint: reading current joint positions");
             const std::vector<double> current = arm_->get_joint_pos();
             if (static_cast<int>(current.size()) < joint_count_) {
                 res.success = false;
@@ -407,7 +417,14 @@ private:
             if (set_speed_before_motion_) {
                 speed_ret = arm_->set_speed_level(speed_level_, speed_response_level_);
             }
-            const int move_ret = arm_->move_joint(req.positions, duration, req.wait);
+            const double sdk_duration = use_duration_ ? duration : -1.0;
+            const bool wait = wait_for_motion_ && req.wait;
+            ROS_INFO("move_joint: calling move_joint duration=%.3f wait=%s target=%s",
+                     sdk_duration,
+                     wait ? "true" : "false",
+                     vectorToString(req.positions).c_str());
+            const int move_ret = arm_->move_joint(req.positions, sdk_duration, wait);
+            ROS_INFO("move_joint: move_joint returned %d", move_ret);
             res.success = move_ret >= 1;
             res.message = "move_joint speed_ret=" + std::to_string(speed_ret) +
                           ", move_ret=" + std::to_string(move_ret) +
@@ -452,6 +469,8 @@ private:
     double default_duration_s_ = 2.0;
     double min_duration_s_ = 0.5;
     double max_duration_s_ = 10.0;
+    bool use_duration_ = false;
+    bool wait_for_motion_ = false;
     double speed_level_ = 1.0;
     int speed_response_level_ = 20;
     bool set_speed_before_motion_ = false;
