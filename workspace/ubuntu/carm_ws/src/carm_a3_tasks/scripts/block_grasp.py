@@ -47,6 +47,41 @@ def normalize_quat_xyzw(quat):
     return [value / norm for value in quat]
 
 
+def quat_to_matrix(quat_xyzw):
+    return np.asarray(tf.transformations.quaternion_matrix(normalize_quat_xyzw(quat_xyzw))[:3, :3], dtype=float)
+
+
+def matrix_to_quat_xyzw(rotation):
+    matrix = np.eye(4)
+    matrix[:3, :3] = np.asarray(rotation, dtype=float)
+    quat = tf.transformations.quaternion_from_matrix(matrix)
+    return normalize_quat_xyzw([float(value) for value in quat])
+
+
+def yaw_rotation(delta_rad):
+    cos_v = math.cos(delta_rad)
+    sin_v = math.sin(delta_rad)
+    return np.asarray([
+        [cos_v, -sin_v, 0.0],
+        [sin_v, cos_v, 0.0],
+        [0.0, 0.0, 1.0],
+    ], dtype=float)
+
+
+def signed_angle_xy(from_vec, to_vec):
+    from_xy = np.asarray([from_vec[0], from_vec[1]], dtype=float)
+    to_xy = np.asarray([to_vec[0], to_vec[1]], dtype=float)
+    from_norm = np.linalg.norm(from_xy)
+    to_norm = np.linalg.norm(to_xy)
+    if from_norm <= 1e-9 or to_norm <= 1e-9:
+        raise ValueError("cannot compute yaw from near-zero XY vector")
+    from_xy = from_xy / from_norm
+    to_xy = to_xy / to_norm
+    cross = from_xy[0] * to_xy[1] - from_xy[1] * to_xy[0]
+    dot = float(np.dot(from_xy, to_xy))
+    return math.atan2(cross, dot)
+
+
 def interpolate_joints(start, target, max_step):
     if max_step <= 0.0:
         raise ValueError("segment_delta_rad must be > 0")
@@ -116,26 +151,27 @@ def transform_ray_to_base(listener, base_frame, camera_frame, stamp, ray_camera)
     return origin, direction / norm
 
 
-def project_detection_to_table(listener, detection, camera_model, payload):
-    base_frame = get_param("workspace/base_frame_id", "base_link")
-    table_z = float(get_param("workspace/table_z_m", 0.0))
-    block_size = get_param("block/size_m", [0.05, 0.05, 0.10])
-    block_height = float(block_size[2])
-    projection_z = table_z + block_height * 0.5
-
-    u, v = detection["center_px"]
-    ray_camera = [
-        (float(u) - camera_model["cx"]) / camera_model["fx"],
-        (float(v) - camera_model["cy"]) / camera_model["fy"],
-        1.0,
-    ]
-
+def payload_stamp_and_frame(payload, camera_model):
     header = payload.get("header", {})
     stamp_data = header.get("stamp", {})
     stamp = rospy.Time(int(stamp_data.get("secs", 0)), int(stamp_data.get("nsecs", 0)))
     camera_frame = header.get("frame_id") or camera_model["frame_id"] or get_param(
         "perception/camera_frame_id", "carm_a3_camera_optical_frame"
     )
+    return stamp, camera_frame
+
+
+def project_pixel_to_plane(listener, camera_model, payload, pixel, projection_z):
+    base_frame = get_param("workspace/base_frame_id", "base_link")
+
+    u, v = pixel
+    ray_camera = [
+        (float(u) - camera_model["cx"]) / camera_model["fx"],
+        (float(v) - camera_model["cy"]) / camera_model["fy"],
+        1.0,
+    ]
+
+    stamp, camera_frame = payload_stamp_and_frame(payload, camera_model)
 
     origin, direction = transform_ray_to_base(listener, base_frame, camera_frame, stamp, ray_camera)
     if abs(direction[2]) <= 1e-9:
@@ -144,16 +180,81 @@ def project_detection_to_table(listener, detection, camera_model, payload):
     if scale <= 0.0:
         raise ValueError("projection plane is behind camera")
     point = origin + direction * scale
-    return [float(point[0]), float(point[1]), float(projection_z)]
+    return np.asarray([float(point[0]), float(point[1]), float(projection_z)], dtype=float)
 
 
-def build_grasp_poses(point, current_pose):
+def project_detection_to_table(listener, detection, camera_model, payload):
+    table_z = float(get_param("workspace/table_z_m", 0.0))
+    block_size = get_param("block/size_m", [0.05, 0.05, 0.10])
+    block_height = float(block_size[2])
+    projection_z = table_z + block_height * 0.5
+    point = project_pixel_to_plane(listener, camera_model, payload, detection["center_px"], projection_z)
+    return [float(point[0]), float(point[1]), float(point[2])]
+
+
+def estimate_block_long_edge(listener, detection, camera_model, payload):
+    corners = detection.get("corners_px", [])
+    if len(corners) != 4:
+        return None
+    table_z = float(get_param("workspace/table_z_m", 0.0))
+    block_size = get_param("block/size_m", [0.05, 0.05, 0.10])
+    projection_z = table_z + float(block_size[2]) * 0.5
+    points = [
+        project_pixel_to_plane(listener, camera_model, payload, corner, projection_z)
+        for corner in corners
+    ]
+    best_vec = None
+    best_len = 0.0
+    for index in range(4):
+        vec = points[(index + 1) % 4] - points[index]
+        vec[2] = 0.0
+        length = float(np.linalg.norm(vec))
+        if length > best_len:
+            best_len = length
+            best_vec = vec
+    if best_vec is None or best_len <= 1e-9:
+        return None
+    best_vec = best_vec / best_len
+    if best_vec[0] < 0.0:
+        best_vec = -best_vec
+    yaw_deg = math.degrees(math.atan2(best_vec[1], best_vec[0]))
+    return best_vec, best_len, yaw_deg
+
+
+def align_quat_to_block_long_edge(quat, long_edge):
+    if long_edge is None or not bool(get_param("grasp/align_to_block_long_edge", True)):
+        return quat
+    axis_name = str(get_param("grasp/align_tool_axis", "y")).lower()
+    if axis_name == "x":
+        local_axis = np.asarray([1.0, 0.0, 0.0], dtype=float)
+    elif axis_name == "neg_x":
+        local_axis = np.asarray([-1.0, 0.0, 0.0], dtype=float)
+    elif axis_name == "neg_y":
+        local_axis = np.asarray([0.0, -1.0, 0.0], dtype=float)
+    else:
+        local_axis = np.asarray([0.0, 1.0, 0.0], dtype=float)
+
+    rotation = quat_to_matrix(quat)
+    current_axis = rotation.dot(local_axis)
+    delta = signed_angle_xy(current_axis, long_edge)
+    delta += math.radians(float(get_param("grasp/align_yaw_offset_deg", 0.0)))
+    aligned = yaw_rotation(delta).dot(rotation)
+    print(
+        "orientation alignment: axis={}, yaw_delta_deg={:.6g}".format(
+            axis_name, math.degrees(delta)
+        )
+    )
+    return matrix_to_quat_xyzw(aligned)
+
+
+def build_grasp_poses(point, current_pose, long_edge):
     use_current_orientation = bool(get_param("grasp/use_current_orientation", True))
     if use_current_orientation:
         quat = list(current_pose[3:7])
     else:
         quat = get_param("grasp/target_quat_xyzw", [0.707, 0.0, 0.707, 0.0])
     quat = normalize_quat_xyzw([float(value) for value in quat])
+    quat = align_quat_to_block_long_edge(quat, long_edge)
 
     approach_height = float(get_param("grasp/approach_height_m", 0.12))
     grasp_z = float(get_param("grasp/grasp_z_m", 0.09))
@@ -246,6 +347,14 @@ def plan_block_grasp(args):
     point = project_detection_to_table(listener, detection, camera_model, payload)
     print("estimated block center in base frame x,y,z:")
     print(vector_to_text(point))
+    long_edge_info = estimate_block_long_edge(listener, detection, camera_model, payload)
+    long_edge = None
+    if long_edge_info is not None:
+        long_edge, long_edge_len, long_edge_yaw = long_edge_info
+        print("estimated block long edge in base frame:")
+        print("direction={}, length_m={:.9g}, yaw_deg={:.6g}".format(
+            vector_to_text(long_edge), long_edge_len, long_edge_yaw
+        ))
 
     cart_proxy = service_proxy("/carm_a3/motion/get_cartesian_snapshot", GetCartesianSnapshot)
     joint_proxy = service_proxy("/carm_a3/motion/get_joint_snapshot", GetJointSnapshot)
@@ -262,7 +371,7 @@ def plan_block_grasp(args):
     if not joint_res.success:
         raise RuntimeError(joint_res.message)
 
-    poses = build_grasp_poses(point, list(cart_res.pose))
+    poses = build_grasp_poses(point, list(cart_res.pose), long_edge)
     print("planned poses x,y,z,qx,qy,qz,qw:")
     for name in ["approach", "grasp", "lift"]:
         print("{}: {}".format(name, vector_to_text(poses[name])))
@@ -292,6 +401,8 @@ def plan_block_grasp(args):
 
     move_proxy = service_proxy("/carm_a3/motion/move_joint", MoveJoint)
     execute_sequence.last_positions = list(joint_res.positions)
+    if bool(get_param("grasp/open_before_approach", True)):
+        maybe_set_gripper(float(get_param("grasp/open_gripper_pos_m", 0.065)), "open-before-approach")
 
     if not args.allow_descend:
         print("safe execution mode: moving to approach only; add --allow-descend for grasp/lift")
