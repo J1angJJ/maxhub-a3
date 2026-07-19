@@ -121,6 +121,7 @@ private:
         pnh_.param<double>("max_duration_s", max_duration_s_, 10.0);
         pnh_.param<double>("speed_level", speed_level_, 1.0);
         pnh_.param<int>("speed_response_level", speed_response_level_, 20);
+        pnh_.param<bool>("set_speed_before_motion", set_speed_before_motion_, false);
     }
 
     bool connectSdk(std::string* message = nullptr) {
@@ -329,7 +330,10 @@ private:
                 return true;
             }
 
-            const int speed_ret = arm_->set_speed_level(speed_level_, speed_response_level_);
+            int speed_ret = 0;
+            if (set_speed_before_motion_) {
+                speed_ret = arm_->set_speed_level(speed_level_, speed_response_level_);
+            }
             const int move_ret = arm_->move_joint(target, duration, true);
             res.success = move_ret >= 1;
             res.message = "jog_joint speed_ret=" + std::to_string(speed_ret) +
@@ -399,7 +403,10 @@ private:
                 return true;
             }
 
-            const int speed_ret = arm_->set_speed_level(speed_level_, speed_response_level_);
+            int speed_ret = 0;
+            if (set_speed_before_motion_) {
+                speed_ret = arm_->set_speed_level(speed_level_, speed_response_level_);
+            }
             const int move_ret = arm_->move_joint(req.positions, duration, req.wait);
             res.success = move_ret >= 1;
             res.message = "move_joint speed_ret=" + std::to_string(speed_ret) +
@@ -447,6 +454,7 @@ private:
     double max_duration_s_ = 10.0;
     double speed_level_ = 1.0;
     int speed_response_level_ = 20;
+    bool set_speed_before_motion_ = false;
 };
 
 int main(int argc, char** argv) {

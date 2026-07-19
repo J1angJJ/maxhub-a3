@@ -23,3 +23,4 @@ max_duration_s: 10.0
 
 speed_level: 1.0
 speed_response_level: 20
+set_speed_before_motion: false

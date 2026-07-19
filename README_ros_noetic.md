@@ -157,6 +157,7 @@ rostopic echo -n 1 /maxhub_a3/flange_pose
 - `allow_motion: false`
 - `allow_ready: false`
 - `allow_servo_enable: false`
+- `set_speed_before_motion: false`
 - 小步 jog 上限：`0.03 rad`
 - 一次完整关节目标移动的单关节差值上限：`0.15 rad`
 
@@ -226,6 +227,8 @@ rosservice call /carm_a3/motion/emergency_stop
 ```
 
 当前节点不会自动执行 `set_ready()`、不会自动使能伺服、不会自动切换控制模式。若状态不满足要求，运动服务会返回错误；这样第一版运动链路先验证“连接、状态检查、门控、小步运动”这条最小闭环。
+
+注意：实机首测时节点默认不会调用 `set_speed_level()`，使用控制器/示教器当前速度。若日志停在 `setSpeedLevel` 后节点退出，保持 `set_speed_before_motion: false`，先验证 `move_joint()` 本身。
 
 ## Run USB Camera Node
 
