@@ -9,10 +9,14 @@ workspace:
 
 overview:
   # The base origin is assumed at the midpoint of the near edge of the 60x60 cm square.
-  # First-pass target is above the table center. Orientation defaults to current flange orientation.
+  # First-pass target is above the table center. FOV mode computes the flange pose from camera intrinsics and hand-eye.
   target_xyz_m: [0.30, 0.0, 0.36]
-  use_current_orientation: true
+  use_fov_solver: true
+  use_current_orientation: false
   target_quat_xyzw: [0.707, 0.0, 0.707, 0.0]
+  coverage_margin_m: 0.08
+  min_camera_height_m: 0.25
+  max_camera_height_m: 0.65
   tool_index: 0
   max_joint_delta_rad: 0.35
   segment_delta_rad: 0.10
@@ -20,5 +24,7 @@ overview:
   wait: false
 
 camera_check:
+  camera_info_yaml: "$(find carm_a3_vision)/config/camera_info.yaml"
+  handeye_yaml: "$(find carm_a3_calibration)/config/handeye_flange_camera.yaml"
   color_blocks_topic: "/carm_a3/perception/color_blocks"
   debug_image_topic: "/carm_a3/perception/color_blocks/debug_image"

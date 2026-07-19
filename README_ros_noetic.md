@@ -303,12 +303,37 @@ rosrun image_view image_view image:=/carm_a3/perception/color_blocks/debug_image
 
 ## Pre-grasp Overview Initialization
 
-桌面抓取任务建议先进入一个观测位：机械臂抬高，腕部相机能俯看前方 `60 x 60 cm` 桌面区域。当前假设：
+桌面抓取任务建议先进入一个观测位：机械臂抬高，腕部相机能俯看前方 `60 x 60 cm` 桌面区域。当前默认不再手填固定观测位，而是用相机内参和手眼外参自动求解能覆盖桌面区域的俯视观测位。
+
+任务链路默认应先拉起相机、手眼 TF、颜色分割和图像窗口：
+
+```bash
+cd /home/noetic/maxhub-a3
+source /opt/ros/noetic/setup.bash
+source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash
+source workspace/ubuntu/carm_ws/devel/setup.bash
+roslaunch carm_a3_tasks pregrasp_overview.launch
+```
+
+该命令会打开 `image_view`，默认显示：
+
+```text
+/carm_a3/perception/color_blocks/debug_image
+```
+
+当前假设：
 
 - `base_link` 原点位于桌面正方形近边中点。
 - 桌面区域在 `base_link` 下约为 `x: 0.0..0.60 m`、`y: -0.30..0.30 m`。
-- 初始候选观测位在区域中心上方：`[x,y,z] = [0.30, 0.0, 0.36]`。
-- 第一版默认沿用当前法兰四元数，不强行转腕；先让你用相机画面确认桌面是否居中，再微调 orientation。
+- 相机内参来自 `carm_a3_vision/config/camera_info.yaml`。
+- 眼在手上外参来自 `carm_a3_calibration/config/handeye_flange_camera.yaml`。
+- FOV 求解会以桌面中心为相机光轴目标，给 `60 x 60 cm` 区域加 `coverage_margin_m` 余量，再把相机目标位姿换算成 `flange` 目标位姿。
+
+只打印 FOV 求解出的法兰目标，不调用 IK：
+
+```bash
+rosrun carm_a3_tasks grasp_init.py fov
+```
 
 只规划不运动：
 
@@ -335,14 +360,15 @@ rosrun carm_a3_tasks grasp_init.py execute --max-joint-delta 0.35
 
 脚本会先调用 IK；执行时按 `segment_delta_rad` 自动拆成多段 `move_joint`，避免一次命令超过 motion service 的单步关节差值限制。
 
-到位后启动颜色块分割，观察相机画面：
+也可以使用单次 launch，它会默认启动相机和图像窗口，然后执行指定命令：
 
 ```bash
-roslaunch carm_a3_bringup readonly_vision_handeye.launch launch_color_blocks:=true
-rosrun image_view image_view image:=/carm_a3/perception/color_blocks/debug_image
+roslaunch carm_a3_tasks grasp_init.launch command:=plan
 ```
 
-如果桌面不在画面中心，先调整 `workspace/ubuntu/carm_ws/src/carm_a3_tasks/config/grasp_init.yaml` 中的 `overview/target_xyz_m` 或 `overview/target_quat_xyzw`。
+如果桌面不在画面中心，先调整 `workspace/ubuntu/carm_ws/src/carm_a3_tasks/config/grasp_init.yaml` 中的 `workspace/table_region_m`、`overview/coverage_margin_m`、`overview/max_camera_height_m` 或临时关闭 `overview/use_fov_solver` 后手动改 `overview/target_xyz_m` 和 `overview/target_quat_xyzw`。
+
+注意：如果日志提示所需相机高度超过 `max_camera_height_m`，说明几何上无法在当前高度限制内完整覆盖桌面加余量；此时脚本会裁剪到最大高度，但实际画面可能只覆盖部分区域。
 
 也可以用 CLI：
 

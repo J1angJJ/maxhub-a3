@@ -4,10 +4,12 @@ project(carm_a3_tasks)
 find_package(catkin REQUIRED COMPONENTS
   carm_a3_motion
   rospy
+  roslib
+  tf
 )
 
 catkin_package(
-  CATKIN_DEPENDS carm_a3_motion rospy
+  CATKIN_DEPENDS carm_a3_motion rospy roslib tf
 )
 
 catkin_install_python(PROGRAMS

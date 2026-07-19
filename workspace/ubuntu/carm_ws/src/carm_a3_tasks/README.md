@@ -4,12 +4,31 @@ Task-level helpers for grasp preparation.
 
 The first helper plans a pre-grasp overview pose for the 60x60 cm table region in front of the arm. It does not move by default.
 
+By default it solves the overview pose from the current camera intrinsics and hand-eye calibration, so the wrist camera should look down and cover the configured table region before color-block grasping starts.
+
 Assumption:
 
 - `base_link` origin is at the midpoint of the near edge of the square table region.
 - Workspace is `x: 0.0..0.60 m`, `y: -0.30..0.30 m`.
-- The overview target starts above the region center at `[0.30, 0.0, 0.36]`.
-- Orientation defaults to the current flange orientation for the first pass.
+- Camera intrinsics are loaded from `carm_a3_vision/config/camera_info.yaml`.
+- Hand-eye is loaded from `carm_a3_calibration/config/handeye_flange_camera.yaml`.
+- FOV mode adds `coverage_margin_m` around the table, computes the needed camera height, then converts the camera pose to a flange target.
+
+## Start Overview Camera Stack
+
+This launch starts the read-only robot state, robot model TF, camera, hand-eye TF, color block segmentation, and an `image_view` window:
+
+```bash
+roslaunch carm_a3_tasks pregrasp_overview.launch
+```
+
+Keep this running while planning or executing the pre-grasp pose.
+
+To only print the FOV-derived target without calling IK:
+
+```bash
+rosrun carm_a3_tasks grasp_init.py fov
+```
 
 ## Plan Only
 
@@ -34,11 +53,10 @@ The script calls:
 - `/carm_a3/motion/solve_ik`
 - `/carm_a3/motion/move_joint` only with `execute`
 
-After execution, inspect the camera view:
+The older one-shot launch also starts the camera stack and image window by default, then runs the selected command:
 
 ```bash
-roslaunch carm_a3_bringup readonly_vision_handeye.launch launch_color_blocks:=true
-rosrun image_view image_view image:=/carm_a3/perception/color_blocks/debug_image
+roslaunch carm_a3_tasks grasp_init.launch command:=plan
 ```
 
-If the table is not centered in view, tune `config/grasp_init.yaml` before using this as the grasp workflow's fixed start pose.
+If the table is not centered in view, tune `config/grasp_init.yaml` before using this as the grasp workflow's fixed start pose. If the log says the required camera height exceeds `max_camera_height_m`, the requested FOV coverage is geometrically larger than the configured height allows; reduce margin, accept partial coverage, or choose a different viewing orientation.

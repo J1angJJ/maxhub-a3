@@ -1,26 +1,19 @@
 <launch>
   <arg name="config" default="$(find carm_a3_tasks)/config/grasp_init.yaml" />
-  <arg name="command" default="plan" />
   <arg name="launch_camera_stack" default="true" />
   <arg name="launch_image_view" default="true" />
   <arg name="image_view_topic" default="/carm_a3/perception/color_blocks/debug_image" />
+
+  <rosparam command="load" file="$(arg config)" ns="carm_a3_grasp_init" />
 
   <include if="$(arg launch_camera_stack)" file="$(find carm_a3_bringup)/launch/readonly_vision_handeye.launch">
     <arg name="launch_color_blocks" value="true" />
   </include>
 
   <node if="$(arg launch_image_view)"
-        name="carm_a3_grasp_init_image_view"
+        name="carm_a3_pregrasp_image_view"
         pkg="image_view"
         type="image_view"
         output="screen"
         args="image:=$(arg image_view_topic)" />
-
-  <node name="carm_a3_grasp_init"
-        pkg="carm_a3_tasks"
-        type="grasp_init.py"
-        output="screen"
-        args="$(arg command)">
-    <rosparam command="load" file="$(arg config)" />
-  </node>
 </launch>
