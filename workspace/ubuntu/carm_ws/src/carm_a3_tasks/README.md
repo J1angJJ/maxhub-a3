@@ -42,10 +42,10 @@ rosrun carm_a3_tasks grasp_init.py plan
 Only after the plan output looks reasonable and the robot is clear:
 
 ```bash
-rosrun carm_a3_tasks grasp_init.py execute --max-joint-delta 0.35
+rosrun carm_a3_tasks grasp_init.py execute
 ```
 
-Execution splits the final joint target into small waypoints using `segment_delta_rad`, so each step still goes through the motion service's joint-delta and verification checks.
+Execution checks the total joint distance with `max_total_joint_delta_rad`, then splits the final joint target into small waypoints using `segment_delta_rad`, so each step still goes through the motion service's joint-delta and verification checks.
 
 The script calls:
 
@@ -68,3 +68,5 @@ Useful search parameters:
 - `overview/search_height_step_m`: vertical scan step.
 - `overview/search_x_offsets_m`: camera center offsets along table X.
 - `overview/search_y_offsets_m`: camera center offsets along table Y.
+- `overview/max_total_joint_delta_rad`: maximum full initialization joint distance.
+- `overview/segment_delta_rad`: maximum interpolation step size before each `move_joint` service call.

@@ -478,7 +478,12 @@ def print_fov_only():
 def main():
     parser = argparse.ArgumentParser(description="Plan or execute the CArm A3 pre-grasp overview pose")
     parser.add_argument("command", choices=["fov", "plan", "execute"])
-    parser.add_argument("--max-joint-delta", type=float, default=None)
+    parser.add_argument(
+        "--max-joint-delta",
+        type=float,
+        default=None,
+        help="maximum total joint delta allowed for the whole pre-grasp initialization",
+    )
     parser.add_argument("--duration-s", type=float, default=None)
     parser.add_argument("--wait", action="store_true")
     args = parser.parse_args(rospy.myargv(argv=sys.argv)[1:])
@@ -493,7 +498,10 @@ def main():
             return code
         max_delta = args.max_joint_delta
         if max_delta is None:
-            max_delta = float(get_param("overview/max_joint_delta_rad", 0.35))
+            max_delta = float(get_param(
+                "overview/max_total_joint_delta_rad",
+                get_param("overview/max_joint_delta_rad", 2.20),
+            ))
         if plan["max_joint_delta"] > max_delta:
             print(
                 "blocked: max_joint_delta {:.9g} exceeds limit {:.9g}".format(

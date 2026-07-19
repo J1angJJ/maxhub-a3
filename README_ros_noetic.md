@@ -356,10 +356,10 @@ roslaunch carm_a3_motion safe_motion.launch \
 执行初始化：
 
 ```bash
-rosrun carm_a3_tasks grasp_init.py execute --max-joint-delta 0.35
+rosrun carm_a3_tasks grasp_init.py execute
 ```
 
-脚本会先调用 IK；执行时按 `segment_delta_rad` 自动拆成多段 `move_joint`，避免一次命令超过 motion service 的单步关节差值限制。
+脚本会先调用 IK；整段初始化由 `max_total_joint_delta_rad` 限制，执行时再按 `segment_delta_rad` 自动拆成多段 `move_joint`，避免一次命令超过 motion service 的单步关节差值限制。
 
 也可以使用单次 launch，它会默认启动相机和图像窗口，然后执行指定命令：
 
@@ -372,6 +372,8 @@ roslaunch carm_a3_tasks grasp_init.launch command:=plan
 注意：如果日志提示所需相机高度超过 `max_camera_height_m`，说明几何上无法在当前高度限制内完整覆盖桌面加余量；此时脚本会裁剪到最大高度，但实际画面可能只覆盖部分区域。
 
 你当前实测的理想俯视解为相机中心 `[0.30, 0.00, 0.65]`，理论覆盖约 `0.72 x 0.96 m`，但该法兰姿态 IK 返回无解。这更像是腕部姿态/工作空间约束，而不是相机链路错误。更新后的 `plan` 会在这个情况发生时自动进入可达候选搜索。
+
+当前搜索到的可达候选示例为相机中心 `[0.20, 0.00, 0.60]`，覆盖比例约 `0.874`，IK 最大总关节变化约 `1.82 rad`。这类初始化属于从近零位移动到观测姿态的较大整段调整，应依赖 `segment_delta_rad` 分段慢速执行，而不是用 `0.35 rad` 的总量阈值拦截。
 
 也可以用 CLI：
 
