@@ -112,7 +112,7 @@ After checking the printed base-frame block point, poses, IK results, and cleara
 rosrun carm_a3_tasks block_grasp.py execute --color red
 ```
 
-Descent to the grasp pose is disabled by default because the current model does not yet include a validated gripper TCP/contact height. Only enable it after the approach pose is visibly safe:
+Descent to the grasp pose is disabled by default because the current model does not yet include a validated gripper TCP/contact height. In the default mode, `plan` and `execute` only validate and solve the approach pose. Only enable descent after the approach pose is visibly safe:
 
 ```bash
 rosrun carm_a3_tasks block_grasp.py execute --color red --allow-descend

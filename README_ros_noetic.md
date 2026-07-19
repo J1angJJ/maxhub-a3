@@ -418,7 +418,7 @@ roslaunch carm_a3_tasks block_grasp.launch command:=plan color:=red
 rosrun carm_a3_tasks block_grasp.py execute --color red
 ```
 
-由于当前还没有完成夹爪 TCP/contact height 标定，下降到 grasp 位姿默认关闭。只有确认 approach 位姿安全，并且 `grasp_z_m`、`min_flange_z_m` 已调到不会触桌后，再显式开启下探：
+由于当前还没有完成夹爪 TCP/contact height 标定，下降到 grasp 位姿默认关闭。默认模式下 `plan` 和 `execute` 只检查并求解 approach 位姿，不会因为低处 grasp/lift 草案点被安全锁拦住。只有确认 approach 位姿安全，并且 `grasp_z_m`、`min_flange_z_m` 已调到不会触桌后，再显式开启下探：
 
 ```bash
 rosrun carm_a3_tasks block_grasp.py execute --color red --allow-descend
@@ -450,7 +450,7 @@ workspace/ubuntu/carm_ws/src/carm_a3_tasks/config/block_grasp.yaml
 
 当前没有看到厂家 SDK 直接暴露“是否夹到物体”的高层布尔接口。后续应由 ROS 层根据实际位置、规划位置、速度和力矩组合判断：例如闭合命令后实际位置没有到达目标间距，同时 `gripper_tau` 上升且速度趋近于 0，可判定大概率夹到物体。这个判据需要先用空夹、夹住 5cm 方块、夹住不同姿态方块分别采样确认。
 
-夹爪间距语义需要实机标定。厂家文档写 `pos` 为两指间隔，理论上 `0.0` 更闭合、`0.08` 更打开；URDF 中左右指关节行程各约 `0.037 m`，总开口量级和 SDK 的 `0.08 m` 基本一致。`0.03 m` 本身就是 30mm 开口，不适合作为减少视野遮挡的“闭合”值；当前观测位默认改为 `0.005 m`。建议用低力矩逐步测试并记录 extended state：
+夹爪间距语义已初步实测确认。厂家文档写 `pos` 为两指间隔，理论上 `0.0` 更闭合、`0.08` 更打开；URDF 中左右指关节行程各约 `0.037 m`，总开口量级和 SDK 的 `0.08 m` 基本一致。实测 `set-gripper 0.005` 后 `gripper_pos≈0.0065`，`set-gripper 0.065` 后 `gripper_pos≈0.0625`。`0.03 m` 本身就是 30mm 开口，不适合作为减少视野遮挡的“闭合”值；当前观测位默认改为 `0.005 m`。建议用低力矩逐步测试并记录 extended state：
 
 ```bash
 rosrun carm_a3_motion motion_cli.py extended

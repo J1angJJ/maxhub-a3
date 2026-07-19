@@ -170,9 +170,10 @@ def build_grasp_poses(point, current_pose):
     }
 
 
-def validate_pose_heights(poses):
+def validate_pose_heights(poses, names):
     min_z = float(get_param("grasp/min_flange_z_m", 0.18))
-    for name, pose in poses.items():
+    for name in names:
+        pose = poses[name]
         if float(pose[2]) < min_z:
             raise RuntimeError(
                 "{} flange z {:.6g} is below min_flange_z_m {:.6g}; refusing to plan near table".format(
@@ -181,11 +182,11 @@ def validate_pose_heights(poses):
             )
 
 
-def solve_pose_sequence(ik_proxy, poses, seed):
+def solve_pose_sequence(ik_proxy, poses, seed, names):
     tool_index = int(get_param("grasp/tool_index", 0))
     solved = []
     current_seed = list(seed)
-    for name in ["approach", "grasp", "lift"]:
+    for name in names:
         res = ik_proxy(tool_index, poses[name], current_seed)
         print("{} ik result:".format(name))
         print(res)
@@ -265,9 +266,13 @@ def plan_block_grasp(args):
     print("planned poses x,y,z,qx,qy,qz,qw:")
     for name in ["approach", "grasp", "lift"]:
         print("{}: {}".format(name, vector_to_text(poses[name])))
-    validate_pose_heights(poses)
 
-    solved = solve_pose_sequence(ik_proxy, poses, list(joint_res.positions))
+    sequence_names = ["approach", "grasp", "lift"] if args.allow_descend else ["approach"]
+    if not args.allow_descend:
+        print("safe planning mode: planning approach only; add --allow-descend to include grasp/lift")
+    validate_pose_heights(poses, sequence_names)
+
+    solved = solve_pose_sequence(ik_proxy, poses, list(joint_res.positions), sequence_names)
     max_total = float(get_param("grasp/max_total_joint_delta_rad", 2.20))
     first_delta = max_abs_delta(list(joint_res.positions), solved[0][2])
     max_segment = max([first_delta] + [item[3] for item in solved[1:]])
@@ -290,7 +295,7 @@ def plan_block_grasp(args):
 
     if not args.allow_descend:
         print("safe execution mode: moving to approach only; add --allow-descend for grasp/lift")
-        execute_sequence(move_proxy, solved[:1])
+        execute_sequence(move_proxy, solved)
         return
 
     if args.use_gripper:
