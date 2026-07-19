@@ -258,7 +258,21 @@ rosrun carm_a3_motion motion_cli.py ik "0.25,0,0.30,0,0,0,1"
 rosrun carm_a3_motion motion_cli.py ik-probe
 ```
 
-它会自动测试当前 cart pose、plan pose、FK(current joints)、四元数正负号等价形式，以及 `tool_index=0,1,2,3`。如果全部失败，先把厂家 IK 路径列为疑点，继续用 joint-space 控制推进，之后从远离零位/奇异位形的姿态再复测 IK。
+当前已实测：`ik-probe` 对当前 cart pose、plan pose、FK(current joints)、四元数正负号等价形式，以及 `tool_index=0,1,2,3` 全部返回 `inverse_kine ret=-1`。这说明基本 FK -> IK round-trip 失败，厂家 IK 路径暂时列为疑点。
+
+后续可再跑增强版约定扫描：
+
+```bash
+rosrun carm_a3_motion motion_cli.py ik-probe --include-mm
+```
+
+增强版会额外测试 `xyzw <-> wxyz` 载荷顺序、四元数共轭、以及位置单位是否可能需要毫米。该命令只做 IK 解算，不运动。若仍全部失败，先继续用 joint-space 控制推进，之后从远离零位/奇异位形的姿态再复测 IK。
+
+IK issue 草稿见：
+
+```text
+docs/vendor/cpp_sdk_inverse_kine_issue_draft.md
+```
 
 本地环境排查项：
 

@@ -38,6 +38,48 @@ def negate_quaternion(pose):
     return values
 
 
+def conjugate_quaternion(pose):
+    values = list(pose)
+    if len(values) == 7:
+        values[3] = -values[3]
+        values[4] = -values[4]
+        values[5] = -values[5]
+    return values
+
+
+def xyzw_to_wxyz_payload(pose):
+    values = list(pose)
+    if len(values) == 7:
+        x, y, z, qx, qy, qz, qw = values
+        return [x, y, z, qw, qx, qy, qz]
+    return values
+
+
+def scale_position(pose, scale):
+    values = list(pose)
+    if len(values) == 7:
+        values[0] *= scale
+        values[1] *= scale
+        values[2] *= scale
+    return values
+
+
+def pose_variants(name, pose, include_mm=False):
+    variants = [
+        (name, list(pose)),
+        (name + "_negq", negate_quaternion(pose)),
+        (name + "_conj", conjugate_quaternion(pose)),
+        (name + "_wxyz_payload", xyzw_to_wxyz_payload(pose)),
+        (name + "_wxyz_payload_negq", negate_quaternion(xyzw_to_wxyz_payload(pose))),
+    ]
+    if include_mm:
+        variants.extend([
+            (variant_name + "_xyz_mm", scale_position(variant_pose, 1000.0))
+            for variant_name, variant_pose in list(variants)
+        ])
+    return variants
+
+
 def service_proxy(name, service_type):
     try:
         rospy.wait_for_service(name, timeout=DEFAULT_TIMEOUT_S)
@@ -118,18 +160,14 @@ def call_ik_probe(args):
     any_success = False
 
     for tool_index in tool_indices:
-        candidates = [
-            ("cart_pose", list(cart_res.pose)),
-            ("cart_pose_negq", negate_quaternion(cart_res.pose)),
-            ("plan_pose", list(cart_res.plan_pose)),
-            ("plan_pose_negq", negate_quaternion(cart_res.plan_pose)),
-        ]
+        candidates = []
+        candidates.extend(pose_variants("cart_pose", cart_res.pose, args.include_mm))
+        candidates.extend(pose_variants("plan_pose", cart_res.plan_pose, args.include_mm))
         fk_res = fk_proxy(tool_index, seed)
         print("fk_current tool_index={}:".format(tool_index))
         print(fk_res)
         if fk_res.success:
-            candidates.append(("fk_current", list(fk_res.pose)))
-            candidates.append(("fk_current_negq", negate_quaternion(fk_res.pose)))
+            candidates.extend(pose_variants("fk_current", fk_res.pose, args.include_mm))
 
         for name, pose in candidates:
             ik_res = ik_proxy(tool_index, pose, seed)
@@ -184,6 +222,7 @@ def main():
 
     ik_probe = subparsers.add_parser("ik-probe")
     ik_probe.add_argument("--tool-indices", default="0,1,2,3")
+    ik_probe.add_argument("--include-mm", action="store_true")
     ik_probe.set_defaults(func=call_ik_probe)
 
     fk = subparsers.add_parser("fk")
