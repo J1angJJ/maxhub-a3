@@ -153,9 +153,10 @@ rostopic echo -n 1 /maxhub_a3/flange_pose
 
 `carm_a3_motion` 是当前自研运动控制入口，独立于 `carm_a3_driver`。当前有三类并行路径，互不覆盖：
 
-- 主路径：`py_ws_motion.launch`，使用厂家纯 Python/WebSocket SDK，已验证控制器接受 `TASK_MOVJ`，实机有细微动作。
+- C++ SDK 路径：`safe_motion.launch`，用于下一阶段主测。真实运动前必须显式启用官方风格初始化：延迟、`set_ready()`、注册 joint / pose / error / completion 回调。
+- WebSocket fallback：`py_ws_motion.launch`，使用厂家纯 Python/WebSocket SDK，已验证控制器接受 `TASK_MOVJ`，实机有细微动作。
 - 自研 WebSocket 路径：`raw_ws_motion.launch`，仓库内直接实现 WebSocket JSON 通讯，不依赖厂家 Python `Carm` 类。
-- C++ SDK 诊断路径：`safe_motion.launch` 和 `official_topic_motion.launch`，用于复现实测 C++ `move_joint()` 段错误，不作为日常运动入口。
+- C++ 官方 topic 对照：`official_topic_motion.launch`，保留为尽量贴近厂家 ROS1 demo 的诊断/对照节点。
 
 默认安全原则不变：
 
@@ -163,6 +164,8 @@ rostopic echo -n 1 /maxhub_a3/flange_pose
 - `allow_motion: false`
 - `allow_ready: false`
 - `allow_servo_enable: false`
+- `auto_ready_on_connect: false`
+- `register_callbacks_on_connect: false`
 - `set_speed_before_motion: false`
 - `use_duration: false`
 - `wait_for_motion: false`
@@ -180,32 +183,53 @@ catkin_make
 source devel/setup.bash
 ```
 
-### C++ SDK Motion Diagnostic
+### C++ SDK Motion Path
 
-当前不建议把 C++ SDK 用作正式运动路径。已复现实测：
+早期未完整初始化时曾复现实测：
 
 - `carm_a3_driver` 的 C++ SDK 状态读取正常。
 - `safe_motion_node` 在真实 `move_joint(target, -1, false)` 内部 `exit code -11`。
-- `official_topic_motion_node` 直接复刻官方 ROS1 demo 的 `move_joint(msg->position, -1, false)`，同样在该调用后段错误。
+- `official_topic_motion_node` 直接复刻官方 ROS1 demo 的 `move_joint(msg->position, -1, false)`，在没有 `set_ready()` 和回调注册时同样在该调用后段错误。
 - 同一控制器状态下，Python/WebSocket `TASK_MOVJ` 能被接受并完成任务，实机有细微动作。
 
-本地环境可排查项：
+后续复测确认：`official_topic_motion_node` 启用 `auto_ready:=true`、`register_callbacks:=true`、`pre_ready_delay_s:=1.0` 后不再崩溃，机械臂有极小动作。因此当前判断是：C++ SDK 异步 `move_joint(..., -1, false)` 依赖厂家 ROS1 demo 的完整初始化顺序。
+
+C++ service 节点已经补齐同样的初始化选项。真实极小步测试：
+
+```bash
+roslaunch carm_a3_motion safe_motion.launch \
+  allow_motion:=true \
+  dry_run:=false \
+  auto_ready_on_connect:=true \
+  register_callbacks_on_connect:=true \
+  pre_ready_delay_s:=1.0
+```
+
+另开终端：
+
+```bash
+rosservice call /carm_a3/motion/status
+rosservice call /carm_a3/motion/jog_joint "{joint_index: 1, delta_rad: 0.005, duration_s: 2.0}"
+```
+
+本地环境排查项：
 
 - 确认每个终端都重新 `source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash`。
 - 用干净终端只加载 `/opt/ros/noetic/setup.bash`、vendored SDK setup、`carm_ws/devel/setup.bash`，避免其它 `LD_LIBRARY_PATH` 污染。
 - 确认没有多个运动客户端同时发命令。
 - 若要进一步定位，可用 `ldd devel/lib/carm_a3_motion/official_topic_motion_node` 查看是否链接到仓库内 vendored SDK/Poco 库。
 
-更像官方库问题的证据：
+提交官方 issue 时可说明：
 
-- C++ 状态 API 和 WebSocket 通讯均正常，只有 C++ `move_joint()` 真实运动调用崩。
-- 官方 ROS1 demo 调用形态也崩，不是我们的 service 封装导致。
+- C++ 状态 API 和 WebSocket 通讯均正常。
+- 如果跳过 `set_ready()` 和回调注册，C++ `move_joint(target, -1, false)` 可能在 `libarm_control_sdk.so` 内段错误。
+- 按厂家 ROS1 demo 顺序执行 `set_ready()` 并注册回调后，C++ 异步 `move_joint()` 可正常小幅运动。
 - Python/WebSocket 等价 `TASK_MOVJ` 成功。
-- gdb 已确认段错误栈落在 `libarm_control_sdk.so` 内的 `carm::CArmKernelImpl::move_joint(...)`，上一层为 `carm::CArmSingleCol::move_joint(...)`。
+- gdb 已确认旧崩溃栈落在 `libarm_control_sdk.so` 内的 `carm::CArmKernelImpl::move_joint(...)`，上一层为 `carm::CArmSingleCol::move_joint(...)`。
 
-可反馈售后的简述：Ubuntu 20.04 / ROS Noetic / A3_DM_C，C++ SDK `CArmSingleCol::move_joint(target, -1, false)` 段错误；`get_status()`、`get_joint_pos()` 正常；同一状态下 WebSocket `webRecieveTasks` `TASK_MOVJ` 成功。
+可反馈售后的简述：Ubuntu 20.04 / ROS Noetic / A3_DM_C，C++ SDK `CArmSingleCol::move_joint(target, -1, false)` 在未执行完整 ready/callback 初始化时段错误；`get_status()`、`get_joint_pos()` 正常；启用 `set_ready()` 和 SDK 回调注册后 C++ 运动正常；同一状态下 WebSocket `webRecieveTasks` `TASK_MOVJ` 也成功。
 
-注意：当前 gdb 复现最初未执行完整厂家初始化流程。后续已给 `official_topic_motion_node` 增加 `auto_ready`、`register_callbacks` 和 `pre_ready_delay_s` 参数，可用以下方式复测更接近厂家 ROS1 节点的流程：
+官方 topic 对照节点也保留完整初始化复测命令：
 
 ```bash
 roslaunch carm_a3_motion official_topic_motion.launch \
@@ -276,9 +300,9 @@ roslaunch carm_a3_motion raw_ws_motion.launch allow_motion:=true dry_run:=false
 rosservice call /carm_a3/raw_motion/jog_joint "{joint_index: 1, delta_rad: 0.005, duration_s: 2.0}"
 ```
 
-### Legacy C++ Service Diagnostic
+### Legacy C++ Service Safe Launch
 
-以下节点保留为诊断/对照，不推荐作为日常运动入口：
+以下命令只启动 C++ service 节点的默认安全门控，不会自动执行 `set_ready()`，也不会打开真实运动：
 
 ```bash
 roslaunch carm_a3_motion safe_motion.launch
@@ -289,7 +313,7 @@ rosservice call /carm_a3/motion/status
 
 ### Official Topic Compatibility Test
 
-如果 `safe_motion_node` 仍然在 `move_joint()` 内部段错误，可以启动尽量贴近官方 ROS1 demo 的 topic 对照节点。它不读当前关节、不拼 jog target、不走 service；收到 `sensor_msgs/JointState` 后直接调用：
+如果需要对照厂家 ROS1 demo 行为，可以启动尽量贴近官方写法的 topic 节点。它不读当前关节、不拼 jog target、不走 service；收到 `sensor_msgs/JointState` 后直接调用：
 
 ```cpp
 move_joint(msg->position, -1, false)
@@ -302,7 +326,11 @@ cd /home/noetic/maxhub-a3
 source /opt/ros/noetic/setup.bash
 source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash
 source workspace/ubuntu/carm_ws/devel/setup.bash
-roslaunch carm_a3_motion official_topic_motion.launch allow_move_joint:=true
+roslaunch carm_a3_motion official_topic_motion.launch \
+  allow_move_joint:=true \
+  auto_ready:=true \
+  register_callbacks:=true \
+  pre_ready_delay_s:=1.0
 ```
 
 终端 2：
@@ -321,11 +349,11 @@ velocity: []
 effort: []"
 ```
 
-若该节点也在 `official_topic_motion calling move_joint(position, -1, false)` 后退出，优先判断为 C++ SDK 真实运动接口在当前控制器/固件上崩溃；下一步应改走官方 Python/WebSocket 轻量接口或厂家原始 demo 二进制做对照。
+当前已验证：带完整初始化参数时，该节点不会崩溃，实机有极小动作。旧的无完整初始化崩溃栈已保留在 `docs/vendor/cpp_sdk_move_joint_gdb_report.md`，用于给厂家反馈“未初始化状态下 SDK 不应段错误”的健壮性问题。
 
 ### Python WebSocket Motion Details
 
-当 C++ SDK 的真实 `move_joint()` 确认会段错误时，改用厂家纯 Python/WebSocket 轻量接口做对照。该节点直接加载 vendored SDK 里的 `carm.py`，发送 `TASK_MOVJ`，不导入 `carm_py` C++ 扩展。
+厂家纯 Python/WebSocket 轻量接口作为 C++ 路径之外的并行 fallback。该节点直接加载 vendored SDK 里的 `carm.py`，发送 `TASK_MOVJ`，不导入 `carm_py` C++ 扩展。
 
 如系统 Python 缺依赖，先安装：
 

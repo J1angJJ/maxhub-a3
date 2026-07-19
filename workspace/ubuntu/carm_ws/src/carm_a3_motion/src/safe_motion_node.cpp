@@ -1,4 +1,7 @@
+#include <array>
 #include <algorithm>
+#include <atomic>
+#include <functional>
 #include <cmath>
 #include <memory>
 #include <mutex>
@@ -87,6 +90,12 @@ public:
         std::lock_guard<std::mutex> lock(mutex_);
         if (arm_ && arm_->is_connected()) {
             try {
+                if (callbacks_registered_) {
+                    arm_->release_joint_cbk();
+                    arm_->release_pose_cbk();
+                    arm_->release_error_cbk("safe_motion_error");
+                    arm_->release_completion_cbk("safe_motion_completion");
+                }
                 arm_->disconnect();
             } catch (const std::exception& e) {
                 ROS_WARN("disconnect threw: %s", e.what());
@@ -102,6 +111,9 @@ private:
         pnh_.param<int>("robot_port", robot_port_, 8090);
         pnh_.param<double>("connect_timeout_s", connect_timeout_s_, 1.0);
         pnh_.param<bool>("connect_on_start", connect_on_start_, true);
+        pnh_.param<bool>("auto_ready_on_connect", auto_ready_on_connect_, false);
+        pnh_.param<bool>("register_callbacks_on_connect", register_callbacks_on_connect_, false);
+        pnh_.param<double>("pre_ready_delay_s", pre_ready_delay_s_, 1.0);
 
         pnh_.param<bool>("allow_ready", allow_ready_, false);
         pnh_.param<bool>("allow_servo_enable", allow_servo_enable_, false);
@@ -139,7 +151,11 @@ private:
                     *message = ss.str();
                 }
             }
-            return arm_->is_connected();
+            if (!arm_->is_connected()) {
+                return false;
+            }
+            initializeSdkSessionLocked();
+            return true;
         } catch (const std::exception& e) {
             if (message) {
                 *message = std::string("connect exception: ") + e.what();
@@ -153,6 +169,61 @@ private:
             ROS_ERROR("SDK connect failed: unknown exception");
             return false;
         }
+    }
+
+    void initializeSdkSessionLocked() {
+        if (sdk_session_initialized_ || !arm_ || !arm_->is_connected()) {
+            return;
+        }
+
+        if (pre_ready_delay_s_ > 0.0) {
+            ROS_INFO("SDK session init: sleeping %.3f s before optional set_ready",
+                     pre_ready_delay_s_);
+            ros::Duration(pre_ready_delay_s_).sleep();
+        }
+
+        if (auto_ready_on_connect_) {
+            const int ret = arm_->set_ready();
+            ready_called_on_connect_ = ret >= 1;
+            ROS_WARN("SDK session init: set_ready ret=%d", ret);
+        } else {
+            ROS_WARN("SDK session init: auto_ready_on_connect=false; not calling set_ready()");
+        }
+
+        if (register_callbacks_on_connect_) {
+            registerSdkCallbacksLocked();
+        } else {
+            ROS_WARN("SDK session init: register_callbacks_on_connect=false; not registering callbacks");
+        }
+
+        sdk_session_initialized_ = true;
+    }
+
+    void registerSdkCallbacksLocked() {
+        if (callbacks_registered_) {
+            return;
+        }
+        arm_->register_joint_cbk(std::bind(&SafeMotionNode::handleJointCallback,
+                                           this,
+                                           std::placeholders::_1,
+                                           std::placeholders::_2,
+                                           std::placeholders::_3,
+                                           std::placeholders::_4));
+        arm_->register_pose_cbk(std::bind(&SafeMotionNode::handlePoseCallback,
+                                          this,
+                                          std::placeholders::_1,
+                                          std::placeholders::_2));
+        arm_->register_error_cbk("safe_motion_error",
+                                 std::bind(&SafeMotionNode::handleErrorCallback,
+                                           this,
+                                           std::placeholders::_1,
+                                           std::placeholders::_2));
+        arm_->register_completion_cbk("safe_motion_completion",
+                                      std::bind(&SafeMotionNode::handleCompletionCallback,
+                                                this,
+                                                std::placeholders::_1));
+        callbacks_registered_ = true;
+        ROS_WARN("SDK session init: registered joint/pose/error/completion callbacks");
     }
 
     bool ensureConnected(std::string* message) {
@@ -217,7 +288,13 @@ private:
         try {
             const carm::ArmStatus status = getStatusLocked();
             res.success = true;
-            res.message = statusToString(status);
+            std::ostringstream ss;
+            ss << statusToString(status)
+               << ",sdk_initialized=" << (sdk_session_initialized_ ? "true" : "false")
+               << ",ready_on_connect=" << (ready_called_on_connect_ ? "true" : "false")
+               << ",callbacks=" << (callbacks_registered_ ? "true" : "false")
+               << ",last_joint_count=" << last_joint_count_.load();
+            res.message = ss.str();
         } catch (const std::exception& e) {
             res.success = false;
             res.message = e.what();
@@ -239,6 +316,7 @@ private:
             return true;
         }
         const int ret = arm_->set_ready();
+        ready_called_on_connect_ = ret >= 1;
         res.success = ret >= 1;
         res.message = "set_ready ret=" + std::to_string(ret);
         return true;
@@ -262,6 +340,29 @@ private:
         res.message = std::string("set_servo_enable(") + (req.data ? "true" : "false") +
                       ") ret=" + std::to_string(ret);
         return true;
+    }
+
+    void handleJointCallback(double stamp,
+                             std::vector<double> positions,
+                             std::vector<double>,
+                             std::vector<double>) {
+        last_joint_stamp_.store(stamp);
+        last_joint_count_.store(positions.size());
+    }
+
+    void handlePoseCallback(double stamp, std::array<double, 7>) {
+        last_pose_stamp_.store(stamp);
+    }
+
+    void handleErrorCallback(int code, const std::string message) {
+        ROS_ERROR("carm_a3_motion SDK error callback code=%d message=%s",
+                  code,
+                  message.c_str());
+    }
+
+    void handleCompletionCallback(const std::string task_key) {
+        ROS_WARN("carm_a3_motion SDK completion callback task_key=%s",
+                 task_key.c_str());
     }
 
     bool handleEmergencyStop(std_srvs::Trigger::Request&, std_srvs::Trigger::Response& res) {
@@ -452,6 +553,15 @@ private:
     int robot_port_ = 8090;
     double connect_timeout_s_ = 1.0;
     bool connect_on_start_ = true;
+    bool auto_ready_on_connect_ = false;
+    bool register_callbacks_on_connect_ = false;
+    double pre_ready_delay_s_ = 1.0;
+    bool sdk_session_initialized_ = false;
+    bool ready_called_on_connect_ = false;
+    bool callbacks_registered_ = false;
+    std::atomic<double> last_joint_stamp_{0.0};
+    std::atomic<double> last_pose_stamp_{0.0};
+    std::atomic<size_t> last_joint_count_{0};
 
     bool allow_ready_ = false;
     bool allow_servo_enable_ = false;

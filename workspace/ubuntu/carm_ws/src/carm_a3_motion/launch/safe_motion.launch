@@ -6,6 +6,9 @@
   <arg name="allow_servo_enable" default="" />
   <arg name="allow_motion" default="" />
   <arg name="dry_run" default="" />
+  <arg name="auto_ready_on_connect" default="" />
+  <arg name="register_callbacks_on_connect" default="" />
+  <arg name="pre_ready_delay_s" default="" />
   <arg name="use_duration" default="" />
   <arg name="wait_for_motion" default="" />
 
@@ -23,6 +26,9 @@
     <param name="allow_servo_enable" value="$(arg allow_servo_enable)" if="$(eval arg('allow_servo_enable') != '')" />
     <param name="allow_motion" value="$(arg allow_motion)" if="$(eval arg('allow_motion') != '')" />
     <param name="dry_run" value="$(arg dry_run)" if="$(eval arg('dry_run') != '')" />
+    <param name="auto_ready_on_connect" value="$(arg auto_ready_on_connect)" if="$(eval arg('auto_ready_on_connect') != '')" />
+    <param name="register_callbacks_on_connect" value="$(arg register_callbacks_on_connect)" if="$(eval arg('register_callbacks_on_connect') != '')" />
+    <param name="pre_ready_delay_s" value="$(arg pre_ready_delay_s)" if="$(eval arg('pre_ready_delay_s') != '')" />
     <param name="use_duration" value="$(arg use_duration)" if="$(eval arg('use_duration') != '')" />
     <param name="wait_for_motion" value="$(arg wait_for_motion)" if="$(eval arg('wait_for_motion') != '')" />
   </node>

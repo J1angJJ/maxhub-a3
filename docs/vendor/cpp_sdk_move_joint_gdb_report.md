@@ -1,6 +1,6 @@
 # C++ SDK `move_joint` 段错误报告
 
-本文记录本地 MAXHUB / CArm A3 环境中，厂家 C++ SDK 运动接口可稳定复现的段错误问题。
+本文记录本地 MAXHUB / CArm A3 环境中，厂家 C++ SDK 运动接口在未执行完整初始化流程时可复现的段错误问题，以及后续按官方 ROS1 demo 初始化顺序复测后的结果。
 
 ## 环境信息
 
@@ -171,9 +171,9 @@ WebSocket 返回示例：
 Task finished callback received: ...
 ```
 
-## 当前判断
+## 原始判断
 
-问题目前看起来集中在 C++ SDK 的真实运动调用路径：
+原始问题集中在 C++ SDK 的真实运动调用路径：
 
 ```cpp
 CArmSingleCol::move_joint(target, -1, false)
@@ -181,9 +181,9 @@ CArmSingleCol::move_joint(target, -1, false)
 
 该问题不太像 ROS service 封装导致，因为一个尽量贴近官方 ROS1 demo 调用方式的 stripped topic 节点也能复现同样崩溃。
 
-## 后续待复测：完整官方初始化流程
+## 后续复测：完整官方初始化流程
 
-当前 gdb 复现使用了 `_allow_move_joint:=true`，但没有启用 `_auto_ready:=true`，也没有注册任务完成和错误回调。厂家原 ROS1 节点的启动顺序更完整：
+原始 gdb 复现使用了 `_allow_move_joint:=true`，但没有启用 `_auto_ready:=true`，也没有注册任务完成和错误回调。厂家原 ROS1 节点的启动顺序更完整：
 
 ```text
 创建 CArmSingleCol
@@ -193,7 +193,7 @@ set_ready()
 接收 move_joint(..., -1, false)
 ```
 
-这可能影响 SDK 内部任务状态初始化。SDK 即便未就绪也不应段错误，而应返回错误码；但为了排除本地初始化流程差异，需要复测完整官方流程。
+这可能影响 SDK 内部任务状态初始化。SDK 即便未就绪也不应段错误，而应返回错误码；但为了排除本地初始化流程差异，已补充完整官方流程复测。
 
 复测命令：
 
@@ -208,10 +208,49 @@ gdb --args devel/lib/carm_a3_motion/official_topic_motion_node \
   _robot_port:=8090
 ```
 
-如果完整初始化后 C++ `move_joint()` 不再崩溃，则说明 SDK 的运动接口依赖 `set_ready()` 或回调注册带来的内部任务状态；仍建议厂家增强未初始化状态下的错误处理，避免段错误。
+复测结果：
 
-如果完整初始化后仍然崩溃，则更能确认问题位于当前 C++ SDK / 控制器固件组合的 `move_joint()` 路径。
+- 启用 `_auto_ready:=true`、`_register_callbacks:=true`、`_pre_ready_delay_s:=1.0` 后，C++ `move_joint(..., -1, false)` 不再崩溃。
+- 实机可以看到极小动作。
+- 因此 C++ SDK 异步运动接口应依赖 `set_ready()` 或回调注册带来的内部任务状态。
+- 旧崩溃仍值得反馈厂家：缺少完整初始化时，SDK 应返回错误码，而不是在 `libarm_control_sdk.so` 内触发 `SIGSEGV`。
+
+## GitHub Issue 摘要建议
+
+标题可写：
+
+```text
+C++ SDK async move_joint may segfault if called before full ready/callback initialization
+```
+
+正文摘要：
+
+```text
+Environment:
+- Ubuntu 20.04, ROS Noetic
+- Controller/model: A3_DM_C
+- Controller IP/port: 192.168.31.60:8090
+- SDK path: vendored arm_control_sdk in ROS workspace
+
+Observed:
+- get_status() and get_joint_pos() work.
+- WebSocket TASK_MOVJ works on the same controller state.
+- Calling CArmSingleCol::move_joint(target, -1, false) without set_ready() and SDK callback registration can trigger SIGSEGV inside libarm_control_sdk.so.
+- gdb stack: CArmKernelImpl::move_joint -> CArmSingleCol::move_joint -> ROS topic callback.
+
+Follow-up:
+- After matching the official ROS1 demo initialization sequence, wait about 1 s, call set_ready(), and register joint/pose/error/completion callbacks, the same async move_joint call no longer crashes and the arm makes a tiny visible move.
+
+Expected:
+- If the SDK session is not fully initialized, move_joint should return an error code or clear diagnostic instead of crashing the process.
+```
+
+完整日志见：
+
+```text
+docs/vendor/cpp_sdk_move_joint_gdb_full.txt
+```
 
 ## 希望厂家协助确认的问题
 
-请协助确认当前 C++ SDK 版本是否兼容 `A3_DM_C` 控制器固件，以及 `CArmSingleCol::move_joint(target, -1, false)` 是否存在已知崩溃路径。相同控制器状态下，等价 WebSocket `TASK_MOVJ` 命令可以成功执行。
+请协助确认当前 C++ SDK 版本是否兼容 `A3_DM_C` 控制器固件，以及 `CArmSingleCol::move_joint(target, -1, false)` 在未执行 `set_ready()` / 回调注册时是否存在已知崩溃路径。相同控制器状态下，完整初始化后的 C++ 调用和等价 WebSocket `TASK_MOVJ` 命令都可以成功执行。

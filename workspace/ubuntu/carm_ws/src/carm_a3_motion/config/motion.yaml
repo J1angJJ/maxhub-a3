@@ -2,6 +2,9 @@ robot_host: "192.168.31.60"
 robot_port: 8090
 connect_timeout_s: 1.0
 connect_on_start: true
+auto_ready_on_connect: false
+register_callbacks_on_connect: false
+pre_ready_delay_s: 1.0
 
 # Safe defaults: launching this node must not move the real arm.
 allow_ready: false
