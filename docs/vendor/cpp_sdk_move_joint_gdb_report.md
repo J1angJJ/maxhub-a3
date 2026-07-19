@@ -1,20 +1,26 @@
-# C++ SDK `move_joint` Segmentation Fault Report
+# C++ SDK `move_joint` 段错误报告
 
-This report records a reproducible crash of the vendor C++ SDK motion API on the local MAXHUB / CArm A3 setup.
+本文记录本地 MAXHUB / CArm A3 环境中，厂家 C++ SDK 运动接口可稳定复现的段错误问题。
 
-## Environment
+## 环境信息
 
-- OS: Ubuntu 20.04
-- ROS: Noetic
-- Robot/controller IP: `192.168.31.60`
-- Controller port: `8090`
-- Robot model reported by SDK/WebSocket: `A3_DM_C`
-- Workspace: `/home/noetic/maxhub-a3/workspace/ubuntu/carm_ws`
-- SDK path: `/home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/vendor/arm_control_sdk`
+- 操作系统：Ubuntu 20.04
+- ROS：Noetic
+- 机械臂 / 控制器 IP：`192.168.31.60`
+- 控制器端口：`8090`
+- SDK / WebSocket 上报型号：`A3_DM_C`
+- ROS 工作区：`/home/noetic/maxhub-a3/workspace/ubuntu/carm_ws`
+- SDK 路径：`/home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/vendor/arm_control_sdk`
 
-## Library Resolution
+## 库加载情况
 
-`ldd devel/lib/carm_a3_motion/official_topic_motion_node | grep -E "arm_control|tcp_com|Poco|jsoncpp"` shows all relevant libraries are loaded from the vendored SDK path:
+执行：
+
+```bash
+ldd devel/lib/carm_a3_motion/official_topic_motion_node | grep -E "arm_control|tcp_com|Poco|jsoncpp"
+```
+
+结果显示相关库均来自仓库内 vendored SDK 目录：
 
 ```text
 libarm_control_sdk.so => .../vendor/arm_control_sdk/lib/libarm_control_sdk.so
@@ -29,11 +35,11 @@ libPocoXML.so.71 => .../vendor/arm_control_sdk/poco/lib/libPocoXML.so.71
 libPocoJSON.so.71 => .../vendor/arm_control_sdk/poco/lib/libPocoJSON.so.71
 ```
 
-This makes an obvious system-library or stale-SDK mix-up unlikely.
+因此目前不太像是系统库、Poco、jsoncpp 或旧版 SDK 混用导致的问题。
 
-## Reproduction
+## 复现步骤
 
-Start `roscore`, then start the official-topic compatibility node under `gdb` with the SDK library path set:
+先启动 `roscore`，然后在另一个终端中设置 SDK 库路径，并用 `gdb` 启动官方 topic 对照节点：
 
 ```bash
 cd /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws
@@ -48,14 +54,14 @@ gdb --args devel/lib/carm_a3_motion/official_topic_motion_node \
   _robot_port:=8090
 ```
 
-In `gdb`:
+进入 `gdb` 后执行：
 
 ```gdb
 set pagination off
 run
 ```
 
-Publish a small joint target:
+发布一个很小的关节目标：
 
 ```bash
 rostopic pub -1 /carm_a3/official_motion/move_joint sensor_msgs/JointState "header:
@@ -68,27 +74,28 @@ velocity: []
 effort: []"
 ```
 
-The node prints:
+节点输出：
 
 ```text
 official_topic_motion calling move_joint(position, -1, false)
 ```
 
-Then it crashes with `SIGSEGV`.
+随后进程触发 `SIGSEGV` 段错误。
 
-For a complete support log after the crash:
+崩溃后可用以下 gdb 命令保存完整日志：
 
 ```gdb
 set logging file /tmp/carm_cpp_move_joint_gdb.txt
 set logging on
 bt
 thread apply all bt
+info sharedlibrary
 set logging off
 ```
 
-## GDB Backtrace
+## GDB 崩溃栈
 
-The crash is inside the vendor C++ SDK:
+崩溃点位于厂家 C++ SDK 内部：
 
 ```text
 Thread 1 "official_topic_" received signal SIGSEGV, Segmentation fault.
@@ -108,72 +115,72 @@ from /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/vendor/arm_control_sdk/lib/
 #2  OfficialTopicMotionNode::handleMoveJoint(...)
 ```
 
-A full gdb log with `bt`, `thread apply all bt`, and `info sharedlibrary` is archived at:
+完整 gdb 日志包含 `bt`、`thread apply all bt` 和 `info sharedlibrary`，已归档到：
 
 ```text
 docs/vendor/cpp_sdk_move_joint_gdb_full.txt
 ```
 
-The full thread dump shows:
+完整线程栈显示：
 
-- Thread 1 crashes in `carm::CArmKernelImpl::move_joint(...)`.
-- SDK communication worker threads are alive in `libtcp_com.so`, including:
+- 主线程在 `carm::CArmKernelImpl::move_joint(...)` 内部崩溃。
+- SDK 通讯线程仍在 `libtcp_com.so` 中运行，包括：
   - `carm::CommunicationClient::sendRequestFunc()`
   - `carm::CommunicationClient::sendHeartbeatFunc()`
   - `carm::CommunicationClient::broadcastDataFunc()`
   - `carm::CommunicationClient::threadCycle()`
-- The WebSocket receive thread is blocked in vendored Poco/WebSocket receive functions, not crashed:
+- WebSocket 接收线程阻塞在 vendored Poco / WebSocket 接收函数中，没有崩溃：
   - `Poco::Net::WebSocket::receiveFrame(...)`
   - `carm::WebSocketClient::recieveMsg[abi:cxx11]()`
-- ROS callback threads are waiting normally in `roscpp`.
+- ROS 回调线程处于正常等待状态。
 
-This supports the conclusion that the process is connected and the SDK communication machinery is running, while the direct real-motion call path crashes synchronously in the main ROS callback thread.
+这说明进程已经连上控制器，SDK 通讯线程也在运行，但直接调用 C++ 真实运动接口时，在主 ROS 回调线程中同步崩溃。
 
-## Shared Libraries From Full Log
+## 共享库信息
 
-`info sharedlibrary` confirms the motion node is using vendored SDK libraries:
+完整日志中的 `info sharedlibrary` 进一步确认当前进程使用的是 vendored SDK 库：
 
 ```text
-libarm_control_sdk.so  .../vendor/arm_control_sdk/lib/libarm_control_sdk.so
-libjsoncpp.so.1        .../vendor/arm_control_sdk/lib/libjsoncpp.so.1
-libtcp_com.so          .../vendor/arm_control_sdk/lib/libtcp_com.so
-libcarm_poco_net.so    .../vendor/arm_control_sdk/lib/libcarm_poco_net.so
-libmlog.so             .../vendor/arm_control_sdk/lib/libmlog.so
-libPocoNet.so.71       .../vendor/arm_control_sdk/poco/lib/libPocoNet.so.71
-libPocoUtil.so.71      .../vendor/arm_control_sdk/poco/lib/libPocoUtil.so.71
+libarm_control_sdk.so   .../vendor/arm_control_sdk/lib/libarm_control_sdk.so
+libjsoncpp.so.1         .../vendor/arm_control_sdk/lib/libjsoncpp.so.1
+libtcp_com.so           .../vendor/arm_control_sdk/lib/libtcp_com.so
+libcarm_poco_net.so     .../vendor/arm_control_sdk/lib/libcarm_poco_net.so
+libmlog.so              .../vendor/arm_control_sdk/lib/libmlog.so
+libPocoNet.so.71        .../vendor/arm_control_sdk/poco/lib/libPocoNet.so.71
+libPocoUtil.so.71       .../vendor/arm_control_sdk/poco/lib/libPocoUtil.so.71
 libPocoFoundation.so.71 .../vendor/arm_control_sdk/poco/lib/libPocoFoundation.so.71
-libPocoXML.so.71       .../vendor/arm_control_sdk/poco/lib/libPocoXML.so.71
-libPocoJSON.so.71      .../vendor/arm_control_sdk/poco/lib/libPocoJSON.so.71
+libPocoXML.so.71        .../vendor/arm_control_sdk/poco/lib/libPocoXML.so.71
+libPocoJSON.so.71       .../vendor/arm_control_sdk/poco/lib/libPocoJSON.so.71
 ```
 
-ROS and system dependencies come from `/opt/ros/noetic` and Ubuntu system paths, as expected.
+ROS 相关库来自 `/opt/ros/noetic`，系统库来自 Ubuntu 系统路径，符合预期。
 
-## Control Experiment
+## 对照实验
 
-The same controller state works through WebSocket:
+同一控制器状态下，WebSocket 路径可以正常运动：
 
-- C++ SDK status APIs work: `connect`, `get_status`, `get_joint_pos`.
-- WebSocket/Python `TASK_MOVJ` returns `Task_Recieve`.
-- Task finished callback is received.
-- The real robot shows a small visible motion.
+- C++ SDK 状态接口正常：`connect`、`get_status`、`get_joint_pos` 可用。
+- WebSocket / Python `TASK_MOVJ` 返回 `Task_Recieve`。
+- 能收到 task finished callback。
+- 实机可以看到小幅动作。
 
-Example WebSocket response:
+WebSocket 返回示例：
 
 ```text
 {'command': 'webRecieveTasks', 'recv': 'Task_Recieve', 'task_key': '...'}
 Task finished callback received: ...
 ```
 
-## Current Conclusion
+## 当前判断
 
-The failure appears isolated to the C++ SDK real-motion path:
+问题目前看起来集中在 C++ SDK 的真实运动调用路径：
 
 ```cpp
 CArmSingleCol::move_joint(target, -1, false)
 ```
 
-The issue is unlikely to be caused by the ROS service wrapper, because a stripped topic node matching the official ROS1 demo call shape reproduces the same crash.
+该问题不太像 ROS service 封装导致，因为一个尽量贴近官方 ROS1 demo 调用方式的 stripped topic 节点也能复现同样崩溃。
 
-## Suggested Vendor Question
+## 希望厂家协助确认的问题
 
-Please confirm whether the provided C++ SDK build is compatible with the current `A3_DM_C` controller firmware and whether `CArmSingleCol::move_joint(target, -1, false)` has a known crash path. The equivalent WebSocket `TASK_MOVJ` command succeeds on the same controller.
+请协助确认当前 C++ SDK 版本是否兼容 `A3_DM_C` 控制器固件，以及 `CArmSingleCol::move_joint(target, -1, false)` 是否存在已知崩溃路径。相同控制器状态下，等价 WebSocket `TASK_MOVJ` 命令可以成功执行。
