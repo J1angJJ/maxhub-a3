@@ -132,6 +132,8 @@ Initial FK/IK notes:
 - Enhanced `ik-probe --include-mm` verified that IK works for current cart pose, plan pose, and FK(current joints).
 - Keep the project IK convention as meters with pose order `x,y,z,qx,qy,qz,qw`.
 - `wxyz` payload order fails, and millimeter-scaled positions fail.
+- Official C++ SDK, pybind SDK, and pure Python WebSocket SDK all expose FK/IK. The official ROS1 demo does not expose FK/IK as ROS topics, so this package's ROS services are the project-level wrapper.
+- See `docs/vendor/official_kinematics_reference.md` for the official interface notes and the PyPI pose-order inconsistency.
 - `ik-offset dx dy dz` solves a small Cartesian offset from the current pose without moving the arm.
 - `ik-offset --execute` calls `/carm_a3/motion/move_joint` after checking the IK solution's max joint delta. The service still applies its own motion safety limits and post-motion verification.
 
