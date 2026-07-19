@@ -94,5 +94,6 @@ set_target_properties(official_topic_motion_node PROPERTIES
 
 catkin_install_python(PROGRAMS
   scripts/py_ws_motion_node.py
+  scripts/raw_ws_motion_node.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

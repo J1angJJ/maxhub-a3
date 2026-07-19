@@ -149,9 +149,15 @@ rostopic echo -n 1 /joint_states
 rostopic echo -n 1 /maxhub_a3/flange_pose
 ```
 
-## Run Safe Motion Node
+## Motion Control Paths
 
-`carm_a3_motion` 是当前自研运动控制入口，独立于 `carm_a3_driver`。它连接同一个官方 C++ SDK，但默认不会让机械臂运动：
+`carm_a3_motion` 是当前自研运动控制入口，独立于 `carm_a3_driver`。当前有三类并行路径，互不覆盖：
+
+- 主路径：`py_ws_motion.launch`，使用厂家纯 Python/WebSocket SDK，已验证控制器接受 `TASK_MOVJ`，实机有细微动作。
+- 自研 WebSocket 路径：`raw_ws_motion.launch`，仓库内直接实现 WebSocket JSON 通讯，不依赖厂家 Python `Carm` 类。
+- C++ SDK 诊断路径：`safe_motion.launch` 和 `official_topic_motion.launch`，用于复现实测 C++ `move_joint()` 段错误，不作为日常运动入口。
+
+默认安全原则不变：
 
 - `dry_run: true`
 - `allow_motion: false`
@@ -174,65 +180,94 @@ catkin_make
 source devel/setup.bash
 ```
 
-### Start In Dry-run Mode
+### C++ SDK Motion Diagnostic
 
-终端 1：
+当前不建议把 C++ SDK 用作正式运动路径。已复现实测：
 
-```bash
-source /opt/ros/noetic/setup.bash
-roscore
-```
+- `carm_a3_driver` 的 C++ SDK 状态读取正常。
+- `safe_motion_node` 在真实 `move_joint(target, -1, false)` 内部 `exit code -11`。
+- `official_topic_motion_node` 直接复刻官方 ROS1 demo 的 `move_joint(msg->position, -1, false)`，同样在该调用后段错误。
+- 同一控制器状态下，Python/WebSocket `TASK_MOVJ` 能被接受并完成任务，实机有细微动作。
 
-终端 2：
+本地环境可排查项：
+
+- 确认每个终端都重新 `source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash`。
+- 用干净终端只加载 `/opt/ros/noetic/setup.bash`、vendored SDK setup、`carm_ws/devel/setup.bash`，避免其它 `LD_LIBRARY_PATH` 污染。
+- 确认没有多个运动客户端同时发命令。
+- 若要进一步定位，可用 `ldd devel/lib/carm_a3_motion/official_topic_motion_node` 查看是否链接到仓库内 vendored SDK/Poco 库。
+
+更像官方库问题的证据：
+
+- C++ 状态 API 和 WebSocket 通讯均正常，只有 C++ `move_joint()` 真实运动调用崩。
+- 官方 ROS1 demo 调用形态也崩，不是我们的 service 封装导致。
+- Python/WebSocket 等价 `TASK_MOVJ` 成功。
+
+可反馈售后的简述：Ubuntu 20.04 / ROS Noetic / A3_DM_C，C++ SDK `CArmSingleCol::move_joint(target, -1, false)` 段错误；`get_status()`、`get_joint_pos()` 正常；同一状态下 WebSocket `webRecieveTasks` `TASK_MOVJ` 成功。
+
+### Build
 
 ```bash
 cd /home/noetic/maxhub-a3
 source /opt/ros/noetic/setup.bash
-source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash
-source workspace/ubuntu/carm_ws/devel/setup.bash
+cd workspace/ubuntu/carm_ws
+catkin_make
+source devel/setup.bash
+```
+
+### Recommended Python WebSocket Path
+
+先查状态：
+
+```bash
+roslaunch carm_a3_motion py_ws_motion.launch
+rosservice call /carm_a3/py_motion/status
+```
+
+dry-run：
+
+```bash
+roslaunch carm_a3_motion py_ws_motion.launch allow_motion:=true dry_run:=true
+rosservice call /carm_a3/py_motion/jog_joint "{joint_index: 1, delta_rad: 0.005, duration_s: 2.0}"
+```
+
+真动极小步：
+
+```bash
+roslaunch carm_a3_motion py_ws_motion.launch allow_motion:=true dry_run:=false
+rosservice call /carm_a3/py_motion/jog_joint "{joint_index: 1, delta_rad: 0.005, duration_s: 2.0}"
+```
+
+实测 `0.005 rad` 能收到 `Task_Recieve` 和 task finished callback，机械臂可见细微动作。
+
+### Raw WebSocket Path
+
+这个节点完全由仓库代码直接发 WebSocket JSON，不使用厂家 Python `Carm` 类。用于把正式链路逐步从 vendored Python SDK 收敛到自研实现。
+
+```bash
+roslaunch carm_a3_motion raw_ws_motion.launch
+rosservice call /carm_a3/raw_motion/status
+```
+
+```bash
+roslaunch carm_a3_motion raw_ws_motion.launch allow_motion:=true dry_run:=true
+rosservice call /carm_a3/raw_motion/jog_joint "{joint_index: 1, delta_rad: 0.005, duration_s: 2.0}"
+```
+
+```bash
+roslaunch carm_a3_motion raw_ws_motion.launch allow_motion:=true dry_run:=false
+rosservice call /carm_a3/raw_motion/jog_joint "{joint_index: 1, delta_rad: 0.005, duration_s: 2.0}"
+```
+
+### Legacy C++ Service Diagnostic
+
+以下节点保留为诊断/对照，不推荐作为日常运动入口：
+
+```bash
 roslaunch carm_a3_motion safe_motion.launch
-```
-
-终端 3：
-
-```bash
-source /opt/ros/noetic/setup.bash
-source /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/devel/setup.bash
 rosservice call /carm_a3/motion/status
-rosservice call /carm_a3/motion/jog_joint "{joint_index: 1, delta_rad: 0.01, duration_s: 2.0}"
 ```
 
-默认情况下，`jog_joint` 应返回被 `allow_motion=false` 拦截；这说明安全门控生效。
-
-### First Real Jog
-
-确认机械臂周围安全、急停按钮可触达、原厂示教器可观察状态后，再新开：
-
-```bash
-cd /home/noetic/maxhub-a3
-source /opt/ros/noetic/setup.bash
-source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash
-source workspace/ubuntu/carm_ws/devel/setup.bash
-roslaunch carm_a3_motion safe_motion.launch allow_motion:=true dry_run:=false
-```
-
-如果控制器已经处于伺服使能和 `POSITION` 模式，发送极小关节 jog：
-
-```bash
-rosservice call /carm_a3/motion/jog_joint "{joint_index: 1, delta_rad: 0.01, duration_s: 2.0}"
-```
-
-急停服务始终可调用：
-
-```bash
-rosservice call /carm_a3/motion/emergency_stop
-```
-
-当前节点不会自动执行 `set_ready()`、不会自动使能伺服、不会自动切换控制模式。若状态不满足要求，运动服务会返回错误；这样第一版运动链路先验证“连接、状态检查、门控、小步运动”这条最小闭环。
-
-注意：实机首测时节点默认不会调用 `set_speed_level()`，使用控制器/示教器当前速度。若日志停在 `setSpeedLevel` 后节点退出，保持 `set_speed_before_motion: false`，先验证 `move_joint()` 本身。
-
-实机首测默认也不传到达时间、不等待 SDK 同步完成，等价于官方 ROS1 示例中的 `move_joint(target, -1, false)`。如果日志能看到 `jog_joint: calling move_joint duration=-1.000 wait=false` 后仍崩溃，说明问题集中在 SDK 的 `move_joint()` 真实运动调用本身，而不是 ROS service 或参数门控。
+默认情况下，`jog_joint` 应返回被 `allow_motion=false` 拦截；这说明 C++ 诊断节点的安全门控生效。
 
 ### Official Topic Compatibility Test
 
@@ -270,7 +305,7 @@ effort: []"
 
 若该节点也在 `official_topic_motion calling move_joint(position, -1, false)` 后退出，优先判断为 C++ SDK 真实运动接口在当前控制器/固件上崩溃；下一步应改走官方 Python/WebSocket 轻量接口或厂家原始 demo 二进制做对照。
 
-### Python WebSocket Motion Test
+### Python WebSocket Motion Details
 
 当 C++ SDK 的真实 `move_joint()` 确认会段错误时，改用厂家纯 Python/WebSocket 轻量接口做对照。该节点直接加载 vendored SDK 里的 `carm.py`，发送 `TASK_MOVJ`，不导入 `carm_py` C++ 扩展。
 

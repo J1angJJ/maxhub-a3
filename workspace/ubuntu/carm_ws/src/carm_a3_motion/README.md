@@ -4,6 +4,12 @@ Safety-gated motion services for CArm / MAXHUB A3 on ROS Noetic.
 
 This package is intentionally separate from `carm_a3_driver`. The driver can stay useful for read-only state publishing, while this package owns commands that can change the physical robot state.
 
+Current recommended path:
+
+- Use `py_ws_motion.launch` for day-to-day motion tests. It uses the vendor pure Python WebSocket SDK and has been verified to send `TASK_MOVJ`.
+- Use `raw_ws_motion.launch` when you want an in-repo WebSocket implementation that does not depend on the vendor Python class.
+- Keep `safe_motion.launch` and `official_topic_motion.launch` as C++ SDK diagnostics only. On the current test setup, both crash inside the C++ SDK `move_joint()` real-motion call.
+
 Default launch settings are conservative:
 
 - `dry_run: true`
@@ -119,6 +125,30 @@ effort: []"
 
 If this node also crashes immediately after `official_topic_motion calling move_joint(position, -1, false)`, the failure is very likely inside the C++ SDK real-motion call path on this controller/firmware, not in the ROS service wrapper.
 
+## C++ SDK Motion Crash Notes
+
+Observed behavior:
+
+- C++ read-only SDK calls work: connect, status, joint position, `/joint_states`, and TF publication.
+- `safe_motion_node` crashes with `exit code -11` inside `move_joint(target, -1, false)`.
+- `official_topic_motion_node`, which mirrors the official ROS1 demo call `move_joint(msg->position, -1, false)`, crashes at the same point.
+- The same robot state reports `connected=true`, `servo=true`, `state=0`, and `fsm_state=1/POSITION`.
+- Python WebSocket `TASK_MOVJ` is accepted and task completion is reported, with visible small motion.
+
+Possible causes to rule out locally:
+
+- Runtime library mismatch or stale SDK files. Re-source `workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash`, clean rebuild, and verify the node uses the vendored `.so` files in `workspace/ubuntu/carm_ws/vendor/arm_control_sdk/lib` and `poco/lib`.
+- ABI or dependency conflict from another `LD_LIBRARY_PATH` entry. Test in a fresh terminal with only `/opt/ros/noetic/setup.bash`, the vendored SDK setup, and this workspace setup sourced.
+- Multiple clients sending conflicting real-motion commands. Stop the C++ motion nodes before starting the WebSocket motion node, and keep only one motion client active.
+
+What looks more like an upstream SDK issue:
+
+- The crash happens inside the official C++ call shape, after all local safety checks and after current joint state was read successfully.
+- It reproduces in the stripped official-topic compatibility node, not just in the service wrapper.
+- The controller accepts the equivalent WebSocket/Python `TASK_MOVJ` command.
+
+This is good evidence to send to vendor support: C++ SDK state APIs are usable, C++ SDK real-motion `move_joint()` segfaults, while WebSocket `TASK_MOVJ` works on the same controller state.
+
 ## Python WebSocket Motion Test
 
 If both C++ motion nodes crash inside `move_joint()`, use the pure Python WebSocket path. This node loads the vendor `carm.py` file directly and sends the same `TASK_MOVJ` command that the web/ Python SDK uses, avoiding the C++ `move_joint()` shared-library path.
@@ -164,4 +194,29 @@ If `use_sdk_clip:=true` fails before sending, try the raw JSON path:
 
 ```bash
 roslaunch carm_a3_motion py_ws_motion.launch allow_motion:=true dry_run:=false use_sdk_clip:=false
+```
+
+## Raw WebSocket Motion Test
+
+This is the in-repo WebSocket implementation. It does not import the vendor `Carm` class, but sends the same JSON command to `ws://192.168.31.60:8090`.
+
+Start:
+
+```bash
+roslaunch carm_a3_motion raw_ws_motion.launch
+rosservice call /carm_a3/raw_motion/status
+```
+
+Dry-run:
+
+```bash
+roslaunch carm_a3_motion raw_ws_motion.launch allow_motion:=true dry_run:=true
+rosservice call /carm_a3/raw_motion/jog_joint "{joint_index: 1, delta_rad: 0.005, duration_s: 2.0}"
+```
+
+Real tiny jog:
+
+```bash
+roslaunch carm_a3_motion raw_ws_motion.launch allow_motion:=true dry_run:=false
+rosservice call /carm_a3/raw_motion/jog_joint "{joint_index: 1, delta_rad: 0.005, duration_s: 2.0}"
 ```

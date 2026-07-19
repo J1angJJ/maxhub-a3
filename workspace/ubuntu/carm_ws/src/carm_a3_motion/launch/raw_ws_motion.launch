@@ -1,0 +1,20 @@
+<launch>
+  <arg name="robot_host" default="192.168.31.60" />
+  <arg name="robot_port" default="8090" />
+  <arg name="allow_motion" default="false" />
+  <arg name="dry_run" default="true" />
+  <arg name="move_speed" default="5" />
+
+  <node
+    name="carm_a3_raw_ws_motion"
+    pkg="carm_a3_motion"
+    type="raw_ws_motion_node.py"
+    output="screen"
+    required="true">
+    <param name="robot_host" value="$(arg robot_host)" />
+    <param name="robot_port" type="int" value="$(arg robot_port)" />
+    <param name="allow_motion" type="bool" value="$(arg allow_motion)" />
+    <param name="dry_run" type="bool" value="$(arg dry_run)" />
+    <param name="move_speed" type="int" value="$(arg move_speed)" />
+  </node>
+</launch>
