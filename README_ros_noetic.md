@@ -1429,7 +1429,9 @@ rostopic echo -n 1 /joint_states
 
 注意：当前 `flange -> gripper_base` 来自整机 STEP 装配坐标推断，`gripper_base -> gripper_tcp` 的 `-0.149 m` 偏移仍来自夹爪前端几何估计，不等价于真实夹持接触点。抓取脚本已支持 TCP 目标补偿，但正式下探仍需要用尺量或低速轻触桌面继续标定真实 TCP/contact height。当前下探抓取仍应优先用 plan 检查。
 
-若抓取停在物块上方，可优先调低 `block_grasp.yaml` 的 `grasp/tcp_grasp_z_m`，而不是直接调 `grasp_z_m`。当前默认 `tcp_grasp_z_m: 0.12` 是保守值，可按 `0.11 -> 0.10 -> 0.09` 逐步测试。
+若抓取停在物块上方，可优先微调 `block_grasp.yaml` 的 `grasp/tcp_grasp_z_m`，而不是直接调 `grasp_z_m`。当前默认 `tcp_grasp_z_m: 0.14` 是触碰上表面后的保守回退值；后续应按 `0.14 -> 0.13 -> 0.12` 小步测试。
+
+真实运动中禁止在连续轨迹验证失败后自动 fallback 到分段运动；因为机械臂可能已经部分移动，旧分段起点会和实际状态不一致。`block_grasp.py` 默认 `fallback_after_trajectory_failure: false`，并用 `max_segment_joint_delta_rad` 拦截 IK 分支跳变。
 
 ## Safety
 

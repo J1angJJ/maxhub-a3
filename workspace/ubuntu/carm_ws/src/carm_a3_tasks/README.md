@@ -137,6 +137,8 @@ By default, the approach pose opens the gripper before moving and estimates both
 
 `grasp/use_tcp_target` makes the planner treat the detected block point as a TCP target and converts it back to the required flange pose with `grasp/flange_to_tcp_xyz_m`. Tune `grasp/tcp_grasp_z_m` first when the gripper is too high or too low.
 
+For real motion, trajectory fallback is disabled by default. If a continuous trajectory partly moves but fails verification, the task stops instead of retrying from stale planned waypoints. `grasp/max_segment_joint_delta_rad` also rejects large IK branch jumps during planning.
+
 The move from the overview pose to approach also inserts `grasp/view_transit_waypoints` intermediate IK targets. These waypoints keep the current overview orientation while translating toward the block, so the wrist camera tends to keep the block in view during the approach instead of swinging away through a pure joint-space interpolation.
 
 Both overview initialization and block approach prefer `/carm_a3/motion/move_joint_trajectory` when available. The motion node still checks each adjacent waypoint against its joint-delta limit, but sends the whole waypoint list to the SDK trajectory API for smoother execution. Set `prefer_joint_trajectory: false` to fall back to segmented `move_joint`.

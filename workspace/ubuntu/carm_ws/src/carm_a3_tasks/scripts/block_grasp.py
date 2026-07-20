@@ -431,6 +431,8 @@ def execute_motion(solved):
             execute_trajectory(move_traj_proxy, solved)
             return
         except (RuntimeError, rospy.ServiceException) as exc:
+            if not bool(get_param("grasp/fallback_after_trajectory_failure", False)):
+                raise
             print("trajectory execution unavailable, falling back to segmented move_joint: {}".format(exc))
     move_proxy = service_proxy("/carm_a3/motion/move_joint", MoveJoint)
     execute_sequence(move_proxy, solved)
@@ -513,12 +515,19 @@ def plan_block_grasp(args):
 
     solved = solve_pose_sequence(ik_proxy, ordered_poses, list(joint_res.positions))
     max_total = float(get_param("grasp/max_total_joint_delta_rad", 2.20))
+    max_segment_limit = float(get_param("grasp/max_segment_joint_delta_rad", max_total))
     first_delta = max_abs_delta(list(joint_res.positions), solved[0][2])
     max_segment = max([first_delta] + [item[3] for item in solved[1:]])
     print("max_sequence_joint_delta: {:.9g}".format(max_segment))
     if max_segment > max_total:
         raise RuntimeError(
             "planned joint delta {:.9g} exceeds limit {:.9g}".format(max_segment, max_total)
+        )
+    if max_segment > max_segment_limit:
+        raise RuntimeError(
+            "planned segment joint delta {:.9g} exceeds segment limit {:.9g}; likely IK branch jump".format(
+                max_segment, max_segment_limit
+            )
         )
 
     print("joint targets:")
