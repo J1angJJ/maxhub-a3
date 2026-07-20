@@ -449,10 +449,10 @@
     name="joint6_to_gripper_base"
     type="fixed">
     <origin
-      xyz="0 0 0"
-      rpy="0 0 0" />
+      xyz="0.064891 0.005939 -0.035486"
+      rpy="3.141592654 -0.002999991 3.141592654" />
     <parent
-      link="link6" />
+      link="flange" />
     <child
       link="gripper_base" />
   </joint>  
