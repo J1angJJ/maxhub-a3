@@ -482,59 +482,64 @@ def visual_recenter_after_approach(
     if not bool(get_param("grasp/visual_recenter_after_approach", True)):
         return
 
+    iterations = max(1, int(get_param("grasp/recenter_iterations", 1)))
     base_frame = get_param("workspace/base_frame_id", "base_link")
     tcp_frame = get_param("grasp/tcp_frame_id", "gripper_tcp")
-    payload = wait_json(detection_topic)
-    detection = choose_detection(payload, target_color, min_confidence)
-    block_point = project_detection_to_table(listener, detection, camera_model, payload)
-    tcp_point = lookup_point(listener, base_frame, tcp_frame)
-    error_xy = [
-        float(block_point[0]) - float(tcp_point[0]),
-        float(block_point[1]) - float(tcp_point[1]),
-    ]
-    max_step = float(get_param("grasp/recenter_max_step_m", 0.04))
-    tolerance = float(get_param("grasp/recenter_tolerance_m", 0.006))
-    step_xy, raw_norm = clamp_xy_step(error_xy, max_step)
-    step_norm = math.sqrt(step_xy[0] * step_xy[0] + step_xy[1] * step_xy[1])
-    print("visual recenter:")
-    print("block_xy={}, tcp_xy={}, error_xy={}, error_norm={:.6g}".format(
-        vector_to_text(block_point[:2]),
-        vector_to_text(tcp_point[:2]),
-        vector_to_text(error_xy),
-        raw_norm,
-    ))
-    if raw_norm <= tolerance:
-        print("visual recenter skipped: error within tolerance {:.6g} m".format(tolerance))
-        return
-    if step_norm <= 1e-9:
-        print("visual recenter skipped: near-zero clamped step")
-        return
+    for iteration in range(1, iterations + 1):
+        payload = wait_json(detection_topic)
+        detection = choose_detection(payload, target_color, min_confidence)
+        block_point = project_detection_to_table(listener, detection, camera_model, payload)
+        tcp_point = lookup_point(listener, base_frame, tcp_frame)
+        error_xy = [
+            float(block_point[0]) - float(tcp_point[0]),
+            float(block_point[1]) - float(tcp_point[1]),
+        ]
+        max_step = float(get_param("grasp/recenter_max_step_m", 0.04))
+        tolerance = float(get_param("grasp/recenter_tolerance_m", 0.006))
+        step_xy, raw_norm = clamp_xy_step(error_xy, max_step)
+        step_norm = math.sqrt(step_xy[0] * step_xy[0] + step_xy[1] * step_xy[1])
+        print("visual recenter iteration {}/{}:".format(iteration, iterations))
+        print("block_xy={}, tcp_xy={}, error_xy={}, error_norm={:.6g}".format(
+            vector_to_text(block_point[:2]),
+            vector_to_text(tcp_point[:2]),
+            vector_to_text(error_xy),
+            raw_norm,
+        ))
+        if raw_norm <= tolerance:
+            print("visual recenter done: error within tolerance {:.6g} m".format(tolerance))
+            return
+        if step_norm <= 1e-9:
+            print("visual recenter stopped: near-zero clamped step")
+            return
 
-    cart_res = cart_proxy()
-    if not cart_res.success:
-        raise RuntimeError("visual recenter cartesian snapshot failed: {}".format(cart_res.message))
-    joint_res = joint_proxy()
-    if not joint_res.success:
-        raise RuntimeError("visual recenter joint snapshot failed: {}".format(joint_res.message))
-    target_pose = list(cart_res.pose)
-    target_pose[0] += step_xy[0]
-    target_pose[1] += step_xy[1]
-    tool_index = int(get_param("grasp/tool_index", 0))
-    ik_res = ik_proxy(tool_index, target_pose, list(joint_res.positions))
-    print("visual recenter ik result:")
-    print(ik_res)
-    if not ik_res.success:
-        raise RuntimeError("visual recenter IK failed: {}".format(ik_res.message))
-    move_proxy = service_proxy("/carm_a3/motion/move_joint", MoveJoint)
-    duration = float(get_param("grasp/recenter_duration_s", 1.5))
-    print("visual recenter executing step_xy={}, clamped_from={:.6g}".format(
-        vector_to_text(step_xy),
-        raw_norm,
-    ))
-    res = move_proxy(list(ik_res.positions), duration, False)
-    print(res)
-    if not res.success:
-        raise RuntimeError("visual recenter move failed: {}".format(res.message))
+        cart_res = cart_proxy()
+        if not cart_res.success:
+            raise RuntimeError("visual recenter cartesian snapshot failed: {}".format(cart_res.message))
+        joint_res = joint_proxy()
+        if not joint_res.success:
+            raise RuntimeError("visual recenter joint snapshot failed: {}".format(joint_res.message))
+        target_pose = list(cart_res.pose)
+        target_pose[0] += step_xy[0]
+        target_pose[1] += step_xy[1]
+        tool_index = int(get_param("grasp/tool_index", 0))
+        ik_res = ik_proxy(tool_index, target_pose, list(joint_res.positions))
+        print("visual recenter ik result:")
+        print(ik_res)
+        if not ik_res.success:
+            raise RuntimeError("visual recenter IK failed: {}".format(ik_res.message))
+        move_proxy = service_proxy("/carm_a3/motion/move_joint", MoveJoint)
+        duration = float(get_param("grasp/recenter_duration_s", 1.5))
+        print("visual recenter executing step_xy={}, clamped_from={:.6g}".format(
+            vector_to_text(step_xy),
+            raw_norm,
+        ))
+        res = move_proxy(list(ik_res.positions), duration, False)
+        print(res)
+        if not res.success:
+            raise RuntimeError("visual recenter move failed: {}".format(res.message))
+        rospy.sleep(0.2)
+
+    print("visual recenter reached iteration limit; rerun approach-only if more correction is needed")
 
 
 def maybe_set_gripper(pos, label):
