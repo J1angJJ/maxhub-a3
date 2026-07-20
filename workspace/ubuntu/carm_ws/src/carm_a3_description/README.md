@@ -22,4 +22,10 @@ flange -> carm_a3_camera_optical_frame
 
 In normal bringup, `carm_a3_driver` publishes `/joint_states`, while `robot_state_publisher` publishes the full robot TF chain.
 
-Current `/joint_states` contains `joint1` through `joint6`. The arm chain up to `flange` is therefore available. Gripper finger joints `joint7` and `joint8` require future gripper state publishing before their moving TF is meaningful.
+Current `/joint_states` contains `joint1` through `joint6`, and `carm_a3_motion` can append `joint7` and `joint8` from the SDK gripper gap. The arm chain up to `flange` is therefore available, and the finger links become meaningful when the unified motion node is running with `publish_gripper_joints:=true`.
+
+The model also defines an initial fixed `gripper_tcp` frame under `gripper_base`. It is an estimated two-finger center near the front of the gripper and must be validated against the real fingertip/contact point before using it for table-contact grasping:
+
+```text
+flange -> gripper_base -> gripper_tcp
+```

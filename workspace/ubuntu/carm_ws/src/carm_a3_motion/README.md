@@ -67,6 +67,8 @@ rosrun carm_a3_motion motion_cli.py tool-info 0
 
 The node publishes `/joint_states`, `/maxhub_a3/flange_pose`, and `/maxhub_a3/diagnostics` from the same SDK session used by motion services. Keep `publish_flange_tf:=false` when `carm_a3_description` and `robot_state_publisher` are active, so the URDF remains the source for the full `base_link -> flange` chain.
 
+When `publish_gripper_joints:=true`, `/joint_states` also appends `joint7` and `joint8` from the SDK gripper gap. The default scale is `0.5`, mapping the reported two-finger gap to each prismatic finger joint for TF visualization.
+
 ## First Dry-run Jog
 
 Default launch should block jog commands at `allow_motion=false`. To exercise the command path without physical motion, keep `dry_run=true` and explicitly open the motion gate:

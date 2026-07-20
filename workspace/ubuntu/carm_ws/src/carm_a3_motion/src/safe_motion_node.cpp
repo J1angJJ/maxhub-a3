@@ -213,6 +213,11 @@ private:
         pnh_.param<bool>("publish_flange_tf", publish_flange_tf_, false);
         joint_names_ = {"joint1", "joint2", "joint3", "joint4", "joint5", "joint6"};
         pnh_.getParam("joint_names", joint_names_);
+        pnh_.param<bool>("publish_gripper_joints", publish_gripper_joints_, true);
+        pnh_.param<std::string>("gripper_right_joint_name", gripper_right_joint_name_, "joint7");
+        pnh_.param<std::string>("gripper_left_joint_name", gripper_left_joint_name_, "joint8");
+        pnh_.param<double>("gripper_joint_scale", gripper_joint_scale_, 0.5);
+        pnh_.param<double>("gripper_joint_max_m", gripper_joint_max_m_, 0.037);
 
         pnh_.param<bool>("allow_ready", allow_ready_, false);
         pnh_.param<bool>("allow_servo_enable", allow_servo_enable_, false);
@@ -570,7 +575,46 @@ private:
         msg.position = trimToJointNameCount(positions);
         msg.velocity = trimToJointNameCount(velocities);
         msg.effort = trimToJointNameCount(efforts);
+        appendGripperJointStateLocked(&msg);
         joint_pub_.publish(msg);
+    }
+
+    void appendGripperJointStateLocked(sensor_msgs::JointState* msg) {
+        if (!publish_gripper_joints_ || msg == nullptr) {
+            return;
+        }
+
+        double gripper_pos = 0.0;
+        double gripper_vel = 0.0;
+        double gripper_tau = 0.0;
+        try {
+            gripper_pos = arm_->get_gripper_pos();
+            gripper_vel = arm_->get_gripper_vel();
+            gripper_tau = arm_->get_gripper_tau();
+        } catch (const std::exception& e) {
+            ROS_WARN_THROTTLE(2.0, "gripper joint state read failed: %s", e.what());
+            return;
+        } catch (...) {
+            ROS_WARN_THROTTLE(2.0, "gripper joint state read failed: unknown exception");
+            return;
+        }
+
+        const double scaled = gripper_pos * gripper_joint_scale_;
+        const double joint_pos = std::max(0.0, std::min(gripper_joint_max_m_, scaled));
+        const double joint_vel = gripper_vel * gripper_joint_scale_;
+
+        msg->name.push_back(gripper_right_joint_name_);
+        msg->name.push_back(gripper_left_joint_name_);
+        msg->position.push_back(joint_pos);
+        msg->position.push_back(joint_pos);
+        if (!msg->velocity.empty()) {
+            msg->velocity.push_back(joint_vel);
+            msg->velocity.push_back(joint_vel);
+        }
+        if (!msg->effort.empty()) {
+            msg->effort.push_back(gripper_tau);
+            msg->effort.push_back(gripper_tau);
+        }
     }
 
     void publishFlangePoseLocked() {
@@ -1768,6 +1812,11 @@ private:
     std::string flange_frame_id_;
     bool publish_flange_tf_ = false;
     std::vector<std::string> joint_names_;
+    bool publish_gripper_joints_ = true;
+    std::string gripper_right_joint_name_ = "joint7";
+    std::string gripper_left_joint_name_ = "joint8";
+    double gripper_joint_scale_ = 0.5;
+    double gripper_joint_max_m_ = 0.037;
     bool auto_ready_on_connect_ = false;
     bool register_callbacks_on_connect_ = false;
     double pre_ready_delay_s_ = 1.0;

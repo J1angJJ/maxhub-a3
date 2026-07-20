@@ -457,6 +457,19 @@
       link="gripper_base" />
   </joint>  
   <link
+    name="gripper_tcp" />
+  <joint
+    name="gripper_base_to_tcp"
+    type="fixed">
+    <origin
+      xyz="0 0 0.149"
+      rpy="0 0 0" />
+    <parent
+      link="gripper_base" />
+    <child
+      link="gripper_tcp" />
+  </joint>
+  <link
     name="gripper_right">
     <inertial>
       <origin
