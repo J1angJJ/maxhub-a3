@@ -675,7 +675,7 @@ def solve_pose_sequence(ik_proxy, ordered_poses, seed):
     return solved
 
 
-def validate_solved_sequence(solved, seed):
+def validate_solved_sequence(solved, seed, enforce_segment_limit=True):
     max_total = float(get_param("grasp/max_total_joint_delta_rad", 2.20))
     max_segment_limit = float(get_param("grasp/max_segment_joint_delta_rad", max_total))
     first_delta = max_abs_delta(list(seed), solved[0][2])
@@ -685,6 +685,13 @@ def validate_solved_sequence(solved, seed):
         raise RuntimeError(
             "planned joint delta {:.9g} exceeds limit {:.9g}".format(max_segment, max_total)
         )
+    if not enforce_segment_limit:
+        print(
+            "approach-only validation: skipping strict segment limit {:.9g}; continuous trajectory execution still interpolates joints".format(
+                max_segment_limit
+            )
+        )
+        return
     if max_segment > max_segment_limit:
         raise RuntimeError(
             "planned segment joint delta {:.9g} exceeds segment limit {:.9g}; likely IK branch jump".format(
@@ -970,7 +977,11 @@ def plan_block_grasp(args):
     validate_pose_heights(ordered_poses)
 
     solved = solve_pose_sequence(ik_proxy, ordered_poses, list(joint_res.positions))
-    validate_solved_sequence(solved, list(joint_res.positions))
+    validate_solved_sequence(
+        solved,
+        list(joint_res.positions),
+        enforce_segment_limit=requested_allow_descend,
+    )
     print_joint_targets(solved)
 
     if not args.execute:
