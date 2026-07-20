@@ -582,7 +582,7 @@ def resolve_flange_to_tcp(listener):
     return values
 
 
-def build_grasp_poses(point, current_pose, block_axes, allow_descend, flange_to_tcp):
+def build_grasp_poses(point, current_pose, block_axes, allow_descend, flange_to_tcp, tcp_grasp_z_override=None):
     use_current_orientation = bool(get_param("grasp/use_current_orientation", True))
     if use_current_orientation:
         quat = list(current_pose[3:7])
@@ -602,7 +602,11 @@ def build_grasp_poses(point, current_pose, block_axes, allow_descend, flange_to_
 
     x, y, _ = point
     if use_tcp_target:
-        tcp_grasp_z = auto_tcp_grasp_z()
+        if tcp_grasp_z_override is None:
+            tcp_grasp_z = auto_tcp_grasp_z()
+        else:
+            tcp_grasp_z = float(tcp_grasp_z_override)
+            print("tcp grasp z override: {:.6g}".format(tcp_grasp_z))
         tcp_grasp_z = constrain_top_safe_tcp_z(tcp_grasp_z, quat, flange_to_tcp)
         print(
             "tcp target enabled: flange_to_tcp={}, tcp_grasp_z={:.6g}".format(
@@ -621,6 +625,32 @@ def build_grasp_poses(point, current_pose, block_axes, allow_descend, flange_to_
         "grasp": grasp,
         "lift": lift,
     }
+
+
+def center_grasp_tcp_z_scan_values():
+    table_z = float(get_param("workspace/table_z_m", 0.0))
+    block_size = get_param("block/size_m", [0.10, 0.05, 0.05])
+    block_height = block_height_from_config(block_size)
+    center_z = table_z + block_height * 0.5 + float(get_param("grasp/tcp_center_clearance_m", 0.0))
+    top_z = table_z + block_height + float(get_param("grasp/tcp_top_clearance_m", 0.015))
+    step = abs(float(get_param("grasp/auto_raise_tcp_z_step_m", 0.005)))
+    if step <= 1e-9:
+        step = 0.005
+    values = []
+    value = center_z
+    while value <= top_z + 1e-9:
+        values.append(value)
+        value += step
+    if values[-1] < top_z:
+        values.append(top_z)
+    return values, center_z, top_z
+
+
+def try_solve_grasp_sequence(ik_proxy, ordered_poses, seed, enforce_segment_limit):
+    validate_pose_heights(ordered_poses)
+    solved = solve_pose_sequence(ik_proxy, ordered_poses, seed)
+    validate_solved_sequence(solved, seed, enforce_segment_limit=enforce_segment_limit)
+    return solved
 
 
 def build_ordered_pose_sequence(poses, current_pose, allow_descend):
@@ -991,14 +1021,69 @@ def plan_block_grasp(args):
     print("ordered execution poses:")
     for name, pose in ordered_poses:
         print("{}: {}".format(name, vector_to_text(pose)))
-    validate_pose_heights(ordered_poses)
-
-    solved = solve_pose_sequence(ik_proxy, ordered_poses, list(joint_res.positions))
-    validate_solved_sequence(
-        solved,
-        list(joint_res.positions),
-        enforce_segment_limit=planning_allow_descend,
-    )
+    try:
+        solved = try_solve_grasp_sequence(
+            ik_proxy,
+            ordered_poses,
+            list(joint_res.positions),
+            planning_allow_descend,
+        )
+    except RuntimeError as exc:
+        stage = str(get_param("grasp/tcp_grasp_stage", "top_safe")).lower()
+        if not (
+            requested_allow_descend
+            and stage == "center"
+            and bool(get_param("grasp/auto_raise_unreachable_center_grasp", True))
+        ):
+            raise
+        print("center grasp sequence failed at nominal TCP height: {}".format(exc))
+        values, center_z, top_z = center_grasp_tcp_z_scan_values()
+        print(
+            "scanning reachable center-grasp TCP z from {:.6g} to {:.6g} m".format(
+                center_z, top_z
+            )
+        )
+        solved = None
+        for tcp_z in values[1:]:
+            print("trying raised center-grasp TCP z: {:.6g}".format(tcp_z))
+            candidate_poses = build_grasp_poses(
+                point,
+                list(cart_res.pose),
+                block_axes,
+                planning_allow_descend,
+                flange_to_tcp,
+                tcp_grasp_z_override=tcp_z,
+            )
+            candidate_ordered = build_ordered_pose_sequence(
+                candidate_poses,
+                list(cart_res.pose),
+                planning_allow_descend,
+            )
+            try:
+                candidate_solved = try_solve_grasp_sequence(
+                    ik_proxy,
+                    candidate_ordered,
+                    list(joint_res.positions),
+                    planning_allow_descend,
+                )
+            except RuntimeError as candidate_exc:
+                print("raised TCP z {:.6g} failed: {}".format(tcp_z, candidate_exc))
+                continue
+            print(
+                "auto-raised center-grasp TCP z from {:.6g} to {:.6g} m for reachability".format(
+                    center_z, tcp_z
+                )
+            )
+            poses = candidate_poses
+            ordered_poses = candidate_ordered
+            solved = candidate_solved
+            break
+        if solved is None:
+            raise RuntimeError(
+                "center grasp unreachable from TCP z {:.6g} to {:.6g} m".format(
+                    center_z, top_z
+                )
+            )
     print_joint_targets(solved)
 
     if not args.execute:

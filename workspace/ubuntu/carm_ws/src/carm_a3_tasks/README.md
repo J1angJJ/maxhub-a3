@@ -175,6 +175,8 @@ Small wrist-yaw corrections can make the vendor IK jump to another wrist branch.
 
 `block/size_m` is ordered as table long side, table short side, and block height. The detector projects the visible rectangle onto the top face plane at `workspace/table_z_m + block_height`. In auto height mode, `grasp/tcp_grasp_stage` selects a geometric target: `top_safe` uses `workspace/table_z_m + block_height + grasp/tcp_top_clearance_m` for cautious validation, while `center` uses `workspace/table_z_m + block_height / 2 + grasp/tcp_center_clearance_m` for the actual side-grasp centerline.
 
+If the exact centerline sequence is not reachable, `grasp/auto_raise_unreachable_center_grasp` scans TCP grasp height upward toward the top-safe height in `grasp/auto_raise_tcp_z_step_m` increments and prints the lowest reachable candidate. This makes reachability limits visible without hard-coding a manual offset.
+
 During planning, `block_grasp.py` also predicts physical cuboid control points from the known block dimensions, the table plane, and the estimated long/short axes. The log field `predicted physical cuboid control points` contains 8 corners, 12 edge midpoints, and 6 face centers with base-frame coordinates and projected image pixels. These are model-predicted cuboid points, including hidden lower corners, not just extra 2D rectangle samples.
 
 `grasp/use_tcp_target` makes the planner treat the detected block point as a TCP target and converts it back to the required flange pose. By default `grasp/flange_to_tcp_source: tf` reads `flange -> gripper_tcp` from the robot model and fails closed if TF is unavailable. Use `grasp/flange_to_tcp_source: config` or `grasp/tcp_grasp_z_mode: manual` only for controlled debugging.

@@ -38,6 +38,8 @@ grasp:
   tcp_grasp_stage: "top_safe"
   tcp_center_clearance_m: 0.0
   tcp_top_clearance_m: 0.015
+  auto_raise_unreachable_center_grasp: true
+  auto_raise_tcp_z_step_m: 0.005
   approach_height_m: 0.08
   grasp_z_m: 0.22
   min_flange_z_m: 0.14
