@@ -678,9 +678,13 @@ def try_solve_grasp_sequence(ik_proxy, ordered_poses, seed, enforce_segment_limi
     return solved
 
 
-def build_ordered_pose_sequence(poses, current_pose, allow_descend):
+def build_ordered_pose_sequence(poses, current_pose, allow_descend, suppress_align_transit=False):
     ordered = []
-    if allow_descend and bool(get_param("grasp/recenter_before_descent", True)):
+    if (
+        allow_descend
+        and bool(get_param("grasp/recenter_before_descent", True))
+        and not suppress_align_transit
+    ):
         count = max(0, int(get_param("grasp/align_transit_waypoints", 6)))
         current_xyz = [float(value) for value in current_pose[:3]]
         current_quat = normalize_quat_xyzw([float(value) for value in current_pose[3:7]])
@@ -694,6 +698,8 @@ def build_ordered_pose_sequence(poses, current_pose, allow_descend):
             ]
             quat = slerp_quat_xyzw(current_quat, approach_quat, ratio)
             ordered.append(("align_transit_{}".format(index), xyz + quat))
+    elif allow_descend and suppress_align_transit:
+        print("alignment transit fallback: planning direct approach/grasp/lift without interpolated alignment poses")
     elif bool(get_param("grasp/keep_camera_view_during_approach", True)):
         count = int(get_param("grasp/view_transit_waypoints", 4))
         count = max(0, count)
@@ -713,6 +719,39 @@ def build_ordered_pose_sequence(poses, current_pose, allow_descend):
         ordered.append(("grasp", poses["grasp"]))
         ordered.append(("lift", poses["lift"]))
     return ordered
+
+
+def try_solve_descent_sequence_with_fallback(ik_proxy, poses, current_pose, seed):
+    ordered_poses = build_ordered_pose_sequence(poses, current_pose, True)
+    print("post-recenter ordered execution poses:")
+    for name, pose in ordered_poses:
+        print("{}: {}".format(name, vector_to_text(pose)))
+    try:
+        return try_solve_grasp_sequence(ik_proxy, ordered_poses, seed, True)
+    except RuntimeError as exc:
+        if not bool(get_param("grasp/fallback_without_align_transit", True)):
+            raise
+        print("post-recenter aligned transit planning failed: {}".format(exc))
+        fallback_poses = build_ordered_pose_sequence(
+            poses,
+            current_pose,
+            True,
+            suppress_align_transit=True,
+        )
+        print("post-recenter direct fallback ordered execution poses:")
+        for name, pose in fallback_poses:
+            print("{}: {}".format(name, vector_to_text(pose)))
+        try:
+            solved = try_solve_grasp_sequence(ik_proxy, fallback_poses, seed, True)
+        except RuntimeError as fallback_exc:
+            raise RuntimeError(
+                "center grasp planning failed; aligned transit error: {}; direct fallback error: {}".format(
+                    exc,
+                    fallback_exc,
+                )
+            )
+        print("post-recenter direct fallback selected after aligned transit failure")
+        return solved
 
 
 def validate_pose_heights(ordered_poses):
@@ -1253,15 +1292,11 @@ def plan_block_grasp(args):
             print("post-recenter planned poses x,y,z,qx,qy,qz,qw:")
             for name in ["approach", "grasp", "lift"]:
                 print("{}: {}".format(name, vector_to_text(poses[name])))
-            ordered_poses = build_ordered_pose_sequence(poses, list(cart_res.pose), True)
-            print("post-recenter ordered execution poses:")
-            for name, pose in ordered_poses:
-                print("{}: {}".format(name, vector_to_text(pose)))
-            solved = try_solve_grasp_sequence(
+            solved = try_solve_descent_sequence_with_fallback(
                 ik_proxy,
-                ordered_poses,
+                poses,
+                list(cart_res.pose),
                 list(joint_res.positions),
-                True,
             )
             print_joint_targets(solved)
             execute_sequence.last_positions = list(joint_res.positions)

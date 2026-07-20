@@ -28,6 +28,7 @@ grasp:
   keep_camera_view_during_approach: true
   view_transit_waypoints: 4
   align_transit_waypoints: 6
+  fallback_without_align_transit: true
   recenter_before_descent: true
   target_quat_xyzw: [0.707, 0.0, 0.707, 0.0]
   use_tcp_target: true
