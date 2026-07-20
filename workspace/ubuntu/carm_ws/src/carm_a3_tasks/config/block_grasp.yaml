@@ -10,7 +10,8 @@ perception:
   target_color: ""
 
 block:
-  size_m: [0.05, 0.05, 0.10]
+  # Dimensions are table-frame object extents: long side, short side, height.
+  size_m: [0.10, 0.05, 0.05]
 
 grasp:
   tool_index: 0
@@ -29,8 +30,11 @@ grasp:
   recenter_before_descent: true
   target_quat_xyzw: [0.707, 0.0, 0.707, 0.0]
   use_tcp_target: true
+  flange_to_tcp_source: "tf"
   flange_to_tcp_xyz_m: [0.065338, 0.005939, 0.113513]
+  tcp_grasp_z_mode: "auto"
   tcp_grasp_z_m: 0.14
+  tcp_center_clearance_m: 0.0
   approach_height_m: 0.08
   grasp_z_m: 0.22
   min_flange_z_m: 0.14

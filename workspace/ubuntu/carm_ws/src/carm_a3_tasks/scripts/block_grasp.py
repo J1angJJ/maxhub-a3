@@ -204,9 +204,9 @@ def project_pixel_to_plane(listener, camera_model, payload, pixel, projection_z)
 
 def project_detection_to_table(listener, detection, camera_model, payload):
     table_z = float(get_param("workspace/table_z_m", 0.0))
-    block_size = get_param("block/size_m", [0.05, 0.05, 0.10])
-    block_height = float(block_size[2])
-    projection_z = table_z + block_height * 0.5
+    block_size = get_param("block/size_m", [0.10, 0.05, 0.05])
+    block_height = block_height_from_config(block_size)
+    projection_z = table_z + block_height
     point = project_pixel_to_plane(listener, camera_model, payload, detection["center_px"], projection_z)
     return [float(point[0]), float(point[1]), float(point[2])]
 
@@ -216,8 +216,8 @@ def estimate_block_axes(listener, detection, camera_model, payload):
     if len(corners) != 4:
         return None
     table_z = float(get_param("workspace/table_z_m", 0.0))
-    block_size = get_param("block/size_m", [0.05, 0.05, 0.10])
-    projection_z = table_z + float(block_size[2]) * 0.5
+    block_size = get_param("block/size_m", [0.10, 0.05, 0.05])
+    projection_z = table_z + block_height_from_config(block_size)
     points = [
         project_pixel_to_plane(listener, camera_model, payload, corner, projection_z)
         for corner in corners
@@ -250,12 +250,40 @@ def estimate_block_axes(listener, detection, camera_model, payload):
     }
 
 
+def block_height_from_config(block_size):
+    if len(block_size) != 3:
+        raise ValueError("block/size_m must contain long side, short side, height")
+    return float(block_size[2])
+
+
+def auto_tcp_grasp_z():
+    mode = str(get_param("grasp/tcp_grasp_z_mode", "auto")).lower()
+    if mode in ["manual", "fixed"]:
+        value = float(get_param("grasp/tcp_grasp_z_m", 0.12))
+        print("tcp grasp z manual: {:.6g}".format(value))
+        return value
+    table_z = float(get_param("workspace/table_z_m", 0.0))
+    block_size = get_param("block/size_m", [0.10, 0.05, 0.05])
+    block_height = block_height_from_config(block_size)
+    clearance = float(get_param("grasp/tcp_center_clearance_m", 0.0))
+    value = table_z + block_height * 0.5 + clearance
+    print(
+        "tcp grasp z auto: table_z={:.6g}, block_height={:.6g}, center_clearance={:.6g}, tcp_grasp_z={:.6g}".format(
+            table_z,
+            block_height,
+            clearance,
+            value,
+        )
+    )
+    return value
+
+
 def select_grasp_axis(block_axes):
     if block_axes is None:
         return None, "none"
     if not bool(get_param("grasp/auto_select_grasp_side", True)):
         return block_axes["long"]["direction"], "manual_long_axis"
-    block_size = get_param("block/size_m", [0.05, 0.05, 0.10])
+    block_size = get_param("block/size_m", [0.10, 0.05, 0.05])
     sorted_sides = sorted([float(value) for value in block_size])
     short_side = sorted_sides[0]
     long_side = sorted_sides[-1]
@@ -308,7 +336,27 @@ def pose_for_tcp_target(tcp_xyz, quat, flange_to_tcp):
     return [float(value) for value in flange_xyz] + quat
 
 
-def build_grasp_poses(point, current_pose, block_axes, allow_descend):
+def resolve_flange_to_tcp(listener):
+    source = str(get_param("grasp/flange_to_tcp_source", "tf")).lower()
+    tcp_frame = get_param("grasp/tcp_frame_id", "gripper_tcp")
+    if source == "tf":
+        try:
+            listener.waitForTransform("flange", tcp_frame, rospy.Time(0), rospy.Duration(DEFAULT_TIMEOUT_S))
+            translation, _ = listener.lookupTransform("flange", tcp_frame, rospy.Time(0))
+            values = [float(value) for value in translation]
+            print("flange_to_tcp from TF flange -> {}: {}".format(tcp_frame, vector_to_text(values)))
+            return values
+        except (tf.Exception, tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as exc:
+            print("flange_to_tcp TF lookup failed, falling back to config: {}".format(exc))
+    values = get_param("grasp/flange_to_tcp_xyz_m", [0.0, 0.0, 0.0])
+    if len(values) != 3:
+        raise ValueError("grasp/flange_to_tcp_xyz_m must contain 3 values")
+    values = [float(value) for value in values]
+    print("flange_to_tcp from config: {}".format(vector_to_text(values)))
+    return values
+
+
+def build_grasp_poses(point, current_pose, block_axes, allow_descend, flange_to_tcp):
     use_current_orientation = bool(get_param("grasp/use_current_orientation", True))
     if use_current_orientation:
         quat = list(current_pose[3:7])
@@ -328,11 +376,7 @@ def build_grasp_poses(point, current_pose, block_axes, allow_descend):
 
     x, y, _ = point
     if use_tcp_target:
-        flange_to_tcp = get_param("grasp/flange_to_tcp_xyz_m", [0.0, 0.0, 0.0])
-        if len(flange_to_tcp) != 3:
-            raise ValueError("grasp/flange_to_tcp_xyz_m must contain 3 values")
-        flange_to_tcp = [float(value) for value in flange_to_tcp]
-        tcp_grasp_z = float(get_param("grasp/tcp_grasp_z_m", 0.12))
+        tcp_grasp_z = auto_tcp_grasp_z()
         print(
             "tcp target enabled: flange_to_tcp={}, tcp_grasp_z={:.6g}".format(
                 vector_to_text(flange_to_tcp), tcp_grasp_z
@@ -596,7 +640,7 @@ def observe_block(listener, camera_model, detection_topic, target_color, min_con
     print("{} selected detection:".format(label))
     print(json.dumps(detection, sort_keys=True))
     point = project_detection_to_table(listener, detection, camera_model, payload)
-    print("{} estimated block center in base frame x,y,z:".format(label))
+    print("{} estimated block top center in base frame x,y,z:".format(label))
     print(vector_to_text(point))
     block_axes = estimate_block_axes(listener, detection, camera_model, payload)
     if block_axes is not None:
@@ -674,7 +718,14 @@ def plan_block_grasp(args):
     if two_stage_descent:
         print("two-stage execution enabled: initial plan is approach-only; descent is replanned after visual recenter")
 
-    poses = build_grasp_poses(point, list(cart_res.pose), block_axes, planning_allow_descend)
+    flange_to_tcp = resolve_flange_to_tcp(listener)
+    poses = build_grasp_poses(
+        point,
+        list(cart_res.pose),
+        block_axes,
+        planning_allow_descend,
+        flange_to_tcp,
+    )
     print("planned poses x,y,z,qx,qy,qz,qw:")
     for name in ["approach", "grasp", "lift"]:
         print("{}: {}".format(name, vector_to_text(poses[name])))
@@ -747,7 +798,8 @@ def plan_block_grasp(args):
         print(joint_res)
         if not joint_res.success:
             raise RuntimeError(joint_res.message)
-        poses = build_grasp_poses(point, list(cart_res.pose), block_axes, True)
+        flange_to_tcp = resolve_flange_to_tcp(listener)
+        poses = build_grasp_poses(point, list(cart_res.pose), block_axes, True, flange_to_tcp)
         print("post-recenter planned poses x,y,z,qx,qy,qz,qw:")
         for name in ["approach", "grasp", "lift"]:
             print("{}: {}".format(name, vector_to_text(poses[name])))

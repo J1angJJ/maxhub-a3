@@ -64,3 +64,33 @@ rostopic echo -n 1 /joint_states
 ```
 
 如果 `00_J6` 与 ROS `flange` 的坐标定义不一致，可能出现 180 度翻转或轴向偏移。正式下探抓取前，必须用实物尺寸或低速轻触桌面确认 `gripper_tcp` 的高度和方向。
+
+## 2026-07-20 夹指 STL 复核
+
+二进制 STL 包围盒显示，左右夹指在各自 link 下的尺寸约为：
+
+```text
+gripper_left/right local size ~= [0.057, 0.105, 0.022] m
+```
+
+按 URDF 中 `joint7` / `joint8` 的固定原点和 RPY 变换到 `gripper_base` 后，左右夹指实体在 `gripper_base` 下约为：
+
+```text
+x = -0.0285 .. 0.0285 m
+y = -0.0217 .. 0.0217 m
+z =  0.0580 .. 0.1630 m
+```
+
+因此旧的 `gripper_base -> gripper_tcp = [0, 0, -0.149]` 与夹指模型几何不一致。当前将 `gripper_tcp` 定义为两指内侧中心、夹指长度中点：
+
+```text
+gripper_base -> gripper_tcp = [0, 0, 0.1105] m
+```
+
+任务层默认从 TF 读取 `flange -> gripper_tcp`，抓取高度由物块高度自动计算为：
+
+```text
+tcp_grasp_z = table_z + block_height / 2 + tcp_center_clearance
+```
+
+这样后续高度误差应优先通过验证/修正 `gripper_tcp` 模型定义处理，而不是在抓取任务里添加固定 Z 偏移。
