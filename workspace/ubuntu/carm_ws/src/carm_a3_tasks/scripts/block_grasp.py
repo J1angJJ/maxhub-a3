@@ -980,7 +980,7 @@ def plan_block_grasp(args):
     validate_solved_sequence(
         solved,
         list(joint_res.positions),
-        enforce_segment_limit=requested_allow_descend,
+        enforce_segment_limit=planning_allow_descend,
     )
     print_joint_targets(solved)
 

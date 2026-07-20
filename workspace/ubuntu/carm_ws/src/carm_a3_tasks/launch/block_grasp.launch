@@ -3,6 +3,7 @@
   <arg name="command" default="plan" />
   <arg name="extra_args" default="" />
   <arg name="color" default="" />
+  <arg name="tcp_grasp_stage" default="top_safe" />
   <arg name="launch_camera_stack" default="true" />
   <arg name="launch_camera" default="true" />
   <arg name="launch_color_blocks" default="true" />
@@ -39,5 +40,6 @@
         args="$(arg command) $(arg extra_args)">
     <rosparam command="load" file="$(arg config)" />
     <param name="perception/target_color" value="$(arg color)" />
+    <param name="grasp/tcp_grasp_stage" value="$(arg tcp_grasp_stage)" />
   </node>
 </launch>

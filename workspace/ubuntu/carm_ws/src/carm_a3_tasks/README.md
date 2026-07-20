@@ -131,6 +131,42 @@ For real grasp tests, prefer the launch form so `config/block_grasp.yaml` is loa
 roslaunch carm_a3_tasks block_grasp.launch command:=execute color:=green extra_args:="--allow-descend --use-gripper"
 ```
 
+The launch file defaults to `tcp_grasp_stage:=top_safe`, which validates the visual approach above the block and does not plan the final side-grasp descent. Use the explicit two-step sequence below before a real grasp:
+
+```bash
+roslaunch carm_a3_tasks block_grasp.launch \
+  command:=plan \
+  color:=green \
+  tcp_grasp_stage:=center \
+  launch_camera_stack:=true \
+  launch_motion:=true \
+  motion_allow_motion:=false \
+  motion_allow_gripper:=false \
+  motion_dry_run:=false \
+  motion_auto_ready_on_connect:=true \
+  motion_register_callbacks_on_connect:=true \
+  motion_pre_ready_delay_s:=1.0 \
+  extra_args:="--allow-descend --use-gripper"
+```
+
+After checking the planned descent, enable real motion and gripper control:
+
+```bash
+roslaunch carm_a3_tasks block_grasp.launch \
+  command:=execute \
+  color:=green \
+  tcp_grasp_stage:=center \
+  launch_camera_stack:=true \
+  launch_motion:=true \
+  motion_allow_motion:=true \
+  motion_allow_gripper:=true \
+  motion_dry_run:=false \
+  motion_auto_ready_on_connect:=true \
+  motion_register_callbacks_on_connect:=true \
+  motion_pre_ready_delay_s:=1.0 \
+  extra_args:="--allow-descend --use-gripper"
+```
+
 The first version keeps the current flange orientation and uses conservative fixed heights from `config/block_grasp.yaml`. Treat it as a grasp-chain smoke test before tuning the true TCP, grasp height, and gripper width. `grasp/min_flange_z_m` is a hard planning guard against near-table flange targets.
 
 By default, the approach pose opens the gripper before moving and estimates both long/short block axes from the detected rectangle corners. Because the block is `5 x 5 x 10 cm` and the gripper opens to about `8 cm`, `grasp/auto_select_grasp_side` selects the gripper span direction over the 5 cm side instead of the 10 cm long side. If the gripper is visually 90 degrees off, change `grasp/align_yaw_offset_deg` or switch `grasp/align_tool_axis` between `x` and `y`.
