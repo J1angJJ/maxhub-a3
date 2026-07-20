@@ -158,8 +158,17 @@ def transform_ray_to_base(listener, base_frame, camera_frame, stamp, ray_camera)
         listener.waitForTransform(base_frame, camera_frame, stamp, rospy.Duration(DEFAULT_TIMEOUT_S))
         translation, rotation = listener.lookupTransform(base_frame, camera_frame, stamp)
     except (tf.Exception, tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-        listener.waitForTransform(base_frame, camera_frame, rospy.Time(0), rospy.Duration(DEFAULT_TIMEOUT_S))
-        translation, rotation = listener.lookupTransform(base_frame, camera_frame, rospy.Time(0))
+        try:
+            listener.waitForTransform(base_frame, camera_frame, rospy.Time(0), rospy.Duration(DEFAULT_TIMEOUT_S))
+            translation, rotation = listener.lookupTransform(base_frame, camera_frame, rospy.Time(0))
+        except (tf.Exception, tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as exc:
+            raise RuntimeError(
+                "TF {} -> {} unavailable; start pregrasp_overview.launch or run block_grasp.launch with launch_camera_stack:=true: {}".format(
+                    base_frame,
+                    camera_frame,
+                    exc,
+                )
+            )
 
     matrix = tf.transformations.quaternion_matrix(rotation)
     origin = np.asarray(translation, dtype=float)
@@ -370,8 +379,17 @@ def project_base_point_to_pixel(listener, camera_model, payload, point_base):
         listener.waitForTransform(camera_frame, base_frame, stamp, rospy.Duration(DEFAULT_TIMEOUT_S))
         translation, rotation = listener.lookupTransform(camera_frame, base_frame, stamp)
     except (tf.Exception, tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-        listener.waitForTransform(camera_frame, base_frame, rospy.Time(0), rospy.Duration(DEFAULT_TIMEOUT_S))
-        translation, rotation = listener.lookupTransform(camera_frame, base_frame, rospy.Time(0))
+        try:
+            listener.waitForTransform(camera_frame, base_frame, rospy.Time(0), rospy.Duration(DEFAULT_TIMEOUT_S))
+            translation, rotation = listener.lookupTransform(camera_frame, base_frame, rospy.Time(0))
+        except (tf.Exception, tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as exc:
+            raise RuntimeError(
+                "TF {} -> {} unavailable for cuboid projection; start pregrasp_overview.launch or run block_grasp.launch with launch_camera_stack:=true: {}".format(
+                    camera_frame,
+                    base_frame,
+                    exc,
+                )
+            )
     matrix = tf.transformations.quaternion_matrix(rotation)
     matrix[:3, 3] = np.asarray(translation, dtype=float)
     point = np.asarray([float(point_base[0]), float(point_base[1]), float(point_base[2]), 1.0])
