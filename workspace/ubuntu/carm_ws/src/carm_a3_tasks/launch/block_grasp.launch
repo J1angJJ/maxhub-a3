@@ -4,11 +4,15 @@
   <arg name="extra_args" default="" />
   <arg name="color" default="" />
   <arg name="launch_camera_stack" default="true" />
+  <arg name="launch_camera" default="true" />
+  <arg name="launch_color_blocks" default="true" />
   <arg name="launch_image_view" default="true" />
   <arg name="image_view_topic" default="/carm_a3/perception/color_blocks/debug_image" />
 
   <include if="$(arg launch_camera_stack)" file="$(find carm_a3_tasks)/launch/pregrasp_overview.launch">
     <arg name="launch_motion" value="false" />
+    <arg name="launch_camera" value="$(arg launch_camera)" />
+    <arg name="launch_color_blocks" value="$(arg launch_color_blocks)" />
     <arg name="launch_image_view" value="$(arg launch_image_view)" />
     <arg name="image_view_topic" value="$(arg image_view_topic)" />
   </include>

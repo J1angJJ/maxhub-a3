@@ -1,6 +1,8 @@
 <launch>
   <arg name="config" default="$(find carm_a3_tasks)/config/grasp_init.yaml" />
   <arg name="launch_camera_stack" default="true" />
+  <arg name="launch_camera" default="true" />
+  <arg name="launch_color_blocks" default="true" />
   <arg name="launch_image_view" default="true" />
   <arg name="image_view_topic" default="/carm_a3/perception/color_blocks/debug_image" />
   <arg name="launch_motion" default="false" />
@@ -13,7 +15,8 @@
   <rosparam command="load" file="$(arg config)" ns="carm_a3_grasp_init" />
 
   <include if="$(arg launch_camera_stack)" file="$(find carm_a3_bringup)/launch/readonly_vision_handeye.launch">
-    <arg name="launch_color_blocks" value="true" />
+    <arg name="launch_camera" value="$(arg launch_camera)" />
+    <arg name="launch_color_blocks" value="$(arg launch_color_blocks)" />
     <arg name="launch_motion" value="$(arg launch_motion)" />
     <arg name="motion_allow_motion" value="$(arg motion_allow_motion)" />
     <arg name="motion_dry_run" value="$(arg motion_dry_run)" />
