@@ -191,6 +191,8 @@ Full grasp execution uses the same idea by default. With `--allow-descend --use-
 
 If the post-recenter descent plan is not reachable, `grasp/return_to_observation_on_failure` moves the arm back to the joint position recorded at task start. This fallback is intentionally limited to planning failures before the final descent/gripper sequence starts.
 
+At task startup, execute mode also checks whether the selected color block is visible. If the initial observation is invalid, `grasp/return_to_overview_on_initial_observe_failure` runs the configured overview initialization from `grasp_init.yaml`, optionally closes the gripper for a cleaner camera view, waits `grasp/post_overview_observe_delay_s`, and retries the first observation once.
+
 For real motion, trajectory fallback is disabled by default. If a continuous trajectory partly moves but fails verification, the task stops instead of retrying from stale planned waypoints. `grasp/max_segment_joint_delta_rad` also rejects large IK branch jumps during planning.
 
 The move from the overview pose to approach also inserts `grasp/view_transit_waypoints` intermediate IK targets. These waypoints keep the current overview orientation while translating toward the block, so the wrist camera tends to keep the block in view during the approach instead of swinging away through a pure joint-space interpolation.

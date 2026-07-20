@@ -51,6 +51,10 @@ grasp:
   prefer_joint_trajectory: true
   fallback_after_trajectory_failure: false
   return_to_observation_on_failure: true
+  return_to_overview_on_initial_observe_failure: true
+  retry_initial_observe_after_overview_return: true
+  post_overview_observe_delay_s: 0.5
+  close_gripper_before_overview_return: true
   duration_s: 2.0
   wait: false
   open_before_approach: true

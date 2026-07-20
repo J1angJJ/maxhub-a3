@@ -10,6 +10,7 @@ import tf
 from sensor_msgs.msg import CameraInfo
 from std_msgs.msg import String
 
+import grasp_init
 from carm_a3_motion.srv import GetCartesianSnapshot
 from carm_a3_motion.srv import GetJointSnapshot
 from carm_a3_motion.srv import MoveJoint
@@ -835,6 +836,33 @@ def return_to_observation(observation_positions, reason):
         print("return to observation failed: {}".format(exc))
 
 
+def move_to_configured_overview(reason):
+    print("moving to configured overview pose: {}".format(reason))
+    plan, code = grasp_init.plan_overview()
+    if code != 0 or plan is None:
+        raise RuntimeError("overview planning failed while handling: {}".format(reason))
+    max_delta = float(get_param(
+        "overview/max_total_joint_delta_rad",
+        get_param("overview/max_joint_delta_rad", 2.20),
+    ))
+    if plan["max_joint_delta"] > max_delta:
+        raise RuntimeError(
+            "overview max_joint_delta {:.9g} exceeds limit {:.9g}".format(
+                plan["max_joint_delta"], max_delta
+            )
+        )
+    if bool(get_param("grasp/close_gripper_before_overview_return", True)):
+        grasp_init.prepare_gripper_for_overview()
+    duration = float(get_param("overview/duration_s", 3.0))
+    wait = bool(get_param("overview/wait", False))
+    segment_delta = float(get_param("overview/segment_delta_rad", 0.10))
+    waypoints = grasp_init.interpolate_joints(plan["seed"], plan["target_joints"], segment_delta)
+    print("executing overview return: {} waypoint(s), segment_delta_rad={:.9g}".format(
+        len(waypoints), segment_delta
+    ))
+    grasp_init.execute_waypoints(plan["seed"], waypoints, duration, wait)
+
+
 def lookup_point(listener, target_frame, source_frame):
     try:
         listener.waitForTransform(target_frame, source_frame, rospy.Time(0), rospy.Duration(DEFAULT_TIMEOUT_S))
@@ -984,14 +1012,33 @@ def plan_block_grasp(args):
 
     listener = tf.TransformListener()
     rospy.sleep(0.2)
-    _, _, point, block_axes = observe_block(
-        listener,
-        camera_model,
-        detection_topic,
-        target_color,
-        min_confidence,
-        "initial",
-    )
+    try:
+        _, _, point, block_axes = observe_block(
+            listener,
+            camera_model,
+            detection_topic,
+            target_color,
+            min_confidence,
+            "initial",
+        )
+    except RuntimeError as exc:
+        if not (
+            args.execute
+            and bool(get_param("grasp/return_to_overview_on_initial_observe_failure", True))
+        ):
+            raise
+        move_to_configured_overview(exc)
+        if not bool(get_param("grasp/retry_initial_observe_after_overview_return", True)):
+            raise
+        rospy.sleep(float(get_param("grasp/post_overview_observe_delay_s", 0.5)))
+        _, _, point, block_axes = observe_block(
+            listener,
+            camera_model,
+            detection_topic,
+            target_color,
+            min_confidence,
+            "initial-after-overview-return",
+        )
 
     cart_proxy = service_proxy("/carm_a3/motion/get_cartesian_snapshot", GetCartesianSnapshot)
     joint_proxy = service_proxy("/carm_a3/motion/get_joint_snapshot", GetJointSnapshot)

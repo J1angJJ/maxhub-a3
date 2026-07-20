@@ -1,5 +1,6 @@
 <launch>
   <arg name="config" default="$(find carm_a3_tasks)/config/block_grasp.yaml" />
+  <arg name="grasp_init_config" default="$(find carm_a3_tasks)/config/grasp_init.yaml" />
   <arg name="command" default="plan" />
   <arg name="extra_args" default="" />
   <arg name="color" default="" />
@@ -38,6 +39,7 @@
         type="block_grasp.py"
         output="screen"
         args="$(arg command) $(arg extra_args)">
+    <rosparam command="load" file="$(arg grasp_init_config)" />
     <rosparam command="load" file="$(arg config)" />
     <param name="perception/target_color" value="$(arg color)" />
     <param name="grasp/tcp_grasp_stage" value="$(arg tcp_grasp_stage)" />
