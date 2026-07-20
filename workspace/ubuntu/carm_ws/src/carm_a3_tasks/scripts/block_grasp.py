@@ -265,17 +265,33 @@ def auto_tcp_grasp_z():
     table_z = float(get_param("workspace/table_z_m", 0.0))
     block_size = get_param("block/size_m", [0.10, 0.05, 0.05])
     block_height = block_height_from_config(block_size)
-    clearance = float(get_param("grasp/tcp_center_clearance_m", 0.0))
-    value = table_z + block_height * 0.5 + clearance
-    print(
-        "tcp grasp z auto: table_z={:.6g}, block_height={:.6g}, center_clearance={:.6g}, tcp_grasp_z={:.6g}".format(
-            table_z,
-            block_height,
-            clearance,
-            value,
+    stage = str(get_param("grasp/tcp_grasp_stage", "top_safe")).lower()
+    if stage == "center":
+        clearance = float(get_param("grasp/tcp_center_clearance_m", 0.0))
+        value = table_z + block_height * 0.5 + clearance
+        print(
+            "tcp grasp z auto: stage=center, table_z={:.6g}, block_height={:.6g}, center_clearance={:.6g}, tcp_grasp_z={:.6g}".format(
+                table_z,
+                block_height,
+                clearance,
+                value,
+            )
         )
-    )
-    return value
+        return value
+    if stage in ["top", "top_safe"]:
+        clearance = float(get_param("grasp/tcp_top_clearance_m", 0.015))
+        value = table_z + block_height + clearance
+        print(
+            "tcp grasp z auto: stage={}, table_z={:.6g}, block_height={:.6g}, top_clearance={:.6g}, tcp_grasp_z={:.6g}".format(
+                stage,
+                table_z,
+                block_height,
+                clearance,
+                value,
+            )
+        )
+        return value
+    raise ValueError("grasp/tcp_grasp_stage must be 'top_safe', 'top', or 'center'")
 
 
 def select_grasp_axis(block_axes):
@@ -336,6 +352,26 @@ def pose_for_tcp_target(tcp_xyz, quat, flange_to_tcp):
     return [float(value) for value in flange_xyz] + quat
 
 
+def constrain_top_safe_tcp_z(tcp_grasp_z, quat, flange_to_tcp):
+    stage = str(get_param("grasp/tcp_grasp_stage", "top_safe")).lower()
+    if stage not in ["top", "top_safe"]:
+        return tcp_grasp_z
+    min_flange_z = float(get_param("grasp/min_flange_z_m", 0.18))
+    offset_z = float(quat_to_matrix(quat).dot(np.asarray(flange_to_tcp, dtype=float))[2])
+    min_tcp_z = min_flange_z + offset_z
+    if tcp_grasp_z >= min_tcp_z:
+        return tcp_grasp_z
+    print(
+        "tcp grasp z raised by flange guard: requested={:.6g}, required={:.6g}, min_flange_z={:.6g}, tcp_offset_z_in_base={:.6g}".format(
+            tcp_grasp_z,
+            min_tcp_z,
+            min_flange_z,
+            offset_z,
+        )
+    )
+    return min_tcp_z
+
+
 def resolve_flange_to_tcp(listener):
     source = str(get_param("grasp/flange_to_tcp_source", "tf")).lower()
     tcp_frame = get_param("grasp/tcp_frame_id", "gripper_tcp")
@@ -384,6 +420,7 @@ def build_grasp_poses(point, current_pose, block_axes, allow_descend, flange_to_
     x, y, _ = point
     if use_tcp_target:
         tcp_grasp_z = auto_tcp_grasp_z()
+        tcp_grasp_z = constrain_top_safe_tcp_z(tcp_grasp_z, quat, flange_to_tcp)
         print(
             "tcp target enabled: flange_to_tcp={}, tcp_grasp_z={:.6g}".format(
                 vector_to_text(flange_to_tcp), tcp_grasp_z

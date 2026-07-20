@@ -81,16 +81,17 @@ y = -0.0217 .. 0.0217 m
 z =  0.0580 .. 0.1630 m
 ```
 
-因此旧的 `gripper_base -> gripper_tcp = [0, 0, -0.149]` 与夹指模型几何不一致。当前将 `gripper_tcp` 定义为两指内侧中心、夹指长度中点：
+这些 STL 结果说明夹指局部模型可用于检查夹爪尺寸，但不能直接覆盖当前 ROS 抓取姿态里的 TCP 方向。实机和 2026-07-20 的 plan 复核表明，`gripper_base -> gripper_tcp = [0, 0, +0.1105]` 会让 `flange` 目标落到桌面以下，因此不作为默认 TCP。当前继续使用实机接近测试中可工作的方向：
 
 ```text
-gripper_base -> gripper_tcp = [0, 0, 0.1105] m
+gripper_base -> gripper_tcp = [0, 0, -0.149] m
 ```
 
 任务层默认从 TF 读取 `flange -> gripper_tcp`，抓取高度由物块高度自动计算为：
 
 ```text
-tcp_grasp_z = table_z + block_height / 2 + tcp_center_clearance
+tcp_grasp_z(top_safe) = table_z + block_height + tcp_top_clearance
+tcp_grasp_z(center)   = table_z + block_height / 2 + tcp_center_clearance
 ```
 
 这样后续高度误差应优先通过验证/修正 `gripper_tcp` 模型定义处理，而不是在抓取任务里添加固定 Z 偏移。

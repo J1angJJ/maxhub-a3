@@ -31,10 +31,12 @@ grasp:
   target_quat_xyzw: [0.707, 0.0, 0.707, 0.0]
   use_tcp_target: true
   flange_to_tcp_source: "tf"
-  flange_to_tcp_xyz_m: [0.064560, 0.005939, -0.145986]
+  flange_to_tcp_xyz_m: [0.065338, 0.005939, 0.113513]
   tcp_grasp_z_mode: "auto"
   tcp_grasp_z_m: 0.14
+  tcp_grasp_stage: "top_safe"
   tcp_center_clearance_m: 0.0
+  tcp_top_clearance_m: 0.015
   approach_height_m: 0.08
   grasp_z_m: 0.22
   min_flange_z_m: 0.14

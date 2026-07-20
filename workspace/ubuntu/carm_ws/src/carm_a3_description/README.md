@@ -24,10 +24,10 @@ In normal bringup, `carm_a3_driver` publishes `/joint_states`, while `robot_stat
 
 Current `/joint_states` contains `joint1` through `joint6`, and `carm_a3_motion` can append `joint7` and `joint8` from the SDK gripper gap. The arm chain up to `flange` is therefore available, and the finger links become meaningful when the unified motion node is running with `publish_gripper_joints:=true`.
 
-The model also defines a draft `gripper_tcp` frame under `gripper_base`. The `flange -> gripper_base` transform is derived from the full-machine STEP assembly. The current `gripper_base -> gripper_tcp` position is derived from the left/right finger STL bounding boxes: X/Y at the two-finger center, and Z at the midpoint of the finger length in `gripper_base`.
+The model also defines a draft `gripper_tcp` frame under `gripper_base`. The `flange -> gripper_base` transform is derived from the full-machine STEP assembly. The current `gripper_base -> gripper_tcp` direction follows the previous real-arm approach tests; the left/right finger STL bounding boxes are useful for inspection, but their local Z direction does not directly match the current ROS grasp pose convention.
 
 ```text
 flange -> gripper_base -> gripper_tcp
 ```
 
-This makes task-level grasp height use object geometry and TF instead of a hand-tuned absolute Z offset. It is still a model-derived TCP, so validate it with slow approach tests before relying on it for contact-rich grasping. See `docs/vendor/a3_full_model_step_probe.md` for the STEP-derived candidate values.
+Task-level grasp height should use object geometry and TF instead of a hand-tuned absolute Z offset. The TCP is still a model-derived draft, so validate it with slow approach tests before relying on it for contact-rich grasping. See `docs/vendor/a3_full_model_step_probe.md` for the STEP-derived candidate values.
