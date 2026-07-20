@@ -1435,6 +1435,8 @@ rostopic echo -n 1 /joint_states
 
 夹爪开合轴是无向轴，检测框短边的正反方向都等价。`block_grasp.py` 默认 `treat_gripper_axis_bidirectional: true`，会把接近 `180 deg` 的无意义翻腕归一到最小旋转，避免因为矩形角点顺序导致腕部大翻转。
 
+approach-only 模式默认保持观测位姿态，只验证 TCP/XY 是否在物块上方；只有加 `--allow-descend` 时才切换到夹爪轴对齐姿态。这样能把“中心偏差”和“腕部姿态 IK 分支跳变”分开排查。
+
 ## Safety
 
 当前只读节点不会调用：

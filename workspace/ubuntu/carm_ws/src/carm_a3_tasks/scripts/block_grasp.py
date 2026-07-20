@@ -298,14 +298,18 @@ def pose_for_tcp_target(tcp_xyz, quat, flange_to_tcp):
     return [float(value) for value in flange_xyz] + quat
 
 
-def build_grasp_poses(point, current_pose, block_axes):
+def build_grasp_poses(point, current_pose, block_axes, allow_descend):
     use_current_orientation = bool(get_param("grasp/use_current_orientation", True))
     if use_current_orientation:
         quat = list(current_pose[3:7])
     else:
         quat = get_param("grasp/target_quat_xyzw", [0.707, 0.0, 0.707, 0.0])
     quat = normalize_quat_xyzw([float(value) for value in quat])
-    quat = align_quat_to_block_axis(quat, block_axes)
+    align_for_this_plan = allow_descend or not bool(get_param("grasp/align_only_when_descending", True))
+    if align_for_this_plan:
+        quat = align_quat_to_block_axis(quat, block_axes)
+    elif block_axes is not None:
+        print("approach-only mode: keeping current orientation; add --allow-descend to align gripper axis")
 
     approach_height = float(get_param("grasp/approach_height_m", 0.08))
     grasp_z = float(get_param("grasp/grasp_z_m", 0.22))
@@ -510,7 +514,7 @@ def plan_block_grasp(args):
     if not joint_res.success:
         raise RuntimeError(joint_res.message)
 
-    poses = build_grasp_poses(point, list(cart_res.pose), block_axes)
+    poses = build_grasp_poses(point, list(cart_res.pose), block_axes, args.allow_descend)
     print("planned poses x,y,z,qx,qy,qz,qw:")
     for name in ["approach", "grasp", "lift"]:
         print("{}: {}".format(name, vector_to_text(poses[name])))

@@ -139,6 +139,8 @@ By default, the approach pose opens the gripper before moving and estimates both
 
 The gripper span axis is bidirectional by default, so a detected rectangle edge can align with either `+axis` or `-axis` without forcing a 180 degree wrist flip.
 
+Approach-only execution keeps the current overview orientation by default. This makes the first XY/TCP alignment check independent from wrist alignment and avoids unnecessary IK branch changes. Add `--allow-descend` to enable gripper-axis alignment for the real grasp sequence.
+
 For real motion, trajectory fallback is disabled by default. If a continuous trajectory partly moves but fails verification, the task stops instead of retrying from stale planned waypoints. `grasp/max_segment_joint_delta_rad` also rejects large IK branch jumps during planning.
 
 The move from the overview pose to approach also inserts `grasp/view_transit_waypoints` intermediate IK targets. These waypoints keep the current overview orientation while translating toward the block, so the wrist camera tends to keep the block in view during the approach instead of swinging away through a pure joint-space interpolation.
