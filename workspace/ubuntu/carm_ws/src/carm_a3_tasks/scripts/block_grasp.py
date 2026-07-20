@@ -452,6 +452,91 @@ def execute_motion(solved):
     execute_sequence(move_proxy, solved)
 
 
+def lookup_point(listener, target_frame, source_frame):
+    try:
+        listener.waitForTransform(target_frame, source_frame, rospy.Time(0), rospy.Duration(DEFAULT_TIMEOUT_S))
+        translation, _ = listener.lookupTransform(target_frame, source_frame, rospy.Time(0))
+    except (tf.Exception, tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as exc:
+        raise RuntimeError("TF {} -> {} unavailable: {}".format(target_frame, source_frame, exc))
+    return [float(value) for value in translation]
+
+
+def clamp_xy_step(error_xy, max_step):
+    norm = math.sqrt(error_xy[0] * error_xy[0] + error_xy[1] * error_xy[1])
+    if norm <= max_step or norm <= 1e-9:
+        return error_xy, norm
+    scale = max_step / norm
+    return [error_xy[0] * scale, error_xy[1] * scale], norm
+
+
+def visual_recenter_after_approach(
+    listener,
+    camera_model,
+    detection_topic,
+    target_color,
+    min_confidence,
+    cart_proxy,
+    joint_proxy,
+    ik_proxy,
+):
+    if not bool(get_param("grasp/visual_recenter_after_approach", True)):
+        return
+
+    base_frame = get_param("workspace/base_frame_id", "base_link")
+    tcp_frame = get_param("grasp/tcp_frame_id", "gripper_tcp")
+    payload = wait_json(detection_topic)
+    detection = choose_detection(payload, target_color, min_confidence)
+    block_point = project_detection_to_table(listener, detection, camera_model, payload)
+    tcp_point = lookup_point(listener, base_frame, tcp_frame)
+    error_xy = [
+        float(block_point[0]) - float(tcp_point[0]),
+        float(block_point[1]) - float(tcp_point[1]),
+    ]
+    max_step = float(get_param("grasp/recenter_max_step_m", 0.04))
+    tolerance = float(get_param("grasp/recenter_tolerance_m", 0.006))
+    step_xy, raw_norm = clamp_xy_step(error_xy, max_step)
+    step_norm = math.sqrt(step_xy[0] * step_xy[0] + step_xy[1] * step_xy[1])
+    print("visual recenter:")
+    print("block_xy={}, tcp_xy={}, error_xy={}, error_norm={:.6g}".format(
+        vector_to_text(block_point[:2]),
+        vector_to_text(tcp_point[:2]),
+        vector_to_text(error_xy),
+        raw_norm,
+    ))
+    if raw_norm <= tolerance:
+        print("visual recenter skipped: error within tolerance {:.6g} m".format(tolerance))
+        return
+    if step_norm <= 1e-9:
+        print("visual recenter skipped: near-zero clamped step")
+        return
+
+    cart_res = cart_proxy()
+    if not cart_res.success:
+        raise RuntimeError("visual recenter cartesian snapshot failed: {}".format(cart_res.message))
+    joint_res = joint_proxy()
+    if not joint_res.success:
+        raise RuntimeError("visual recenter joint snapshot failed: {}".format(joint_res.message))
+    target_pose = list(cart_res.pose)
+    target_pose[0] += step_xy[0]
+    target_pose[1] += step_xy[1]
+    tool_index = int(get_param("grasp/tool_index", 0))
+    ik_res = ik_proxy(tool_index, target_pose, list(joint_res.positions))
+    print("visual recenter ik result:")
+    print(ik_res)
+    if not ik_res.success:
+        raise RuntimeError("visual recenter IK failed: {}".format(ik_res.message))
+    move_proxy = service_proxy("/carm_a3/motion/move_joint", MoveJoint)
+    duration = float(get_param("grasp/recenter_duration_s", 1.5))
+    print("visual recenter executing step_xy={}, clamped_from={:.6g}".format(
+        vector_to_text(step_xy),
+        raw_norm,
+    ))
+    res = move_proxy(list(ik_res.positions), duration, False)
+    print(res)
+    if not res.success:
+        raise RuntimeError("visual recenter move failed: {}".format(res.message))
+
+
 def maybe_set_gripper(pos, label):
     proxy = service_proxy("/carm_a3/motion/set_gripper", SetGripper)
     tau = float(get_param("grasp/gripper_tau_n", 5.0))
@@ -559,6 +644,16 @@ def plan_block_grasp(args):
     if not args.allow_descend:
         print("safe execution mode: moving to approach only; add --allow-descend for grasp/lift")
         execute_motion(solved)
+        visual_recenter_after_approach(
+            listener,
+            camera_model,
+            detection_topic,
+            target_color,
+            min_confidence,
+            cart_proxy,
+            joint_proxy,
+            ik_proxy,
+        )
         return
 
     if args.use_gripper:

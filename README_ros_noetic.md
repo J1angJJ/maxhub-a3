@@ -1437,6 +1437,8 @@ rostopic echo -n 1 /joint_states
 
 approach-only 模式默认保持观测位姿态，只验证 TCP/XY 是否在物块上方；只有加 `--allow-descend` 时才切换到夹爪轴对齐姿态。这样能把“中心偏差”和“腕部姿态 IK 分支跳变”分开排查。
 
+approach-only 到位后可开启自动视觉复位：脚本重新检测方块，读取当前 `base_link -> gripper_tcp`，计算 `block_xy - tcp_xy` 并做一次限幅 XY 修正。这个机制用于自动估计偏差，避免手动写固定偏移量。
+
 ## Safety
 
 当前只读节点不会调用：

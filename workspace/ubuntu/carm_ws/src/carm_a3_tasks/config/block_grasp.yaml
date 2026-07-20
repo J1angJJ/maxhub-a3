@@ -44,3 +44,8 @@ grasp:
   open_gripper_pos_m: 0.065
   close_gripper_pos_m: 0.028
   gripper_tau_n: 5.0
+  visual_recenter_after_approach: true
+  tcp_frame_id: "gripper_tcp"
+  recenter_tolerance_m: 0.006
+  recenter_max_step_m: 0.04
+  recenter_duration_s: 1.5
