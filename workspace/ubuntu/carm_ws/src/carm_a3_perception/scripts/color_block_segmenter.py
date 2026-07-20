@@ -33,6 +33,30 @@ def box_points(rect):
     return [[float(x), float(y)] for x, y in points]
 
 
+def ordered_box_points(points):
+    pts = np.asarray(points, dtype=np.float64)
+    center = np.mean(pts, axis=0)
+    angles = np.arctan2(pts[:, 1] - center[1], pts[:, 0] - center[0])
+    ordered = pts[np.argsort(angles)]
+    start = int(np.argmin(ordered[:, 0] + ordered[:, 1]))
+    ordered = np.roll(ordered, -start, axis=0)
+    return [[float(x), float(y)] for x, y in ordered]
+
+
+def eight_points_from_corners(corners):
+    if len(corners) != 4:
+        return []
+    pts = [np.asarray(point, dtype=np.float64) for point in corners]
+    out = []
+    for index in range(4):
+        p0 = pts[index]
+        p1 = pts[(index + 1) % 4]
+        mid = (p0 + p1) * 0.5
+        out.append([float(p0[0]), float(p0[1])])
+        out.append([float(mid[0]), float(mid[1])])
+    return out
+
+
 def rect_axes(corners):
     if len(corners) != 4:
         return None
@@ -61,6 +85,60 @@ def rect_axes(corners):
     }
 
 
+def robust_box_from_contour(contour, percentile):
+    pts = contour.reshape(-1, 2).astype(np.float64)
+    if pts.shape[0] < 8:
+        return None
+
+    center = np.mean(pts, axis=0)
+    shifted = pts - center
+    cov = np.cov(shifted.T)
+    values, vectors = np.linalg.eigh(cov)
+    order = np.argsort(values)[::-1]
+    axes = vectors[:, order]
+    long_axis = axes[:, 0]
+    short_axis = axes[:, 1]
+    if long_axis[0] < 0:
+        long_axis = -long_axis
+    cross_z = long_axis[0] * short_axis[1] - long_axis[1] * short_axis[0]
+    if cross_z < 0:
+        short_axis = -short_axis
+
+    proj_long = shifted.dot(long_axis)
+    proj_short = shifted.dot(short_axis)
+    pct = max(0.0, min(20.0, float(percentile)))
+    long_min, long_max = np.percentile(proj_long, [pct, 100.0 - pct])
+    short_min, short_max = np.percentile(proj_short, [pct, 100.0 - pct])
+    if long_max <= long_min or short_max <= short_min:
+        return None
+
+    corners = [
+        center + long_min * long_axis + short_min * short_axis,
+        center + long_max * long_axis + short_min * short_axis,
+        center + long_max * long_axis + short_max * short_axis,
+        center + long_min * long_axis + short_max * short_axis,
+    ]
+    corners = ordered_box_points(corners)
+    long_len = float(long_max - long_min)
+    short_len = float(short_max - short_min)
+    if short_len > long_len:
+        long_len, short_len = short_len, long_len
+        long_axis, short_axis = short_axis, long_axis
+    return {
+        "corners_px": corners,
+        "corners8_px": eight_points_from_corners(corners),
+        "long_edge_px": {
+            "length": long_len,
+            "direction": [float(long_axis[0]), float(long_axis[1])],
+        },
+        "short_edge_px": {
+            "length": short_len,
+            "direction": [float(short_axis[0]), float(short_axis[1])],
+        },
+        "rect_size_px": [long_len, short_len],
+    }
+
+
 class ColorBlockSegmenter:
     def __init__(self):
         self.bridge = CvBridge()
@@ -81,6 +159,9 @@ class ColorBlockSegmenter:
         self.min_rect_short_side_px = float(param("min_rect_short_side_px", 12.0))
         self.max_blocks_per_color = int(param("max_blocks_per_color", 5))
         self.morph_kernel_size = int(param("morph_kernel_size", 5))
+        self.median_blur_size = int(param("median_blur_size", 3))
+        self.robust_box_percentile = float(param("robust_box_percentile", 2.0))
+        self.min_color_fill_ratio = float(param("min_color_fill_ratio", 0.45))
 
         self.color_ranges = {
             "red": load_ranges("red_ranges"),
@@ -117,9 +198,14 @@ class ColorBlockSegmenter:
         mask = np.zeros(hsv.shape[:2], dtype=np.uint8)
         for lower, upper in ranges:
             mask = cv2.bitwise_or(mask, cv2.inRange(hsv, lower, upper))
+        if self.median_blur_size > 1:
+            k = self.median_blur_size
+            if k % 2 == 0:
+                k += 1
+            mask = cv2.medianBlur(mask, k)
         if self.morph_kernel_size > 1:
             k = self.morph_kernel_size
-            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (k, k))
+            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
             mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
             mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
         return mask
@@ -141,29 +227,54 @@ class ColorBlockSegmenter:
         if extent < self.min_extent:
             return None
 
-        aspect = max(w, h) / max(min(w, h), 1e-6)
-        confidence = max(0.0, min(1.0, extent)) * max(0.0, min(1.0, 2.5 / aspect))
+        robust = robust_box_from_contour(contour, self.robust_box_percentile)
+        if robust is None:
+            corners = box_points(rect)
+            corners8 = eight_points_from_corners(corners)
+            robust_axes = rect_axes(corners)
+            robust_rect_size = [float(w), float(h)]
+        else:
+            corners = robust["corners_px"]
+            corners8 = robust["corners8_px"]
+            robust_axes = {
+                "long_edge_px": robust["long_edge_px"],
+                "short_edge_px": robust["short_edge_px"],
+            }
+            robust_rect_size = robust["rect_size_px"]
+
+        robust_area = max(float(robust_rect_size[0] * robust_rect_size[1]), 1e-6)
+        color_fill_ratio = max(0.0, min(1.0, area / robust_area))
+        if color_fill_ratio < self.min_color_fill_ratio:
+            return None
+
+        robust_aspect = max(robust_rect_size) / max(min(robust_rect_size), 1e-6)
+        confidence = (
+            max(0.0, min(1.0, extent))
+            * max(0.0, min(1.0, color_fill_ratio))
+            * max(0.0, min(1.0, 2.5 / robust_aspect))
+        )
 
         moments = cv2.moments(contour)
         if abs(moments["m00"]) > 1e-9:
             cx = moments["m10"] / moments["m00"]
             cy = moments["m01"] / moments["m00"]
 
-        corners = box_points(rect)
         detection = {
             "color": color,
             "center_px": [float(cx), float(cy)],
             "corners_px": corners,
+            "corners8_px": corners8,
             "area_px": area,
-            "rect_size_px": [float(w), float(h)],
+            "rect_size_px": [float(robust_rect_size[0]), float(robust_rect_size[1])],
+            "min_area_rect_size_px": [float(w), float(h)],
             "angle_deg": float(angle),
             "extent": float(extent),
-            "aspect": float(aspect),
+            "color_fill_ratio": float(color_fill_ratio),
+            "aspect": float(robust_aspect),
             "confidence": float(confidence),
         }
-        axes = rect_axes(corners)
-        if axes is not None:
-            detection.update(axes)
+        if robust_axes is not None:
+            detection.update(robust_axes)
         return detection
 
     def detect(self, bgr):
@@ -202,6 +313,12 @@ class ColorBlockSegmenter:
                 cv2.circle(debug, tuple(corner), 3, (255, 255, 255), -1)
                 cv2.putText(debug, str(index), tuple(corner + np.array([4, -4])),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1, cv2.LINE_AA)
+            corners8 = np.array(det.get("corners8_px", []), dtype=np.int32)
+            for index, point in enumerate(corners8):
+                cv2.circle(debug, tuple(point), 2, (255, 255, 0), -1)
+                if index % 2 == 1:
+                    cv2.putText(debug, str(index), tuple(point + np.array([3, 3])),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255, 255, 0), 1, cv2.LINE_AA)
             for axis_key, axis_color, axis_label in [
                 ("long_edge_px", (255, 0, 0), "L"),
                 ("short_edge_px", (0, 255, 255), "S"),
