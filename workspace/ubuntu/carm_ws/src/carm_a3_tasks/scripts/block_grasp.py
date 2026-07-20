@@ -507,6 +507,18 @@ def align_quat_to_block_axis(quat, block_axes):
     if bool(get_param("grasp/treat_gripper_axis_bidirectional", True)):
         delta = normalize_bidirectional_axis_delta(delta)
     delta += math.radians(float(get_param("grasp/align_yaw_offset_deg", 0.0)))
+    min_delta = math.radians(float(get_param("grasp/min_align_yaw_delta_deg", 0.0)))
+    if min_delta > 0.0 and abs(delta) < min_delta:
+        print(
+            "orientation alignment skipped: mode={}, tool_span_axis={}, target_axis={}, yaw_delta_deg={:.6g}, min_align_yaw_delta_deg={:.6g}".format(
+                mode,
+                axis_name,
+                vector_to_text(target_axis),
+                math.degrees(delta),
+                math.degrees(min_delta),
+            )
+        )
+        return quat
     aligned = yaw_rotation(delta).dot(rotation)
     print(
         "orientation alignment: mode={}, tool_span_axis={}, target_axis={}, yaw_delta_deg={:.6g}".format(
