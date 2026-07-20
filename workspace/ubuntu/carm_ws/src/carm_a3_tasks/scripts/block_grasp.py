@@ -650,11 +650,16 @@ def build_ordered_pose_sequence(poses, current_pose, allow_descend):
 
 def validate_pose_heights(ordered_poses):
     min_z = float(get_param("grasp/min_flange_z_m", 0.18))
+    center_grasp_min_z = float(get_param("grasp/min_center_grasp_flange_z_m", min_z))
+    stage = str(get_param("grasp/tcp_grasp_stage", "top_safe")).lower()
     for name, pose in ordered_poses:
-        if float(pose[2]) < min_z:
+        pose_min_z = min_z
+        if stage == "center" and name == "grasp":
+            pose_min_z = center_grasp_min_z
+        if float(pose[2]) < pose_min_z:
             raise RuntimeError(
-                "{} flange z {:.6g} is below min_flange_z_m {:.6g}; refusing to plan near table".format(
-                    name, float(pose[2]), min_z
+                "{} flange z {:.6g} is below required min flange z {:.6g}; refusing to plan near table".format(
+                    name, float(pose[2]), pose_min_z
                 )
             )
 

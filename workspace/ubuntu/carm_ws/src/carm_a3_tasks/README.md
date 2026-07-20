@@ -167,7 +167,7 @@ roslaunch carm_a3_tasks block_grasp.launch \
   extra_args:="--allow-descend --use-gripper"
 ```
 
-The first version keeps the current flange orientation and uses conservative fixed heights from `config/block_grasp.yaml`. Treat it as a grasp-chain smoke test before tuning the true TCP, grasp height, and gripper width. `grasp/min_flange_z_m` is a hard planning guard against near-table flange targets.
+The first version keeps the current flange orientation and uses conservative fixed heights from `config/block_grasp.yaml`. Treat it as a grasp-chain smoke test before tuning the true TCP, grasp height, and gripper width. `grasp/min_flange_z_m` is the normal planning guard against near-table flange targets. In `tcp_grasp_stage:=center`, only the `grasp` pose may use the lower `grasp/min_center_grasp_flange_z_m` guard because the TCP is intentionally placed on the block centerline for a side grasp.
 
 By default, the approach pose opens the gripper before moving and estimates both long/short block axes from the detected rectangle corners. Because the block is `5 x 5 x 10 cm` and the gripper opens to about `8 cm`, `grasp/auto_select_grasp_side` selects the gripper span direction over the 5 cm side instead of the 10 cm long side. If the gripper is visually 90 degrees off, change `grasp/align_yaw_offset_deg` or switch `grasp/align_tool_axis` between `x` and `y`.
 
