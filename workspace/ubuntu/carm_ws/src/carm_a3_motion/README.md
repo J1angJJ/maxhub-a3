@@ -201,7 +201,8 @@ The package wraps the official C++ SDK functions that are useful for the current
 Intentionally not exposed yet:
 
 - `track_joint()` / `track_pose()`: continuous command streaming needs a separate watchdog and rate policy.
-- `move_joint_traj()` / `move_pose_traj()`: trajectory execution needs waypoint validation, timing validation, and a stop policy.
+- `move_joint_traj()`: exposed as `/carm_a3/motion/move_joint_trajectory`; the ROS node validates waypoint dimensions and adjacent joint deltas before calling the SDK trajectory API.
+- `move_pose_traj()`: not exposed yet; it still needs pose waypoint validation, timing validation, and a stop policy.
 - `trajectory_teach()` / `trajectory_recorder()` / `check_teach()`: useful later, but not required for the current perception-guided motion chain.
 
 Settings are blocked by default:

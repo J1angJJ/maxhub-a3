@@ -1,0 +1,7 @@
+float64[] positions_flat
+int32 point_count
+float64[] stamps
+bool wait
+---
+bool success
+string message

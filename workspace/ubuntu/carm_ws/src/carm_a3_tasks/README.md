@@ -129,3 +129,5 @@ The first version keeps the current flange orientation and uses conservative fix
 By default, the approach pose opens the gripper before moving and rotates the current flange orientation around table Z so `grasp/align_tool_axis` roughly follows the detected long edge of the color block. If the gripper is visually 90 degrees off, change `grasp/align_yaw_offset_deg` to `90.0` or switch `grasp/align_tool_axis` between `x` and `y`.
 
 The move from the overview pose to approach also inserts `grasp/view_transit_waypoints` intermediate IK targets. These waypoints keep the current overview orientation while translating toward the block, so the wrist camera tends to keep the block in view during the approach instead of swinging away through a pure joint-space interpolation.
+
+Both overview initialization and block approach prefer `/carm_a3/motion/move_joint_trajectory` when available. The motion node still checks each adjacent waypoint against its joint-delta limit, but sends the whole waypoint list to the SDK trajectory API for smoother execution. Set `prefer_joint_trajectory: false` to fall back to segmented `move_joint`.

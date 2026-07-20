@@ -442,6 +442,8 @@ workspace/ubuntu/carm_ws/src/carm_a3_tasks/config/block_grasp.yaml
 
 从观测位移动到 approach 时，脚本会默认插入 `grasp/view_transit_waypoints` 个中间 IK 点。这些中间点先保持观测位姿态，只逐步平移到方块上方，让腕部相机在靠近过程中尽量继续看到目标；最后一个 approach 点再切到长边对齐姿态。若仍有明显丢视野，可适当增大 `view_transit_waypoints`。
 
+为了减少多段 `move_joint` 带来的启停冲击，`carm_a3_motion` 已新增 `/carm_a3/motion/move_joint_trajectory`。任务脚本默认 `prefer_joint_trajectory: true`，会在 ROS 层检查相邻 waypoint 的关节差值后，把整串目标一次性交给厂家 C++ SDK 的 `move_joint_traj()`。如果轨迹接口不可用，脚本会自动回退到旧的分段 `move_joint`。
+
 ## Gripper SDK Notes
 
 厂家 C++ SDK 的夹爪接口覆盖了基础控制和状态读取：

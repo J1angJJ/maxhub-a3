@@ -30,6 +30,7 @@
 #include "carm_a3_motion/JogJoint.h"
 #include "carm_a3_motion/MoveFlowPose.h"
 #include "carm_a3_motion/MoveJoint.h"
+#include "carm_a3_motion/MoveJointTrajectory.h"
 #include "carm_a3_motion/MoveLineJoint.h"
 #include "carm_a3_motion/MoveLinePose.h"
 #include "carm_a3_motion/MovePose.h"
@@ -100,6 +101,9 @@ public:
         move_joint_srv_ = nh_.advertiseService("/carm_a3/motion/move_joint",
                                                &SafeMotionNode::handleMoveJoint,
                                                this);
+        move_joint_traj_srv_ = nh_.advertiseService("/carm_a3/motion/move_joint_trajectory",
+                                                    &SafeMotionNode::handleMoveJointTrajectory,
+                                                    this);
         move_pose_srv_ = nh_.advertiseService("/carm_a3/motion/move_pose",
                                               &SafeMotionNode::handleMovePose,
                                               this);
@@ -1349,6 +1353,120 @@ private:
         return true;
     }
 
+    bool handleMoveJointTrajectory(carm_a3_motion::MoveJointTrajectory::Request& req,
+                                   carm_a3_motion::MoveJointTrajectory::Response& res) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (!allow_motion_) {
+            res.success = false;
+            res.message = "blocked: allow_motion is false";
+            return true;
+        }
+        if (req.point_count <= 0) {
+            res.success = false;
+            res.message = "point_count must be > 0";
+            return true;
+        }
+        if (static_cast<int>(req.positions_flat.size()) != req.point_count * joint_count_) {
+            res.success = false;
+            res.message = "positions_flat size must equal point_count * joint_count";
+            return true;
+        }
+        if (!req.stamps.empty() && static_cast<int>(req.stamps.size()) != req.point_count) {
+            res.success = false;
+            res.message = "stamps must be empty or contain point_count values";
+            return true;
+        }
+        std::string message;
+        if (!ensureConnected(&message)) {
+            res.success = false;
+            res.message = message;
+            return true;
+        }
+
+        try {
+            const carm::ArmStatus status = getStatusLocked();
+            if (!checkMotionPreconditions(status, &message)) {
+                res.success = false;
+                res.message = message + "; " + statusToString(status);
+                return true;
+            }
+
+            const std::vector<double> current = arm_->get_joint_pos();
+            if (static_cast<int>(current.size()) < joint_count_) {
+                res.success = false;
+                res.message = "SDK returned too few joints: " + std::to_string(current.size());
+                return true;
+            }
+
+            std::vector<std::vector<double>> trajectory;
+            trajectory.reserve(static_cast<size_t>(req.point_count));
+            for (int point = 0; point < req.point_count; ++point) {
+                std::vector<double> target;
+                target.reserve(static_cast<size_t>(joint_count_));
+                for (int joint = 0; joint < joint_count_; ++joint) {
+                    target.push_back(req.positions_flat[static_cast<size_t>(point * joint_count_ + joint)]);
+                }
+                trajectory.push_back(target);
+            }
+
+            std::vector<double> previous(current.begin(), current.begin() + joint_count_);
+            for (size_t point = 0; point < trajectory.size(); ++point) {
+                for (int joint = 0; joint < joint_count_; ++joint) {
+                    const double delta = std::abs(trajectory[point][static_cast<size_t>(joint)] -
+                                                  previous[static_cast<size_t>(joint)]);
+                    if (delta > max_move_delta_rad_) {
+                        res.success = false;
+                        res.message = "trajectory point " + std::to_string(point + 1) +
+                                      " joint " + std::to_string(joint + 1) +
+                                      " delta exceeds max_move_delta_rad";
+                        return true;
+                    }
+                }
+                previous = trajectory[point];
+            }
+
+            if (dry_run_) {
+                res.success = true;
+                res.message = "dry_run trajectory accepted: points=" + std::to_string(req.point_count);
+                return true;
+            }
+
+            int speed_ret = 0;
+            if (set_speed_before_motion_) {
+                speed_ret = arm_->set_speed_level(speed_level_, speed_response_level_);
+            }
+            const bool wait = wait_for_motion_ && req.wait;
+            ROS_INFO("move_joint_trajectory: calling move_joint_traj points=%d wait=%s",
+                     req.point_count,
+                     wait ? "true" : "false");
+            const int move_ret = arm_->move_joint_traj(trajectory, {}, req.stamps, wait);
+            ROS_INFO("move_joint_trajectory: move_joint_traj returned %d", move_ret);
+
+            const std::vector<double>& final_target = trajectory.back();
+            std::vector<double> actual;
+            double max_error = 0.0;
+            std::string verify_message;
+            const bool verified = move_ret >= 1 &&
+                                  waitForJointTargetLocked(final_target,
+                                                           &actual,
+                                                           &max_error,
+                                                           &verify_message);
+            res.success = move_ret >= 1 && verified;
+            res.message = "move_joint_trajectory speed_ret=" + std::to_string(speed_ret) +
+                          ", move_ret=" + std::to_string(move_ret) +
+                          ", points=" + std::to_string(req.point_count) +
+                          ", verified=" + (verified ? "true" : "false") +
+                          ", verify_message=" + verify_message +
+                          ", max_error=" + std::to_string(max_error) +
+                          ", final_target=" + vectorToString(final_target) +
+                          ", actual=" + vectorToString(actual);
+        } catch (const std::exception& e) {
+            res.success = false;
+            res.message = e.what();
+        }
+        return true;
+    }
+
     bool handleMovePose(carm_a3_motion::MovePose::Request& req,
                         carm_a3_motion::MovePose::Response& res) {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -1620,6 +1738,7 @@ private:
     ros::ServiceServer emergency_stop_srv_;
     ros::ServiceServer jog_joint_srv_;
     ros::ServiceServer move_joint_srv_;
+    ros::ServiceServer move_joint_traj_srv_;
     ros::ServiceServer move_pose_srv_;
     ros::ServiceServer move_line_joint_srv_;
     ros::ServiceServer move_line_pose_srv_;

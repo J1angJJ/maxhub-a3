@@ -23,6 +23,7 @@ add_service_files(
   JogJoint.srv
   MoveFlowPose.srv
   MoveJoint.srv
+  MoveJointTrajectory.srv
   MoveLineJoint.srv
   MoveLinePose.srv
   MovePose.srv

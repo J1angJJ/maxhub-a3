@@ -12,6 +12,7 @@ from tf.transformations import quaternion_from_matrix, quaternion_matrix
 from carm_a3_motion.srv import GetCartesianSnapshot
 from carm_a3_motion.srv import GetJointSnapshot
 from carm_a3_motion.srv import MoveJoint
+from carm_a3_motion.srv import MoveJointTrajectory
 from carm_a3_motion.srv import SetGripper
 from carm_a3_motion.srv import SolveIK
 
@@ -493,6 +494,33 @@ def prepare_gripper_for_overview():
         )
 
 
+def execute_waypoints(seed, waypoints, duration, wait):
+    prefer_trajectory = bool(get_param("overview/prefer_joint_trajectory", True))
+    if prefer_trajectory:
+        try:
+            proxy = service_proxy("/carm_a3/motion/move_joint_trajectory", MoveJointTrajectory)
+            flat = []
+            for waypoint in waypoints:
+                flat.extend(waypoint)
+            print("executing continuous overview trajectory: points={}".format(len(waypoints)))
+            res = proxy(flat, len(waypoints), [], wait)
+            print(res)
+            if not res.success:
+                raise RuntimeError(res.message)
+            return
+        except (RuntimeError, rospy.ServiceException) as exc:
+            print("trajectory execution unavailable, falling back to segmented move_joint: {}".format(exc))
+
+    move_proxy = service_proxy("/carm_a3/motion/move_joint", MoveJoint)
+    del seed
+    for index, waypoint in enumerate(waypoints, start=1):
+        print("waypoint {}/{}: {}".format(index, len(waypoints), vector_to_text(waypoint)))
+        move_res = move_proxy(waypoint, duration, wait)
+        print(move_res)
+        if not move_res.success:
+            raise RuntimeError("waypoint {} failed".format(index))
+
+
 def main():
     parser = argparse.ArgumentParser(description="Plan or execute the CArm A3 pre-grasp overview pose")
     parser.add_argument("command", choices=["fov", "plan", "execute"])
@@ -537,7 +565,6 @@ def main():
             return 0
 
         prepare_gripper_for_overview()
-        move_proxy = service_proxy("/carm_a3/motion/move_joint", MoveJoint)
         duration = args.duration_s
         if duration is None:
             duration = float(get_param("overview/duration_s", 3.0))
@@ -547,13 +574,7 @@ def main():
         print("executing {} waypoint(s), segment_delta_rad={:.9g}".format(
             len(waypoints), segment_delta
         ))
-        for index, waypoint in enumerate(waypoints, start=1):
-            print("waypoint {}/{}: {}".format(index, len(waypoints), vector_to_text(waypoint)))
-            move_res = move_proxy(waypoint, duration, wait)
-            print(move_res)
-            if not move_res.success:
-                print("blocked: waypoint {} failed".format(index), file=sys.stderr)
-                return 1
+        execute_waypoints(plan["seed"], waypoints, duration, wait)
         return 0
     except (RuntimeError, rospy.ServiceException, ValueError) as exc:
         print(exc, file=sys.stderr)

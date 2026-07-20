@@ -27,6 +27,7 @@ grasp:
   lift_height_m: 0.10
   max_total_joint_delta_rad: 2.20
   segment_delta_rad: 0.08
+  prefer_joint_trajectory: true
   duration_s: 2.0
   wait: false
   open_before_approach: true

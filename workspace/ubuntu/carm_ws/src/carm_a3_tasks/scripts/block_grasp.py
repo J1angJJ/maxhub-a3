@@ -13,6 +13,7 @@ from std_msgs.msg import String
 from carm_a3_motion.srv import GetCartesianSnapshot
 from carm_a3_motion.srv import GetJointSnapshot
 from carm_a3_motion.srv import MoveJoint
+from carm_a3_motion.srv import MoveJointTrajectory
 from carm_a3_motion.srv import SetGripper
 from carm_a3_motion.srv import SolveIK
 
@@ -342,6 +343,43 @@ def execute_sequence(move_proxy, solved):
         execute_sequence.last_positions = target
 
 
+def execute_trajectory(move_traj_proxy, solved):
+    if not hasattr(execute_sequence, "last_positions"):
+        raise RuntimeError("execute_sequence.last_positions is not set")
+    segment_delta = float(get_param("grasp/segment_delta_rad", 0.08))
+    flat = []
+    expanded = []
+    current = list(execute_sequence.last_positions)
+    for name, _, target, _ in solved:
+        waypoints = interpolate_joints(current, target, segment_delta)
+        for waypoint in waypoints:
+            expanded.append((name, waypoint))
+            flat.extend(waypoint)
+        current = target
+    print("executing continuous joint trajectory: points={}".format(len(expanded)))
+    res = move_traj_proxy(flat, len(expanded), [], False)
+    print(res)
+    if not res.success:
+        raise RuntimeError("move_joint_trajectory failed: {}".format(res.message))
+    execute_sequence.last_positions = list(expanded[-1][1])
+
+
+def execute_motion(solved):
+    prefer_trajectory = bool(get_param("grasp/prefer_joint_trajectory", True))
+    if prefer_trajectory:
+        try:
+            move_traj_proxy = service_proxy(
+                "/carm_a3/motion/move_joint_trajectory",
+                MoveJointTrajectory,
+            )
+            execute_trajectory(move_traj_proxy, solved)
+            return
+        except (RuntimeError, rospy.ServiceException) as exc:
+            print("trajectory execution unavailable, falling back to segmented move_joint: {}".format(exc))
+    move_proxy = service_proxy("/carm_a3/motion/move_joint", MoveJoint)
+    execute_sequence(move_proxy, solved)
+
+
 def maybe_set_gripper(pos, label):
     proxy = service_proxy("/carm_a3/motion/set_gripper", SetGripper)
     tau = float(get_param("grasp/gripper_tau_n", 5.0))
@@ -424,14 +462,13 @@ def plan_block_grasp(args):
         print("not executing; rerun with --execute after checking target and clearance")
         return
 
-    move_proxy = service_proxy("/carm_a3/motion/move_joint", MoveJoint)
     execute_sequence.last_positions = list(joint_res.positions)
     if bool(get_param("grasp/open_before_approach", True)):
         maybe_set_gripper(float(get_param("grasp/open_gripper_pos_m", 0.065)), "open-before-approach")
 
     if not args.allow_descend:
         print("safe execution mode: moving to approach only; add --allow-descend for grasp/lift")
-        execute_sequence(move_proxy, solved)
+        execute_motion(solved)
         return
 
     if args.use_gripper:
@@ -442,10 +479,10 @@ def plan_block_grasp(args):
     )
     if grasp_index is None:
         raise RuntimeError("internal error: grasp target missing from solved sequence")
-    execute_sequence(move_proxy, solved[:grasp_index + 1])
+    execute_motion(solved[:grasp_index + 1])
     if args.use_gripper:
         maybe_set_gripper(float(get_param("grasp/close_gripper_pos_m", 0.028)), "close")
-    execute_sequence(move_proxy, solved[grasp_index + 1:])
+    execute_motion(solved[grasp_index + 1:])
 
 
 def main():
