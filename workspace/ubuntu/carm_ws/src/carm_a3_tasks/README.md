@@ -126,7 +126,7 @@ rosrun carm_a3_tasks block_grasp.py execute --color red --allow-descend --use-gr
 
 The first version keeps the current flange orientation and uses conservative fixed heights from `config/block_grasp.yaml`. Treat it as a grasp-chain smoke test before tuning the true TCP, grasp height, and gripper width. `grasp/min_flange_z_m` is a hard planning guard against near-table flange targets.
 
-By default, the approach pose opens the gripper before moving and rotates the current flange orientation around table Z so `grasp/align_tool_axis` roughly follows the detected long edge of the color block. If the gripper is visually 90 degrees off, change `grasp/align_yaw_offset_deg` to `90.0` or switch `grasp/align_tool_axis` between `x` and `y`.
+By default, the approach pose opens the gripper before moving and rotates the current flange orientation around table Z using the detected long edge of the color block. Because the block is `5 x 5 x 10 cm` and the gripper opens to about `8 cm`, `grasp/align_yaw_offset_deg` defaults to `90.0` so the fingers span the 5 cm side instead of the 10 cm long side. If the gripper is visually 90 degrees off, change `grasp/align_yaw_offset_deg` or switch `grasp/align_tool_axis` between `x` and `y`.
 
 The move from the overview pose to approach also inserts `grasp/view_transit_waypoints` intermediate IK targets. These waypoints keep the current overview orientation while translating toward the block, so the wrist camera tends to keep the block in view during the approach instead of swinging away through a pure joint-space interpolation.
 

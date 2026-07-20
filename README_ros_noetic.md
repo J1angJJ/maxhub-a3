@@ -438,7 +438,7 @@ workspace/ubuntu/carm_ws/src/carm_a3_tasks/config/block_grasp.yaml
 
 第一版仍使用当前法兰姿态和保守固定高度，主要用于验证“检测 -> 桌面投影 -> IK -> 分段运动 -> 可选夹爪”的任务链路。后续需要根据实际夹爪 TCP、抓取方向、方块摆放姿态和 J2 控制表现继续调参。刚才实测发生过下探触桌，已将默认执行改为 approach-only，并加入 `grasp/min_flange_z_m` 防止规划出过低法兰高度。
 
-抓取 approach 现在会默认先打开夹爪到 `open_gripper_pos_m`，并根据检测框四角点估计方块长边方向。脚本只绕 `base_link` 的 Z 轴微调当前法兰姿态，让 `grasp/align_tool_axis` 尽量贴合长边；如果实机看起来差 `90 deg`，优先改 `block_grasp.yaml` 里的 `grasp/align_yaw_offset_deg` 或 `grasp/align_tool_axis`，不要急着改手眼外参。
+抓取 approach 现在会默认先打开夹爪到 `open_gripper_pos_m`，并根据检测框四角点估计方块长边方向。方块为 `5 x 5 x 10 cm`，而夹爪最大开口约 `8 cm`，不能跨 10cm 长边夹取；因此默认 `grasp/align_yaw_offset_deg: 90.0`，让夹爪跨 5cm 短边夹持。如果实机方向仍差 `90 deg`，优先改 `block_grasp.yaml` 里的 `grasp/align_yaw_offset_deg` 或 `grasp/align_tool_axis`，不要急着改手眼外参。
 
 从观测位移动到 approach 时，脚本会默认插入 `grasp/view_transit_waypoints` 个中间 IK 点。这些中间点先保持观测位姿态，只逐步平移到方块上方，让腕部相机在靠近过程中尽量继续看到目标；最后一个 approach 点再切到长边对齐姿态。若仍有明显丢视野，可适当增大 `view_transit_waypoints`。
 
