@@ -59,6 +59,16 @@ def matrix_to_quat_xyzw(rotation):
     return normalize_quat_xyzw([float(value) for value in quat])
 
 
+def slerp_quat_xyzw(start, end, ratio):
+    return normalize_quat_xyzw([
+        float(value) for value in tf.transformations.quaternion_slerp(
+            normalize_quat_xyzw(start),
+            normalize_quat_xyzw(end),
+            float(ratio),
+        )
+    ])
+
+
 def yaw_rotation(delta_rad):
     cos_v = math.cos(delta_rad)
     sin_v = math.sin(delta_rad)
@@ -344,7 +354,21 @@ def build_grasp_poses(point, current_pose, block_axes, allow_descend):
 
 def build_ordered_pose_sequence(poses, current_pose, allow_descend):
     ordered = []
-    if bool(get_param("grasp/keep_camera_view_during_approach", True)):
+    if allow_descend and bool(get_param("grasp/recenter_before_descent", True)):
+        count = max(0, int(get_param("grasp/align_transit_waypoints", 6)))
+        current_xyz = [float(value) for value in current_pose[:3]]
+        current_quat = normalize_quat_xyzw([float(value) for value in current_pose[3:7]])
+        approach_xyz = poses["approach"][:3]
+        approach_quat = normalize_quat_xyzw(poses["approach"][3:7])
+        for index in range(1, count + 1):
+            ratio = float(index) / float(count + 1)
+            xyz = [
+                current_xyz[i] + (approach_xyz[i] - current_xyz[i]) * ratio
+                for i in range(3)
+            ]
+            quat = slerp_quat_xyzw(current_quat, approach_quat, ratio)
+            ordered.append(("align_transit_{}".format(index), xyz + quat))
+    elif bool(get_param("grasp/keep_camera_view_during_approach", True)):
         count = int(get_param("grasp/view_transit_waypoints", 4))
         count = max(0, count)
         current_xyz = [float(value) for value in current_pose[:3]]
@@ -390,6 +414,30 @@ def solve_pose_sequence(ik_proxy, ordered_poses, seed):
         solved.append((name, pose, positions, max_abs_delta(current_seed, positions)))
         current_seed = positions
     return solved
+
+
+def validate_solved_sequence(solved, seed):
+    max_total = float(get_param("grasp/max_total_joint_delta_rad", 2.20))
+    max_segment_limit = float(get_param("grasp/max_segment_joint_delta_rad", max_total))
+    first_delta = max_abs_delta(list(seed), solved[0][2])
+    max_segment = max([first_delta] + [item[3] for item in solved[1:]])
+    print("max_sequence_joint_delta: {:.9g}".format(max_segment))
+    if max_segment > max_total:
+        raise RuntimeError(
+            "planned joint delta {:.9g} exceeds limit {:.9g}".format(max_segment, max_total)
+        )
+    if max_segment > max_segment_limit:
+        raise RuntimeError(
+            "planned segment joint delta {:.9g} exceeds segment limit {:.9g}; likely IK branch jump".format(
+                max_segment, max_segment_limit
+            )
+        )
+
+
+def print_joint_targets(solved):
+    print("joint targets:")
+    for name, _, joints, delta in solved:
+        print("{} delta={:.9g}: {}".format(name, delta, vector_to_text(joints)))
 
 
 def execute_sequence(move_proxy, solved):
@@ -542,6 +590,37 @@ def visual_recenter_after_approach(
     print("visual recenter reached iteration limit; rerun approach-only if more correction is needed")
 
 
+def observe_block(listener, camera_model, detection_topic, target_color, min_confidence, label):
+    payload = wait_json(detection_topic)
+    detection = choose_detection(payload, target_color, min_confidence)
+    print("{} selected detection:".format(label))
+    print(json.dumps(detection, sort_keys=True))
+    point = project_detection_to_table(listener, detection, camera_model, payload)
+    print("{} estimated block center in base frame x,y,z:".format(label))
+    print(vector_to_text(point))
+    block_axes = estimate_block_axes(listener, detection, camera_model, payload)
+    if block_axes is not None:
+        print("{} estimated block axes in base frame:".format(label))
+        print("long: direction={}, length_m={:.9g}, yaw_deg={:.6g}".format(
+            vector_to_text(block_axes["long"]["direction"]),
+            block_axes["long"]["length"],
+            block_axes["long"]["yaw_deg"],
+        ))
+        print("short: direction={}, length_m={:.9g}, yaw_deg={:.6g}".format(
+            vector_to_text(block_axes["short"]["direction"]),
+            block_axes["short"]["length"],
+            block_axes["short"]["yaw_deg"],
+        ))
+        selected_axis, selected_mode = select_grasp_axis(block_axes)
+        if selected_axis is not None:
+            print("{} selected gripper span axis: mode={}, direction={}".format(
+                label,
+                selected_mode,
+                vector_to_text(selected_axis),
+            ))
+    return payload, detection, point, block_axes
+
+
 def maybe_set_gripper(pos, label):
     proxy = service_proxy("/carm_a3/motion/set_gripper", SetGripper)
     tau = float(get_param("grasp/gripper_tau_n", 5.0))
@@ -558,36 +637,18 @@ def plan_block_grasp(args):
     target_color = args.color if args.color is not None else get_param("perception/target_color", "")
     min_confidence = float(get_param("perception/min_confidence", 0.45))
 
-    payload = wait_json(detection_topic)
     camera_model = wait_camera_info(camera_info_topic)
-    detection = choose_detection(payload, target_color, min_confidence)
-    print("selected detection:")
-    print(json.dumps(detection, sort_keys=True))
 
     listener = tf.TransformListener()
     rospy.sleep(0.2)
-    point = project_detection_to_table(listener, detection, camera_model, payload)
-    print("estimated block center in base frame x,y,z:")
-    print(vector_to_text(point))
-    block_axes = estimate_block_axes(listener, detection, camera_model, payload)
-    if block_axes is not None:
-        print("estimated block axes in base frame:")
-        print("long: direction={}, length_m={:.9g}, yaw_deg={:.6g}".format(
-            vector_to_text(block_axes["long"]["direction"]),
-            block_axes["long"]["length"],
-            block_axes["long"]["yaw_deg"],
-        ))
-        print("short: direction={}, length_m={:.9g}, yaw_deg={:.6g}".format(
-            vector_to_text(block_axes["short"]["direction"]),
-            block_axes["short"]["length"],
-            block_axes["short"]["yaw_deg"],
-        ))
-        selected_axis, selected_mode = select_grasp_axis(block_axes)
-        if selected_axis is not None:
-            print("selected gripper span axis: mode={}, direction={}".format(
-                selected_mode,
-                vector_to_text(selected_axis),
-            ))
+    _, _, point, block_axes = observe_block(
+        listener,
+        camera_model,
+        detection_topic,
+        target_color,
+        min_confidence,
+        "initial",
+    )
 
     cart_proxy = service_proxy("/carm_a3/motion/get_cartesian_snapshot", GetCartesianSnapshot)
     joint_proxy = service_proxy("/carm_a3/motion/get_joint_snapshot", GetJointSnapshot)
@@ -604,13 +665,24 @@ def plan_block_grasp(args):
     if not joint_res.success:
         raise RuntimeError(joint_res.message)
 
-    poses = build_grasp_poses(point, list(cart_res.pose), block_axes, args.allow_descend)
+    two_stage_descent = (
+        args.execute
+        and args.allow_descend
+        and bool(get_param("grasp/recenter_before_descent", True))
+    )
+    planning_allow_descend = args.allow_descend and not two_stage_descent
+    if two_stage_descent:
+        print("two-stage execution enabled: initial plan is approach-only; descent is replanned after visual recenter")
+
+    poses = build_grasp_poses(point, list(cart_res.pose), block_axes, planning_allow_descend)
     print("planned poses x,y,z,qx,qy,qz,qw:")
     for name in ["approach", "grasp", "lift"]:
         print("{}: {}".format(name, vector_to_text(poses[name])))
 
-    ordered_poses = build_ordered_pose_sequence(poses, list(cart_res.pose), args.allow_descend)
-    if not args.allow_descend:
+    ordered_poses = build_ordered_pose_sequence(poses, list(cart_res.pose), planning_allow_descend)
+    if two_stage_descent:
+        print("safe first stage: planning visual approach only; aligned descent will be replanned after recenter")
+    elif not planning_allow_descend:
         print("safe planning mode: planning approach only; add --allow-descend to include grasp/lift")
     print("ordered execution poses:")
     for name, pose in ordered_poses:
@@ -618,25 +690,8 @@ def plan_block_grasp(args):
     validate_pose_heights(ordered_poses)
 
     solved = solve_pose_sequence(ik_proxy, ordered_poses, list(joint_res.positions))
-    max_total = float(get_param("grasp/max_total_joint_delta_rad", 2.20))
-    max_segment_limit = float(get_param("grasp/max_segment_joint_delta_rad", max_total))
-    first_delta = max_abs_delta(list(joint_res.positions), solved[0][2])
-    max_segment = max([first_delta] + [item[3] for item in solved[1:]])
-    print("max_sequence_joint_delta: {:.9g}".format(max_segment))
-    if max_segment > max_total:
-        raise RuntimeError(
-            "planned joint delta {:.9g} exceeds limit {:.9g}".format(max_segment, max_total)
-        )
-    if max_segment > max_segment_limit:
-        raise RuntimeError(
-            "planned segment joint delta {:.9g} exceeds segment limit {:.9g}; likely IK branch jump".format(
-                max_segment, max_segment_limit
-            )
-        )
-
-    print("joint targets:")
-    for name, _, joints, delta in solved:
-        print("{} delta={:.9g}: {}".format(name, delta, vector_to_text(joints)))
+    validate_solved_sequence(solved, list(joint_res.positions))
+    print_joint_targets(solved)
 
     if not args.execute:
         print("not executing; rerun with --execute after checking target and clearance")
@@ -660,6 +715,51 @@ def plan_block_grasp(args):
             ik_proxy,
         )
         return
+
+    if two_stage_descent:
+        print("two-stage execution: first moving to visual approach, then recentering before descent")
+        execute_motion(solved)
+        visual_recenter_after_approach(
+            listener,
+            camera_model,
+            detection_topic,
+            target_color,
+            min_confidence,
+            cart_proxy,
+            joint_proxy,
+            ik_proxy,
+        )
+        _, _, point, block_axes = observe_block(
+            listener,
+            camera_model,
+            detection_topic,
+            target_color,
+            min_confidence,
+            "post-recenter",
+        )
+        cart_res = cart_proxy()
+        print("post-recenter cartesian snapshot:")
+        print(cart_res)
+        if not cart_res.success:
+            raise RuntimeError(cart_res.message)
+        joint_res = joint_proxy()
+        print("post-recenter joint snapshot:")
+        print(joint_res)
+        if not joint_res.success:
+            raise RuntimeError(joint_res.message)
+        poses = build_grasp_poses(point, list(cart_res.pose), block_axes, True)
+        print("post-recenter planned poses x,y,z,qx,qy,qz,qw:")
+        for name in ["approach", "grasp", "lift"]:
+            print("{}: {}".format(name, vector_to_text(poses[name])))
+        ordered_poses = build_ordered_pose_sequence(poses, list(cart_res.pose), True)
+        print("post-recenter ordered execution poses:")
+        for name, pose in ordered_poses:
+            print("{}: {}".format(name, vector_to_text(pose)))
+        validate_pose_heights(ordered_poses)
+        solved = solve_pose_sequence(ik_proxy, ordered_poses, list(joint_res.positions))
+        validate_solved_sequence(solved, list(joint_res.positions))
+        print_joint_targets(solved)
+        execute_sequence.last_positions = list(joint_res.positions)
 
     if args.use_gripper:
         maybe_set_gripper(float(get_param("grasp/open_gripper_pos_m", 0.065)), "open")

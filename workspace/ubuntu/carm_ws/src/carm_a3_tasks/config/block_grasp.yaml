@@ -25,6 +25,8 @@ grasp:
   align_yaw_offset_deg: 0.0
   keep_camera_view_during_approach: true
   view_transit_waypoints: 4
+  align_transit_waypoints: 6
+  recenter_before_descent: true
   target_quat_xyzw: [0.707, 0.0, 0.707, 0.0]
   use_tcp_target: true
   flange_to_tcp_xyz_m: [0.065338, 0.005939, 0.113513]
