@@ -193,7 +193,7 @@ def project_detection_to_table(listener, detection, camera_model, payload):
     return [float(point[0]), float(point[1]), float(point[2])]
 
 
-def estimate_block_long_edge(listener, detection, camera_model, payload):
+def estimate_block_axes(listener, detection, camera_model, payload):
     corners = detection.get("corners_px", [])
     if len(corners) != 4:
         return None
@@ -204,26 +204,59 @@ def estimate_block_long_edge(listener, detection, camera_model, payload):
         project_pixel_to_plane(listener, camera_model, payload, corner, projection_z)
         for corner in corners
     ]
-    best_vec = None
-    best_len = 0.0
+    edges = []
     for index in range(4):
         vec = points[(index + 1) % 4] - points[index]
         vec[2] = 0.0
         length = float(np.linalg.norm(vec))
-        if length > best_len:
-            best_len = length
-            best_vec = vec
-    if best_vec is None or best_len <= 1e-9:
+        if length > 1e-9:
+            unit = vec / length
+            if unit[0] < 0.0:
+                unit = -unit
+            edges.append((length, unit))
+    if len(edges) < 2:
         return None
-    best_vec = best_vec / best_len
-    if best_vec[0] < 0.0:
-        best_vec = -best_vec
-    yaw_deg = math.degrees(math.atan2(best_vec[1], best_vec[0]))
-    return best_vec, best_len, yaw_deg
+    long_len, long_vec = max(edges, key=lambda item: item[0])
+    short_len, short_vec = min(edges, key=lambda item: item[0])
+    return {
+        "long": {
+            "direction": long_vec,
+            "length": long_len,
+            "yaw_deg": math.degrees(math.atan2(long_vec[1], long_vec[0])),
+        },
+        "short": {
+            "direction": short_vec,
+            "length": short_len,
+            "yaw_deg": math.degrees(math.atan2(short_vec[1], short_vec[0])),
+        },
+    }
 
 
-def align_quat_to_block_long_edge(quat, long_edge):
-    if long_edge is None or not bool(get_param("grasp/align_to_block_long_edge", True)):
+def select_grasp_axis(block_axes):
+    if block_axes is None:
+        return None, "none"
+    if not bool(get_param("grasp/auto_select_grasp_side", True)):
+        return block_axes["long"]["direction"], "manual_long_axis"
+    block_size = get_param("block/size_m", [0.05, 0.05, 0.10])
+    sorted_sides = sorted([float(value) for value in block_size])
+    short_side = sorted_sides[0]
+    long_side = sorted_sides[-1]
+    max_open = float(get_param("grasp/max_gripper_open_m", 0.08))
+    clearance = float(get_param("grasp/grasp_clearance_m", 0.005))
+    if long_side + clearance > max_open and short_side + clearance <= max_open:
+        return block_axes["short"]["direction"], "span_short_side"
+    return block_axes["long"]["direction"], "span_long_side"
+
+
+def align_quat_to_block_axis(quat, block_axes):
+    align_axis = bool(get_param(
+        "grasp/align_to_block_axis",
+        get_param("grasp/align_to_block_long_edge", True),
+    ))
+    if block_axes is None or not align_axis:
+        return quat
+    target_axis, mode = select_grasp_axis(block_axes)
+    if target_axis is None:
         return quat
     axis_name = str(get_param("grasp/align_tool_axis", "y")).lower()
     if axis_name == "x":
@@ -237,25 +270,25 @@ def align_quat_to_block_long_edge(quat, long_edge):
 
     rotation = quat_to_matrix(quat)
     current_axis = rotation.dot(local_axis)
-    delta = signed_angle_xy(current_axis, long_edge)
+    delta = signed_angle_xy(current_axis, target_axis)
     delta += math.radians(float(get_param("grasp/align_yaw_offset_deg", 0.0)))
     aligned = yaw_rotation(delta).dot(rotation)
     print(
-        "orientation alignment: axis={}, yaw_delta_deg={:.6g}".format(
-            axis_name, math.degrees(delta)
+        "orientation alignment: mode={}, tool_span_axis={}, target_axis={}, yaw_delta_deg={:.6g}".format(
+            mode, axis_name, vector_to_text(target_axis), math.degrees(delta)
         )
     )
     return matrix_to_quat_xyzw(aligned)
 
 
-def build_grasp_poses(point, current_pose, long_edge):
+def build_grasp_poses(point, current_pose, block_axes):
     use_current_orientation = bool(get_param("grasp/use_current_orientation", True))
     if use_current_orientation:
         quat = list(current_pose[3:7])
     else:
         quat = get_param("grasp/target_quat_xyzw", [0.707, 0.0, 0.707, 0.0])
     quat = normalize_quat_xyzw([float(value) for value in quat])
-    quat = align_quat_to_block_long_edge(quat, long_edge)
+    quat = align_quat_to_block_axis(quat, block_axes)
 
     approach_height = float(get_param("grasp/approach_height_m", 0.12))
     grasp_z = float(get_param("grasp/grasp_z_m", 0.09))
@@ -407,14 +440,25 @@ def plan_block_grasp(args):
     point = project_detection_to_table(listener, detection, camera_model, payload)
     print("estimated block center in base frame x,y,z:")
     print(vector_to_text(point))
-    long_edge_info = estimate_block_long_edge(listener, detection, camera_model, payload)
-    long_edge = None
-    if long_edge_info is not None:
-        long_edge, long_edge_len, long_edge_yaw = long_edge_info
-        print("estimated block long edge in base frame:")
-        print("direction={}, length_m={:.9g}, yaw_deg={:.6g}".format(
-            vector_to_text(long_edge), long_edge_len, long_edge_yaw
+    block_axes = estimate_block_axes(listener, detection, camera_model, payload)
+    if block_axes is not None:
+        print("estimated block axes in base frame:")
+        print("long: direction={}, length_m={:.9g}, yaw_deg={:.6g}".format(
+            vector_to_text(block_axes["long"]["direction"]),
+            block_axes["long"]["length"],
+            block_axes["long"]["yaw_deg"],
         ))
+        print("short: direction={}, length_m={:.9g}, yaw_deg={:.6g}".format(
+            vector_to_text(block_axes["short"]["direction"]),
+            block_axes["short"]["length"],
+            block_axes["short"]["yaw_deg"],
+        ))
+        selected_axis, selected_mode = select_grasp_axis(block_axes)
+        if selected_axis is not None:
+            print("selected gripper span axis: mode={}, direction={}".format(
+                selected_mode,
+                vector_to_text(selected_axis),
+            ))
 
     cart_proxy = service_proxy("/carm_a3/motion/get_cartesian_snapshot", GetCartesianSnapshot)
     joint_proxy = service_proxy("/carm_a3/motion/get_joint_snapshot", GetJointSnapshot)
@@ -431,7 +475,7 @@ def plan_block_grasp(args):
     if not joint_res.success:
         raise RuntimeError(joint_res.message)
 
-    poses = build_grasp_poses(point, list(cart_res.pose), long_edge)
+    poses = build_grasp_poses(point, list(cart_res.pose), block_axes)
     print("planned poses x,y,z,qx,qy,qz,qw:")
     for name in ["approach", "grasp", "lift"]:
         print("{}: {}".format(name, vector_to_text(poses[name])))

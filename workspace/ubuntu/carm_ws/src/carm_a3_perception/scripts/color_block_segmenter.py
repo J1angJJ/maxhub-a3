@@ -33,6 +33,34 @@ def box_points(rect):
     return [[float(x), float(y)] for x, y in points]
 
 
+def rect_axes(corners):
+    if len(corners) != 4:
+        return None
+    edges = []
+    for index in range(4):
+        p0 = np.array(corners[index], dtype=np.float64)
+        p1 = np.array(corners[(index + 1) % 4], dtype=np.float64)
+        vec = p1 - p0
+        length = float(np.linalg.norm(vec))
+        if length <= 1e-9:
+            continue
+        edges.append((length, [float(vec[0] / length), float(vec[1] / length)]))
+    if len(edges) < 2:
+        return None
+    long_edge = max(edges, key=lambda item: item[0])
+    short_edge = min(edges, key=lambda item: item[0])
+    return {
+        "long_edge_px": {
+            "length": long_edge[0],
+            "direction": long_edge[1],
+        },
+        "short_edge_px": {
+            "length": short_edge[0],
+            "direction": short_edge[1],
+        },
+    }
+
+
 class ColorBlockSegmenter:
     def __init__(self):
         self.bridge = CvBridge()
@@ -121,10 +149,11 @@ class ColorBlockSegmenter:
             cx = moments["m10"] / moments["m00"]
             cy = moments["m01"] / moments["m00"]
 
-        return {
+        corners = box_points(rect)
+        detection = {
             "color": color,
             "center_px": [float(cx), float(cy)],
-            "corners_px": box_points(rect),
+            "corners_px": corners,
             "area_px": area,
             "rect_size_px": [float(w), float(h)],
             "angle_deg": float(angle),
@@ -132,6 +161,10 @@ class ColorBlockSegmenter:
             "aspect": float(aspect),
             "confidence": float(confidence),
         }
+        axes = rect_axes(corners)
+        if axes is not None:
+            detection.update(axes)
+        return detection
 
     def detect(self, bgr):
         hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
@@ -165,6 +198,26 @@ class ColorBlockSegmenter:
             cv2.polylines(debug, [corners], True, color, 2)
             center = tuple(int(round(v)) for v in det["center_px"])
             cv2.circle(debug, center, 4, color, -1)
+            for index, corner in enumerate(corners):
+                cv2.circle(debug, tuple(corner), 3, (255, 255, 255), -1)
+                cv2.putText(debug, str(index), tuple(corner + np.array([4, -4])),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1, cv2.LINE_AA)
+            for axis_key, axis_color, axis_label in [
+                ("long_edge_px", (255, 0, 0), "L"),
+                ("short_edge_px", (0, 255, 255), "S"),
+            ]:
+                axis = det.get(axis_key)
+                if axis is None:
+                    continue
+                direction = axis.get("direction", [0.0, 0.0])
+                length = float(axis.get("length", 0.0)) * 0.35
+                end = (
+                    int(round(center[0] + float(direction[0]) * length)),
+                    int(round(center[1] + float(direction[1]) * length)),
+                )
+                cv2.arrowedLine(debug, center, end, axis_color, 2, tipLength=0.25)
+                cv2.putText(debug, axis_label, (end[0] + 4, end[1] + 4),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, axis_color, 1, cv2.LINE_AA)
             label = "{} {:.2f}".format(det["color"], det["confidence"])
             cv2.putText(debug, label, (center[0] + 6, center[1] - 6),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)

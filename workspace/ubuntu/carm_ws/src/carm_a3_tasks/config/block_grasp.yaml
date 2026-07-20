@@ -15,11 +15,12 @@ block:
 grasp:
   tool_index: 0
   use_current_orientation: true
-  align_to_block_long_edge: true
+  align_to_block_axis: true
   align_tool_axis: "y"
-  # The block is 5x5x10 cm while the gripper opens to about 8 cm.
-  # Keep the selected tool axis perpendicular to the detected long edge so the fingers span the 5 cm side.
-  align_yaw_offset_deg: 90.0
+  auto_select_grasp_side: true
+  max_gripper_open_m: 0.08
+  grasp_clearance_m: 0.005
+  align_yaw_offset_deg: 0.0
   keep_camera_view_during_approach: true
   view_transit_waypoints: 4
   target_quat_xyzw: [0.707, 0.0, 0.707, 0.0]
