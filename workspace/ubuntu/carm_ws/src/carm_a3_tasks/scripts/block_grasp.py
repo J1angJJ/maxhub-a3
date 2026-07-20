@@ -83,6 +83,14 @@ def signed_angle_xy(from_vec, to_vec):
     return math.atan2(cross, dot)
 
 
+def normalize_bidirectional_axis_delta(delta):
+    while delta > math.pi * 0.5:
+        delta -= math.pi
+    while delta < -math.pi * 0.5:
+        delta += math.pi
+    return delta
+
+
 def interpolate_joints(start, target, max_step):
     if max_step <= 0.0:
         raise ValueError("segment_delta_rad must be > 0")
@@ -271,6 +279,8 @@ def align_quat_to_block_axis(quat, block_axes):
     rotation = quat_to_matrix(quat)
     current_axis = rotation.dot(local_axis)
     delta = signed_angle_xy(current_axis, target_axis)
+    if bool(get_param("grasp/treat_gripper_axis_bidirectional", True)):
+        delta = normalize_bidirectional_axis_delta(delta)
     delta += math.radians(float(get_param("grasp/align_yaw_offset_deg", 0.0)))
     aligned = yaw_rotation(delta).dot(rotation)
     print(

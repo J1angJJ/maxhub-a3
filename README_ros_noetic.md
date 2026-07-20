@@ -1433,6 +1433,8 @@ rostopic echo -n 1 /joint_states
 
 真实运动中禁止在连续轨迹验证失败后自动 fallback 到分段运动；因为机械臂可能已经部分移动，旧分段起点会和实际状态不一致。`block_grasp.py` 默认 `fallback_after_trajectory_failure: false`，并用 `max_segment_joint_delta_rad` 拦截 IK 分支跳变。
 
+夹爪开合轴是无向轴，检测框短边的正反方向都等价。`block_grasp.py` 默认 `treat_gripper_axis_bidirectional: true`，会把接近 `180 deg` 的无意义翻腕归一到最小旋转，避免因为矩形角点顺序导致腕部大翻转。
+
 ## Safety
 
 当前只读节点不会调用：

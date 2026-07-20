@@ -17,6 +17,7 @@ grasp:
   use_current_orientation: true
   align_to_block_axis: true
   align_tool_axis: "y"
+  treat_gripper_axis_bidirectional: true
   auto_select_grasp_side: true
   max_gripper_open_m: 0.08
   grasp_clearance_m: 0.005
