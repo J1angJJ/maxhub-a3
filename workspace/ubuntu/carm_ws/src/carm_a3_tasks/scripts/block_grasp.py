@@ -457,6 +457,14 @@ def auto_tcp_grasp_z():
     raise ValueError("grasp/tcp_grasp_stage must be 'top_safe', 'top', or 'center'")
 
 
+def grasp_stage_allows_descent():
+    mode = str(get_param("grasp/tcp_grasp_z_mode", "auto")).lower()
+    if mode in ["manual", "fixed"]:
+        return True
+    stage = str(get_param("grasp/tcp_grasp_stage", "top_safe")).lower()
+    return stage == "center"
+
+
 def select_grasp_axis(block_axes):
     if block_axes is None:
         return None, "none"
@@ -924,12 +932,18 @@ def plan_block_grasp(args):
     if not joint_res.success:
         raise RuntimeError(joint_res.message)
 
+    stage_allows_descent = grasp_stage_allows_descent()
+    if args.allow_descend and not stage_allows_descent:
+        print(
+            "top-safe validation mode: ignoring --allow-descend until grasp/tcp_grasp_stage is 'center'"
+        )
+    requested_allow_descend = args.allow_descend and stage_allows_descent
     two_stage_descent = (
         args.execute
-        and args.allow_descend
+        and requested_allow_descend
         and bool(get_param("grasp/recenter_before_descent", True))
     )
-    planning_allow_descend = args.allow_descend and not two_stage_descent
+    planning_allow_descend = requested_allow_descend and not two_stage_descent
     if two_stage_descent:
         print("two-stage execution enabled: initial plan is approach-only; descent is replanned after visual recenter")
 
@@ -967,7 +981,7 @@ def plan_block_grasp(args):
     if bool(get_param("grasp/open_before_approach", True)):
         maybe_set_gripper(float(get_param("grasp/open_gripper_pos_m", 0.065)), "open-before-approach")
 
-    if not args.allow_descend:
+    if not requested_allow_descend:
         print("safe execution mode: moving to approach only; add --allow-descend for grasp/lift")
         execute_motion(solved)
         visual_recenter_after_approach(
