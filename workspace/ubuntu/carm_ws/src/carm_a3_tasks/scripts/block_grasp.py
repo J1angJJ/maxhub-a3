@@ -306,6 +306,63 @@ def predict_cuboid_corners_base(top_center, block_axes):
     return corners
 
 
+def cuboid_point_by_name(corners, name):
+    for corner in corners:
+        if corner.get("name") == name:
+            return np.asarray(corner["base"], dtype=float)
+    raise KeyError(name)
+
+
+def predict_cuboid_control_points_base(corners):
+    if len(corners) != 8:
+        return {
+            "corners": corners,
+            "edge_midpoints": [],
+            "face_centers": [],
+        }
+    edge_names = [
+        ("top_edge_01", "top_0", "top_1"),
+        ("top_edge_12", "top_1", "top_2"),
+        ("top_edge_23", "top_2", "top_3"),
+        ("top_edge_30", "top_3", "top_0"),
+        ("bottom_edge_01", "bottom_0", "bottom_1"),
+        ("bottom_edge_12", "bottom_1", "bottom_2"),
+        ("bottom_edge_23", "bottom_2", "bottom_3"),
+        ("bottom_edge_30", "bottom_3", "bottom_0"),
+        ("vertical_edge_00", "top_0", "bottom_0"),
+        ("vertical_edge_11", "top_1", "bottom_1"),
+        ("vertical_edge_22", "top_2", "bottom_2"),
+        ("vertical_edge_33", "top_3", "bottom_3"),
+    ]
+    face_names = [
+        ("top_face", ["top_0", "top_1", "top_2", "top_3"]),
+        ("bottom_face", ["bottom_0", "bottom_1", "bottom_2", "bottom_3"]),
+        ("side_face_01", ["top_0", "top_1", "bottom_1", "bottom_0"]),
+        ("side_face_12", ["top_1", "top_2", "bottom_2", "bottom_1"]),
+        ("side_face_23", ["top_2", "top_3", "bottom_3", "bottom_2"]),
+        ("side_face_30", ["top_3", "top_0", "bottom_0", "bottom_3"]),
+    ]
+    edge_midpoints = []
+    for name, start_name, end_name in edge_names:
+        point = (cuboid_point_by_name(corners, start_name) + cuboid_point_by_name(corners, end_name)) * 0.5
+        edge_midpoints.append({
+            "name": name,
+            "base": [float(value) for value in point],
+        })
+    face_centers = []
+    for name, names in face_names:
+        point = np.mean([cuboid_point_by_name(corners, item) for item in names], axis=0)
+        face_centers.append({
+            "name": name,
+            "base": [float(value) for value in point],
+        })
+    return {
+        "corners": corners,
+        "edge_midpoints": edge_midpoints,
+        "face_centers": face_centers,
+    }
+
+
 def project_base_point_to_pixel(listener, camera_model, payload, point_base):
     base_frame = get_param("workspace/base_frame_id", "base_link")
     stamp, camera_frame = payload_stamp_and_frame(payload, camera_model)
@@ -335,6 +392,13 @@ def add_projected_cuboid_pixels(listener, camera_model, payload, cuboid_corners)
             item["pixel"] = pixel
         projected.append(item)
     return projected
+
+
+def add_projected_cuboid_control_pixels(listener, camera_model, payload, cuboid):
+    return {
+        key: add_projected_cuboid_pixels(listener, camera_model, payload, points)
+        for key, points in cuboid.items()
+    }
 
 
 def auto_tcp_grasp_z():
@@ -787,13 +851,13 @@ def observe_block(listener, camera_model, detection_topic, target_color, min_con
                 selected_mode,
                 vector_to_text(selected_axis),
             ))
-        cuboid = add_projected_cuboid_pixels(
+        cuboid = add_projected_cuboid_control_pixels(
             listener,
             camera_model,
             payload,
-            predict_cuboid_corners_base(point, block_axes),
+            predict_cuboid_control_points_base(predict_cuboid_corners_base(point, block_axes)),
         )
-        print("{} predicted physical cuboid corners:".format(label))
+        print("{} predicted physical cuboid control points:".format(label))
         print(json.dumps(cuboid, sort_keys=True))
     return payload, detection, point, block_axes
 
