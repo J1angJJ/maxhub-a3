@@ -410,6 +410,7 @@ rosrun carm_a3_tasks block_grasp.py plan --color green
 
 ```bash
 roslaunch carm_a3_tasks block_grasp.launch command:=plan color:=red
+roslaunch carm_a3_tasks block_grasp.launch command:=plan color:=green extra_args:="--allow-descend --use-gripper"
 ```
 
 确认输出里的 `estimated block center in base frame`、三段 pose、IK 解和周围净空都合理后，第一次只执行到 approach 位姿，不下探：
@@ -421,14 +422,16 @@ rosrun carm_a3_tasks block_grasp.py execute --color red
 由于当前还没有完成夹爪 TCP/contact height 标定，下降到 grasp 位姿默认关闭。默认模式下 `plan` 和 `execute` 只检查并求解 approach 位姿，不会因为低处 grasp/lift 草案点被安全锁拦住。只有确认 approach 位姿安全，并且 `grasp_z_m`、`min_flange_z_m` 已调到不会触桌后，再显式开启下探：
 
 ```bash
-rosrun carm_a3_tasks block_grasp.py execute --color red --allow-descend
+roslaunch carm_a3_tasks block_grasp.launch command:=execute color:=green extra_args:="--allow-descend"
 ```
 
 夹爪开合需要额外显式开启，并且也要求启用下探：
 
 ```bash
-rosrun carm_a3_tasks block_grasp.py execute --color red --allow-descend --use-gripper
+roslaunch carm_a3_tasks block_grasp.launch command:=execute color:=green extra_args:="--allow-descend --use-gripper"
 ```
+
+真实抓取优先使用 `block_grasp.launch`，因为它会加载 `config/block_grasp.yaml` 里的保守高度。直接 `rosrun block_grasp.py ...` 不会自动加载 YAML 参数。
 
 当前抓取配置在：
 

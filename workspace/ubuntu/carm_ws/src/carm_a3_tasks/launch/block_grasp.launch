@@ -1,6 +1,7 @@
 <launch>
   <arg name="config" default="$(find carm_a3_tasks)/config/block_grasp.yaml" />
   <arg name="command" default="plan" />
+  <arg name="extra_args" default="" />
   <arg name="color" default="" />
   <arg name="launch_camera_stack" default="true" />
   <arg name="launch_image_view" default="true" />
@@ -16,7 +17,7 @@
         pkg="carm_a3_tasks"
         type="block_grasp.py"
         output="screen"
-        args="$(arg command)">
+        args="$(arg command) $(arg extra_args)">
     <rosparam command="load" file="$(arg config)" />
     <param name="perception/target_color" value="$(arg color)" />
   </node>

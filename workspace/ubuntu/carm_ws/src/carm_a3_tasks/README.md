@@ -104,6 +104,7 @@ The launch form loads `config/block_grasp.yaml`:
 
 ```bash
 roslaunch carm_a3_tasks block_grasp.launch command:=plan color:=red
+roslaunch carm_a3_tasks block_grasp.launch command:=plan color:=green extra_args:="--allow-descend --use-gripper"
 ```
 
 After checking the printed base-frame block point, poses, IK results, and clearance, the first execution only moves to the approach pose:
@@ -122,6 +123,12 @@ Gripper open/close is intentionally separate and also requires descent to be ena
 
 ```bash
 rosrun carm_a3_tasks block_grasp.py execute --color red --allow-descend --use-gripper
+```
+
+For real grasp tests, prefer the launch form so `config/block_grasp.yaml` is loaded:
+
+```bash
+roslaunch carm_a3_tasks block_grasp.launch command:=execute color:=green extra_args:="--allow-descend --use-gripper"
 ```
 
 The first version keeps the current flange orientation and uses conservative fixed heights from `config/block_grasp.yaml`. Treat it as a grasp-chain smoke test before tuning the true TCP, grasp height, and gripper width. `grasp/min_flange_z_m` is a hard planning guard against near-table flange targets.

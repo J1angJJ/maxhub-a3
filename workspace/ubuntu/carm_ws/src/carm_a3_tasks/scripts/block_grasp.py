@@ -290,8 +290,8 @@ def build_grasp_poses(point, current_pose, block_axes):
     quat = normalize_quat_xyzw([float(value) for value in quat])
     quat = align_quat_to_block_axis(quat, block_axes)
 
-    approach_height = float(get_param("grasp/approach_height_m", 0.12))
-    grasp_z = float(get_param("grasp/grasp_z_m", 0.09))
+    approach_height = float(get_param("grasp/approach_height_m", 0.08))
+    grasp_z = float(get_param("grasp/grasp_z_m", 0.22))
     lift_height = float(get_param("grasp/lift_height_m", 0.10))
 
     x, y, _ = point
