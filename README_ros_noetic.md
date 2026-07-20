@@ -1441,9 +1441,12 @@ approach-only 到位后可开启自动视觉复位：脚本重新检测方块，
 
 中心抓取下探采用两阶段策略：先到安全可视/接近位，再视觉复位，最后按复位后的检测结果重新规划 approach、grasp、lift。如果 `align_transit_*` 中间姿态 IK 失败，脚本会先尝试 `grasp/fallback_without_align_transit: true` 的直接 approach/grasp/lift 规划；这用于区分“中间姿态采样不可达”和“最终抓取姿态不可达”。如果直接规划仍失败，脚本会按 `return_to_observation_on_failure` 回到任务开始时记录的观测关节位，并停止任务，不继续下探。
 
+从零位或任意非观测姿态启动时，可能已经能看到方块，但用当前法兰姿态计算出的 top-safe approach 仍然不可达，典型表现是 approach 法兰高度低于 `grasp/min_flange_z_m`，随后零位直接视觉复位 IK 失败。当前默认启用 `grasp/return_to_overview_on_initial_approach_failure: true`：真实执行中遇到这种初始接近失败时，先回配置观测位，重新识别，再继续抓取流程。
+
 上机复核时重点看这些输出：
 
 - `visual recenter done`：说明 TCP/方块 XY 已经自动复位到容差内。
+- `moving to configured overview pose`：说明零位/异常起点已先回观测位再重新识别。
 - `post-recenter direct fallback selected after aligned transit failure`：说明中间姿态 IK 失败，但直接抓取序列可解。
 - `returning to observation pose after failure`：说明最终抓取规划或执行失败后已触发安全回观测位。
 - `center grasp planning failed`：说明当前中心抓取姿态本身仍不可达，应改策略，而不是加固定偏移量。

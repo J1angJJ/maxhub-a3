@@ -1150,6 +1150,7 @@ def plan_block_grasp(args):
     for name, pose in ordered_poses:
         print("{}: {}".format(name, vector_to_text(pose)))
     skip_initial_motion = False
+    initial_motion_failure = None
     try:
         solved = try_solve_grasp_sequence(
             ik_proxy,
@@ -1166,6 +1167,7 @@ def plan_block_grasp(args):
             )
             solved = []
             skip_initial_motion = True
+            initial_motion_failure = exc
         else:
             solved = None
     if solved is None:
@@ -1255,7 +1257,53 @@ def plan_block_grasp(args):
     if two_stage_descent:
         print("two-stage execution: first moving to visual approach, then recentering before descent")
         if skip_initial_motion:
-            print("skipping initial approach motion; staying at current observed pose")
+            if bool(get_param("grasp/return_to_overview_on_initial_approach_failure", True)):
+                move_to_configured_overview(initial_motion_failure)
+                rospy.sleep(float(get_param("grasp/post_overview_observe_delay_s", 0.5)))
+                _, _, point, block_axes = observe_block(
+                    listener,
+                    camera_model,
+                    detection_topic,
+                    target_color,
+                    min_confidence,
+                    "initial-after-overview-return",
+                )
+                cart_res = cart_proxy()
+                print("overview-return cartesian snapshot:")
+                print(cart_res)
+                if not cart_res.success:
+                    raise RuntimeError(cart_res.message)
+                joint_res = joint_proxy()
+                print("overview-return joint snapshot:")
+                print(joint_res)
+                if not joint_res.success:
+                    raise RuntimeError(joint_res.message)
+                observation_positions = list(joint_res.positions)
+                execute_sequence.last_positions = list(observation_positions)
+                skip_initial_motion = False
+                flange_to_tcp = resolve_flange_to_tcp(listener)
+                poses = build_grasp_poses(
+                    point,
+                    list(cart_res.pose),
+                    block_axes,
+                    False,
+                    flange_to_tcp,
+                    tcp_grasp_z_override=top_safe_tcp_grasp_z(),
+                )
+                ordered_poses = build_ordered_pose_sequence(poses, list(cart_res.pose), False)
+                print("overview-return ordered execution poses:")
+                for name, pose in ordered_poses:
+                    print("{}: {}".format(name, vector_to_text(pose)))
+                solved = try_solve_grasp_sequence(
+                    ik_proxy,
+                    ordered_poses,
+                    list(joint_res.positions),
+                    False,
+                )
+                print_joint_targets(solved)
+                execute_motion(solved)
+            else:
+                print("skipping initial approach motion; staying at current observed pose")
         else:
             execute_motion(solved)
         visual_recenter_after_approach(
