@@ -256,6 +256,87 @@ def block_height_from_config(block_size):
     return float(block_size[2])
 
 
+def block_dimensions_from_config():
+    block_size = get_param("block/size_m", [0.10, 0.05, 0.05])
+    if len(block_size) != 3:
+        raise ValueError("block/size_m must contain long side, short side, height")
+    return [float(value) for value in block_size]
+
+
+def predict_cuboid_corners_base(top_center, block_axes):
+    if block_axes is None:
+        return []
+    length, width, height = block_dimensions_from_config()
+    table_z = float(get_param("workspace/table_z_m", 0.0))
+    center = np.asarray([float(top_center[0]), float(top_center[1]), table_z + height], dtype=float)
+    long_axis = np.asarray(block_axes["long"]["direction"], dtype=float)
+    long_axis[2] = 0.0
+    norm = np.linalg.norm(long_axis)
+    if norm <= 1e-9:
+        return []
+    long_axis = long_axis / norm
+    short_axis = np.asarray([-long_axis[1], long_axis[0], 0.0], dtype=float)
+    detected_short = np.asarray(block_axes["short"]["direction"], dtype=float)
+    detected_short[2] = 0.0
+    if np.dot(short_axis, detected_short) < 0.0:
+        short_axis = -short_axis
+
+    corners = []
+    layout = [
+        ("top_0", -1.0, -1.0, table_z + height),
+        ("top_1", 1.0, -1.0, table_z + height),
+        ("top_2", 1.0, 1.0, table_z + height),
+        ("top_3", -1.0, 1.0, table_z + height),
+        ("bottom_0", -1.0, -1.0, table_z),
+        ("bottom_1", 1.0, -1.0, table_z),
+        ("bottom_2", 1.0, 1.0, table_z),
+        ("bottom_3", -1.0, 1.0, table_z),
+    ]
+    for name, long_sign, short_sign, z in layout:
+        point = (
+            center
+            + long_axis * (long_sign * length * 0.5)
+            + short_axis * (short_sign * width * 0.5)
+        )
+        point[2] = z
+        corners.append({
+            "name": name,
+            "base": [float(value) for value in point],
+        })
+    return corners
+
+
+def project_base_point_to_pixel(listener, camera_model, payload, point_base):
+    base_frame = get_param("workspace/base_frame_id", "base_link")
+    stamp, camera_frame = payload_stamp_and_frame(payload, camera_model)
+    try:
+        listener.waitForTransform(camera_frame, base_frame, stamp, rospy.Duration(DEFAULT_TIMEOUT_S))
+        translation, rotation = listener.lookupTransform(camera_frame, base_frame, stamp)
+    except (tf.Exception, tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+        listener.waitForTransform(camera_frame, base_frame, rospy.Time(0), rospy.Duration(DEFAULT_TIMEOUT_S))
+        translation, rotation = listener.lookupTransform(camera_frame, base_frame, rospy.Time(0))
+    matrix = tf.transformations.quaternion_matrix(rotation)
+    matrix[:3, 3] = np.asarray(translation, dtype=float)
+    point = np.asarray([float(point_base[0]), float(point_base[1]), float(point_base[2]), 1.0])
+    point_camera = matrix.dot(point)[:3]
+    if point_camera[2] <= 1e-9:
+        return None
+    u = camera_model["fx"] * point_camera[0] / point_camera[2] + camera_model["cx"]
+    v = camera_model["fy"] * point_camera[1] / point_camera[2] + camera_model["cy"]
+    return [float(u), float(v)]
+
+
+def add_projected_cuboid_pixels(listener, camera_model, payload, cuboid_corners):
+    projected = []
+    for corner in cuboid_corners:
+        pixel = project_base_point_to_pixel(listener, camera_model, payload, corner["base"])
+        item = dict(corner)
+        if pixel is not None:
+            item["pixel"] = pixel
+        projected.append(item)
+    return projected
+
+
 def auto_tcp_grasp_z():
     mode = str(get_param("grasp/tcp_grasp_z_mode", "auto")).lower()
     if mode in ["manual", "fixed"]:
@@ -706,6 +787,14 @@ def observe_block(listener, camera_model, detection_topic, target_color, min_con
                 selected_mode,
                 vector_to_text(selected_axis),
             ))
+        cuboid = add_projected_cuboid_pixels(
+            listener,
+            camera_model,
+            payload,
+            predict_cuboid_corners_base(point, block_axes),
+        )
+        print("{} predicted physical cuboid corners:".format(label))
+        print(json.dumps(cuboid, sort_keys=True))
     return payload, detection, point, block_axes
 
 

@@ -31,7 +31,7 @@ The detection topic is `std_msgs/String` containing JSON. Each detection include
 - `color`: `red` or `green`
 - `center_px`: pixel center `[u, v]`
 - `corners_px`: four robust rectangle corners
-- `corners8_px`: eight rectangle control points, ordered as corner, edge midpoint, corner, edge midpoint...
+- `corners8_px`: eight 2D rectangle control points, ordered as corner, edge midpoint, corner, edge midpoint...
 - `area_px`: contour area
 - `rect_size_px`: robust rectangle dimensions
 - `min_area_rect_size_px`: raw OpenCV `minAreaRect` dimensions for debugging
@@ -42,3 +42,5 @@ The detection topic is `std_msgs/String` containing JSON. Each detection include
 ## Notes
 
 This is a bootstrap detector. It uses HSV masks, median filtering, morphology, and a percentile-based robust rectangle fit to reduce the effect of small shadows, highlights, and chipped mask edges. It does not estimate full 3D pose yet; use it first to confirm repeatable 2D detection before adding PnP, table-plane projection, or YOLO.
+
+Physical cuboid corners are predicted in `carm_a3_tasks/block_grasp.py`, where table TF, camera intrinsics, and known block dimensions are available.
