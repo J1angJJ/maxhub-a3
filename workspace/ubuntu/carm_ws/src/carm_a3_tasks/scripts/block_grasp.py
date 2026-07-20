@@ -582,7 +582,14 @@ def resolve_flange_to_tcp(listener):
     return values
 
 
-def build_grasp_poses(point, current_pose, block_axes, allow_descend, flange_to_tcp, tcp_grasp_z_override=None):
+def build_grasp_poses(
+    point,
+    current_pose,
+    block_axes,
+    allow_descend,
+    flange_to_tcp,
+    tcp_grasp_z_override=None,
+):
     use_current_orientation = bool(get_param("grasp/use_current_orientation", True))
     if use_current_orientation:
         quat = list(current_pose[3:7])
@@ -813,6 +820,21 @@ def execute_motion(solved):
     execute_sequence(move_proxy, solved)
 
 
+def return_to_observation(observation_positions, reason):
+    if not bool(get_param("grasp/return_to_observation_on_failure", True)):
+        return
+    if not hasattr(execute_sequence, "last_positions"):
+        return
+    print("returning to observation pose after failure: {}".format(reason))
+    target = [float(value) for value in observation_positions]
+    current = list(execute_sequence.last_positions)
+    solved = [("return_observation", [], target, max_abs_delta(current, target))]
+    try:
+        execute_motion(solved)
+    except (RuntimeError, rospy.ServiceException) as exc:
+        print("return to observation failed: {}".format(exc))
+
+
 def lookup_point(listener, target_frame, source_frame):
     try:
         listener.waitForTransform(target_frame, source_frame, rospy.Time(0), rospy.Duration(DEFAULT_TIMEOUT_S))
@@ -985,6 +1007,7 @@ def plan_block_grasp(args):
     print(joint_res)
     if not joint_res.success:
         raise RuntimeError(joint_res.message)
+    observation_positions = list(joint_res.positions)
 
     stage_allows_descent = grasp_stage_allows_descent()
     if args.allow_descend and not stage_allows_descent:
@@ -1090,7 +1113,7 @@ def plan_block_grasp(args):
         print("not executing; rerun with --execute after checking target and clearance")
         return
 
-    execute_sequence.last_positions = list(joint_res.positions)
+    execute_sequence.last_positions = list(observation_positions)
     if bool(get_param("grasp/open_before_approach", True)):
         maybe_set_gripper(float(get_param("grasp/open_gripper_pos_m", 0.065)), "open-before-approach")
 
@@ -1122,38 +1145,45 @@ def plan_block_grasp(args):
             joint_proxy,
             ik_proxy,
         )
-        _, _, point, block_axes = observe_block(
-            listener,
-            camera_model,
-            detection_topic,
-            target_color,
-            min_confidence,
-            "post-recenter",
-        )
-        cart_res = cart_proxy()
-        print("post-recenter cartesian snapshot:")
-        print(cart_res)
-        if not cart_res.success:
-            raise RuntimeError(cart_res.message)
-        joint_res = joint_proxy()
-        print("post-recenter joint snapshot:")
-        print(joint_res)
-        if not joint_res.success:
-            raise RuntimeError(joint_res.message)
-        flange_to_tcp = resolve_flange_to_tcp(listener)
-        poses = build_grasp_poses(point, list(cart_res.pose), block_axes, True, flange_to_tcp)
-        print("post-recenter planned poses x,y,z,qx,qy,qz,qw:")
-        for name in ["approach", "grasp", "lift"]:
-            print("{}: {}".format(name, vector_to_text(poses[name])))
-        ordered_poses = build_ordered_pose_sequence(poses, list(cart_res.pose), True)
-        print("post-recenter ordered execution poses:")
-        for name, pose in ordered_poses:
-            print("{}: {}".format(name, vector_to_text(pose)))
-        validate_pose_heights(ordered_poses)
-        solved = solve_pose_sequence(ik_proxy, ordered_poses, list(joint_res.positions))
-        validate_solved_sequence(solved, list(joint_res.positions))
-        print_joint_targets(solved)
-        execute_sequence.last_positions = list(joint_res.positions)
+        try:
+            _, _, point, block_axes = observe_block(
+                listener,
+                camera_model,
+                detection_topic,
+                target_color,
+                min_confidence,
+                "post-recenter",
+            )
+            cart_res = cart_proxy()
+            print("post-recenter cartesian snapshot:")
+            print(cart_res)
+            if not cart_res.success:
+                raise RuntimeError(cart_res.message)
+            joint_res = joint_proxy()
+            print("post-recenter joint snapshot:")
+            print(joint_res)
+            if not joint_res.success:
+                raise RuntimeError(joint_res.message)
+            flange_to_tcp = resolve_flange_to_tcp(listener)
+            poses = build_grasp_poses(point, list(cart_res.pose), block_axes, True, flange_to_tcp)
+            print("post-recenter planned poses x,y,z,qx,qy,qz,qw:")
+            for name in ["approach", "grasp", "lift"]:
+                print("{}: {}".format(name, vector_to_text(poses[name])))
+            ordered_poses = build_ordered_pose_sequence(poses, list(cart_res.pose), True)
+            print("post-recenter ordered execution poses:")
+            for name, pose in ordered_poses:
+                print("{}: {}".format(name, vector_to_text(pose)))
+            solved = try_solve_grasp_sequence(
+                ik_proxy,
+                ordered_poses,
+                list(joint_res.positions),
+                True,
+            )
+            print_joint_targets(solved)
+            execute_sequence.last_positions = list(joint_res.positions)
+        except (RuntimeError, rospy.ROSException, rospy.ServiceException) as exc:
+            return_to_observation(observation_positions, exc)
+            raise
 
     if args.use_gripper:
         maybe_set_gripper(float(get_param("grasp/open_gripper_pos_m", 0.065)), "open")

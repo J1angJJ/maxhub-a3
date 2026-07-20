@@ -50,6 +50,7 @@ grasp:
   segment_delta_rad: 0.08
   prefer_joint_trajectory: true
   fallback_after_trajectory_failure: false
+  return_to_observation_on_failure: true
   duration_s: 2.0
   wait: false
   open_before_approach: true

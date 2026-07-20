@@ -189,6 +189,8 @@ After approach-only motion, `grasp/visual_recenter_after_approach` can re-detect
 
 Full grasp execution uses the same idea by default. With `--allow-descend --use-gripper`, the task first moves to an approach pose that keeps the camera view stable, runs visual recentering, then re-detects the block and replans the aligned approach, descent, and lift from the real corrected state. The aligned stage uses `grasp/align_transit_waypoints` quaternion interpolation waypoints to reduce sudden IK branch jumps while rotating the gripper toward the selected short side.
 
+If the post-recenter descent plan is not reachable, `grasp/return_to_observation_on_failure` moves the arm back to the joint position recorded at task start. This fallback is intentionally limited to planning failures before the final descent/gripper sequence starts.
+
 For real motion, trajectory fallback is disabled by default. If a continuous trajectory partly moves but fails verification, the task stops instead of retrying from stale planned waypoints. `grasp/max_segment_joint_delta_rad` also rejects large IK branch jumps during planning.
 
 The move from the overview pose to approach also inserts `grasp/view_transit_waypoints` intermediate IK targets. These waypoints keep the current overview orientation while translating toward the block, so the wrist camera tends to keep the block in view during the approach instead of swinging away through a pure joint-space interpolation.
