@@ -191,6 +191,8 @@ Full grasp execution uses the same idea by default. With `--allow-descend --use-
 
 In two-stage `tcp_grasp_stage:=center` execution, the first visual approach is forced to the top-safe TCP height. The lower centerline height is used only after visual recentering, so an unreachable center grasp can fall back to the overview pose instead of blocking before the arm moves.
 
+If that initial top-safe approach itself causes an IK branch jump, `grasp/skip_initial_approach_on_ik_failure` keeps the arm at the current observed pose and continues with visual recentering. This is intended for cases where the block is already visible and a tiny approach move would be less useful than avoiding a large wrist flip.
+
 If the post-recenter descent plan is not reachable, `grasp/return_to_observation_on_failure` moves the arm back to the joint position recorded at task start. This fallback is intentionally limited to planning failures before the final descent/gripper sequence starts.
 
 At task startup, execute mode also checks whether the selected color block is visible. If the initial observation is invalid, `grasp/return_to_overview_on_initial_observe_failure` runs the configured overview initialization from `grasp_init.yaml`, optionally closes the gripper for a cleaner camera view, waits `grasp/post_overview_observe_delay_s`, and retries the first observation once.

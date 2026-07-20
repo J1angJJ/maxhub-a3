@@ -55,6 +55,7 @@ grasp:
   retry_initial_observe_after_overview_return: true
   post_overview_observe_delay_s: 0.5
   close_gripper_before_overview_return: true
+  skip_initial_approach_on_ik_failure: true
   duration_s: 2.0
   wait: false
   open_before_approach: true

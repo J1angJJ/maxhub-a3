@@ -1110,6 +1110,7 @@ def plan_block_grasp(args):
     print("ordered execution poses:")
     for name, pose in ordered_poses:
         print("{}: {}".format(name, vector_to_text(pose)))
+    skip_initial_motion = False
     try:
         solved = try_solve_grasp_sequence(
             ik_proxy,
@@ -1118,6 +1119,17 @@ def plan_block_grasp(args):
             planning_allow_descend,
         )
     except RuntimeError as exc:
+        if two_stage_descent and bool(get_param("grasp/skip_initial_approach_on_ik_failure", True)):
+            print(
+                "initial top-safe approach planning failed; skipping initial motion and using current camera view for recenter: {}".format(
+                    exc
+                )
+            )
+            solved = []
+            skip_initial_motion = True
+        else:
+            solved = None
+    if solved is None:
         stage = str(get_param("grasp/tcp_grasp_stage", "top_safe")).lower()
         if not (
             planning_allow_descend
@@ -1173,7 +1185,10 @@ def plan_block_grasp(args):
                     center_z, top_z
                 )
             )
-    print_joint_targets(solved)
+    if solved:
+        print_joint_targets(solved)
+    else:
+        print("joint targets: none for skipped initial approach")
 
     if not args.execute:
         print("not executing; rerun with --execute after checking target and clearance")
@@ -1200,7 +1215,10 @@ def plan_block_grasp(args):
 
     if two_stage_descent:
         print("two-stage execution: first moving to visual approach, then recentering before descent")
-        execute_motion(solved)
+        if skip_initial_motion:
+            print("skipping initial approach motion; staying at current observed pose")
+        else:
+            execute_motion(solved)
         visual_recenter_after_approach(
             listener,
             camera_model,
