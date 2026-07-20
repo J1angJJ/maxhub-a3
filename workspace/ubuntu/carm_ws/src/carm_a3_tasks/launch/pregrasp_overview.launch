@@ -6,11 +6,13 @@
   <arg name="launch_image_view" default="true" />
   <arg name="image_view_topic" default="/carm_a3/perception/color_blocks/debug_image" />
   <arg name="launch_motion" default="false" />
+  <arg name="motion_allow_gripper" default="" />
   <arg name="motion_allow_motion" default="" />
   <arg name="motion_dry_run" default="" />
   <arg name="motion_auto_ready_on_connect" default="" />
   <arg name="motion_register_callbacks_on_connect" default="" />
   <arg name="motion_pre_ready_delay_s" default="" />
+  <arg name="motion_publish_state" default="true" />
 
   <rosparam command="load" file="$(arg config)" ns="carm_a3_grasp_init" />
 
@@ -18,11 +20,13 @@
     <arg name="launch_camera" value="$(arg launch_camera)" />
     <arg name="launch_color_blocks" value="$(arg launch_color_blocks)" />
     <arg name="launch_motion" value="$(arg launch_motion)" />
+    <arg name="motion_allow_gripper" value="$(arg motion_allow_gripper)" />
     <arg name="motion_allow_motion" value="$(arg motion_allow_motion)" />
     <arg name="motion_dry_run" value="$(arg motion_dry_run)" />
     <arg name="motion_auto_ready_on_connect" value="$(arg motion_auto_ready_on_connect)" />
     <arg name="motion_register_callbacks_on_connect" value="$(arg motion_register_callbacks_on_connect)" />
     <arg name="motion_pre_ready_delay_s" value="$(arg motion_pre_ready_delay_s)" />
+    <arg name="motion_publish_state" value="$(arg motion_publish_state)" />
   </include>
 
   <node if="$(arg launch_image_view)"
