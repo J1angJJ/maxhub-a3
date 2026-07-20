@@ -135,6 +135,8 @@ The first version keeps the current flange orientation and uses conservative fix
 
 By default, the approach pose opens the gripper before moving and estimates both long/short block axes from the detected rectangle corners. Because the block is `5 x 5 x 10 cm` and the gripper opens to about `8 cm`, `grasp/auto_select_grasp_side` selects the gripper span direction over the 5 cm side instead of the 10 cm long side. If the gripper is visually 90 degrees off, change `grasp/align_yaw_offset_deg` or switch `grasp/align_tool_axis` between `x` and `y`.
 
+`grasp/use_tcp_target` makes the planner treat the detected block point as a TCP target and converts it back to the required flange pose with `grasp/flange_to_tcp_xyz_m`. Tune `grasp/tcp_grasp_z_m` first when the gripper is too high or too low.
+
 The move from the overview pose to approach also inserts `grasp/view_transit_waypoints` intermediate IK targets. These waypoints keep the current overview orientation while translating toward the block, so the wrist camera tends to keep the block in view during the approach instead of swinging away through a pure joint-space interpolation.
 
 Both overview initialization and block approach prefer `/carm_a3/motion/move_joint_trajectory` when available. The motion node still checks each adjacent waypoint against its joint-delta limit, but sends the whole waypoint list to the SDK trajectory API for smoother execution. Set `prefer_joint_trajectory: false` to fall back to segmented `move_joint`.

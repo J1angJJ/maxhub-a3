@@ -281,6 +281,13 @@ def align_quat_to_block_axis(quat, block_axes):
     return matrix_to_quat_xyzw(aligned)
 
 
+def pose_for_tcp_target(tcp_xyz, quat, flange_to_tcp):
+    rotation = quat_to_matrix(quat)
+    offset = rotation.dot(np.asarray(flange_to_tcp, dtype=float))
+    flange_xyz = np.asarray(tcp_xyz, dtype=float) - offset
+    return [float(value) for value in flange_xyz] + quat
+
+
 def build_grasp_poses(point, current_pose, block_axes):
     use_current_orientation = bool(get_param("grasp/use_current_orientation", True))
     if use_current_orientation:
@@ -293,11 +300,27 @@ def build_grasp_poses(point, current_pose, block_axes):
     approach_height = float(get_param("grasp/approach_height_m", 0.08))
     grasp_z = float(get_param("grasp/grasp_z_m", 0.22))
     lift_height = float(get_param("grasp/lift_height_m", 0.10))
+    use_tcp_target = bool(get_param("grasp/use_tcp_target", False))
 
     x, y, _ = point
-    grasp = [x, y, grasp_z] + quat
-    approach = [x, y, grasp_z + approach_height] + quat
-    lift = [x, y, grasp_z + lift_height] + quat
+    if use_tcp_target:
+        flange_to_tcp = get_param("grasp/flange_to_tcp_xyz_m", [0.0, 0.0, 0.0])
+        if len(flange_to_tcp) != 3:
+            raise ValueError("grasp/flange_to_tcp_xyz_m must contain 3 values")
+        flange_to_tcp = [float(value) for value in flange_to_tcp]
+        tcp_grasp_z = float(get_param("grasp/tcp_grasp_z_m", 0.12))
+        print(
+            "tcp target enabled: flange_to_tcp={}, tcp_grasp_z={:.6g}".format(
+                vector_to_text(flange_to_tcp), tcp_grasp_z
+            )
+        )
+        grasp = pose_for_tcp_target([x, y, tcp_grasp_z], quat, flange_to_tcp)
+        approach = pose_for_tcp_target([x, y, tcp_grasp_z + approach_height], quat, flange_to_tcp)
+        lift = pose_for_tcp_target([x, y, tcp_grasp_z + lift_height], quat, flange_to_tcp)
+    else:
+        grasp = [x, y, grasp_z] + quat
+        approach = [x, y, grasp_z + approach_height] + quat
+        lift = [x, y, grasp_z + lift_height] + quat
     return {
         "approach": approach,
         "grasp": grasp,

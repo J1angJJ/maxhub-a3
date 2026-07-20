@@ -24,9 +24,12 @@ grasp:
   keep_camera_view_during_approach: true
   view_transit_waypoints: 4
   target_quat_xyzw: [0.707, 0.0, 0.707, 0.0]
+  use_tcp_target: true
+  flange_to_tcp_xyz_m: [0.065338, 0.005939, 0.113513]
+  tcp_grasp_z_m: 0.12
   approach_height_m: 0.08
   grasp_z_m: 0.22
-  min_flange_z_m: 0.18
+  min_flange_z_m: 0.14
   lift_height_m: 0.10
   max_total_joint_delta_rad: 2.20
   segment_delta_rad: 0.08

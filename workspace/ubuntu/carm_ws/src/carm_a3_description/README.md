@@ -24,7 +24,7 @@ In normal bringup, `carm_a3_driver` publishes `/joint_states`, while `robot_stat
 
 Current `/joint_states` contains `joint1` through `joint6`, and `carm_a3_motion` can append `joint7` and `joint8` from the SDK gripper gap. The arm chain up to `flange` is therefore available, and the finger links become meaningful when the unified motion node is running with `publish_gripper_joints:=true`.
 
-The model also defines a draft `gripper_tcp` frame under `gripper_base`. The `flange -> gripper_base` transform is derived from the full-machine STEP assembly, while `gripper_base -> gripper_tcp` is still an estimated two-finger center near the front of the gripper. Validate it against the real fingertip/contact point before using it for table-contact grasping:
+The model also defines a draft `gripper_tcp` frame under `gripper_base`. The `flange -> gripper_base` transform is derived from the full-machine STEP assembly, while `gripper_base -> gripper_tcp` is still an estimated two-finger center near the front of the gripper. Its local Z direction was selected from the first grasp-height test and still needs validation against the real fingertip/contact point:
 
 ```text
 flange -> gripper_base -> gripper_tcp
