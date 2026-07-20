@@ -458,6 +458,23 @@ def auto_tcp_grasp_z():
     raise ValueError("grasp/tcp_grasp_stage must be 'top_safe', 'top', or 'center'")
 
 
+def top_safe_tcp_grasp_z():
+    table_z = float(get_param("workspace/table_z_m", 0.0))
+    block_size = get_param("block/size_m", [0.10, 0.05, 0.05])
+    block_height = block_height_from_config(block_size)
+    clearance = float(get_param("grasp/tcp_top_clearance_m", 0.015))
+    value = table_z + block_height + clearance
+    print(
+        "tcp grasp z forced for initial top-safe approach: table_z={:.6g}, block_height={:.6g}, top_clearance={:.6g}, tcp_grasp_z={:.6g}".format(
+            table_z,
+            block_height,
+            clearance,
+            value,
+        )
+    )
+    return value
+
+
 def grasp_stage_allows_descent():
     mode = str(get_param("grasp/tcp_grasp_z_mode", "auto")).lower()
     if mode in ["manual", "fixed"]:
@@ -1072,12 +1089,14 @@ def plan_block_grasp(args):
         print("two-stage execution enabled: initial plan is approach-only; descent is replanned after visual recenter")
 
     flange_to_tcp = resolve_flange_to_tcp(listener)
+    initial_tcp_z_override = top_safe_tcp_grasp_z() if two_stage_descent else None
     poses = build_grasp_poses(
         point,
         list(cart_res.pose),
         block_axes,
         planning_allow_descend,
         flange_to_tcp,
+        tcp_grasp_z_override=initial_tcp_z_override,
     )
     print("planned poses x,y,z,qx,qy,qz,qw:")
     for name in ["approach", "grasp", "lift"]:
@@ -1101,7 +1120,7 @@ def plan_block_grasp(args):
     except RuntimeError as exc:
         stage = str(get_param("grasp/tcp_grasp_stage", "top_safe")).lower()
         if not (
-            requested_allow_descend
+            planning_allow_descend
             and stage == "center"
             and bool(get_param("grasp/auto_raise_unreachable_center_grasp", True))
         ):

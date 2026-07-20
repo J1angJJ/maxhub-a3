@@ -189,6 +189,8 @@ After approach-only motion, `grasp/visual_recenter_after_approach` can re-detect
 
 Full grasp execution uses the same idea by default. With `--allow-descend --use-gripper`, the task first moves to an approach pose that keeps the camera view stable, runs visual recentering, then re-detects the block and replans the aligned approach, descent, and lift from the real corrected state. The aligned stage uses `grasp/align_transit_waypoints` quaternion interpolation waypoints to reduce sudden IK branch jumps while rotating the gripper toward the selected short side.
 
+In two-stage `tcp_grasp_stage:=center` execution, the first visual approach is forced to the top-safe TCP height. The lower centerline height is used only after visual recentering, so an unreachable center grasp can fall back to the overview pose instead of blocking before the arm moves.
+
 If the post-recenter descent plan is not reachable, `grasp/return_to_observation_on_failure` moves the arm back to the joint position recorded at task start. This fallback is intentionally limited to planning failures before the final descent/gripper sequence starts.
 
 At task startup, execute mode also checks whether the selected color block is visible. If the initial observation is invalid, `grasp/return_to_overview_on_initial_observe_failure` runs the configured overview initialization from `grasp_init.yaml`, optionally closes the gripper for a cleaner camera view, waits `grasp/post_overview_observe_delay_s`, and retries the first observation once.
