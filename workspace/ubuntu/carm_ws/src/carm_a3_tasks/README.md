@@ -137,7 +137,7 @@ By default, the approach pose opens the gripper before moving and estimates both
 
 `block/size_m` is ordered as table long side, table short side, and block height. The detector projects the visible rectangle onto the top face plane at `workspace/table_z_m + block_height`. In auto height mode, the grasp TCP target is `workspace/table_z_m + block_height / 2 + grasp/tcp_center_clearance_m`, so the vertical grasp target follows the configured object geometry instead of a manually tuned absolute Z value.
 
-`grasp/use_tcp_target` makes the planner treat the detected block point as a TCP target and converts it back to the required flange pose. By default `grasp/flange_to_tcp_source: tf` reads `flange -> gripper_tcp` from the robot model; `grasp/flange_to_tcp_xyz_m` is only a fallback if TF is unavailable. Use `grasp/tcp_grasp_z_mode: manual` only for controlled debugging.
+`grasp/use_tcp_target` makes the planner treat the detected block point as a TCP target and converts it back to the required flange pose. By default `grasp/flange_to_tcp_source: tf` reads `flange -> gripper_tcp` from the robot model and fails closed if TF is unavailable. Use `grasp/flange_to_tcp_source: config` or `grasp/tcp_grasp_z_mode: manual` only for controlled debugging.
 
 The gripper span axis is bidirectional by default, so a detected rectangle edge can align with either `+axis` or `-axis` without forcing a 180 degree wrist flip.
 

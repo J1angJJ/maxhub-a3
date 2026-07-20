@@ -347,7 +347,14 @@ def resolve_flange_to_tcp(listener):
             print("flange_to_tcp from TF flange -> {}: {}".format(tcp_frame, vector_to_text(values)))
             return values
         except (tf.Exception, tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as exc:
-            print("flange_to_tcp TF lookup failed, falling back to config: {}".format(exc))
+            raise RuntimeError(
+                "flange_to_tcp TF lookup failed for flange -> {}; restart robot_state_publisher/pregrasp_overview or set grasp/flange_to_tcp_source=config explicitly: {}".format(
+                    tcp_frame,
+                    exc,
+                )
+            )
+    if source != "config":
+        raise ValueError("grasp/flange_to_tcp_source must be 'tf' or 'config'")
     values = get_param("grasp/flange_to_tcp_xyz_m", [0.0, 0.0, 0.0])
     if len(values) != 3:
         raise ValueError("grasp/flange_to_tcp_xyz_m must contain 3 values")
