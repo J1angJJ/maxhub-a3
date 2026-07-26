@@ -62,6 +62,7 @@ cp .env.example .env
 
 - 宿主 ROS 2 工作区：`/home/j1angjj/workspace/maxhub-a3/workspace/foxy`
 - 容器主挂载点：`/workspace`
+- 容器 ROS2 工作区：`/workspace/rl_ws`
 - 现有 CArm SDK：只读挂载到 `/opt/maxhub-a3/arm_control_sdk`
 - 官方 demo 参考仓库：只读挂载到 `/opt/maxhub-a3/reference/carm_demo`
 - 机械臂 IP：`192.168.31.60`
@@ -119,14 +120,14 @@ docker compose run --rm foxy-maxhub-a3 \
 新 ROS 2 包放在：
 
 ```text
-/home/j1angjj/workspace/maxhub-a3/workspace/foxy/src
+/home/j1angjj/workspace/maxhub-a3/workspace/foxy/rl_ws/src
 ```
 
 编译 colcon 工作区：
 
 ```bash
 docker compose run --rm foxy-maxhub-a3 \
-  bash -lc 'cd /workspace && colcon build --symlink-install'
+  bash -lc 'cd /workspace/rl_ws && colcon build --symlink-install'
 ```
 
 如果需要编译官方 `carm_ros2` 参考包，建议先复制到 `/workspace/src` 再改，保留 `/opt/maxhub-a3/reference/carm_demo` 只读。

@@ -14,7 +14,7 @@ services:
       DISPLAY: ${DISPLAY:-:0}
       QT_X11_NO_MITSHM: "1"
       WORKSPACE: /workspace
-      ROS_WORKSPACE: ${ROS_WORKSPACE:-/workspace}
+      ROS_WORKSPACE: ${ROS_WORKSPACE:-/workspace/rl_ws}
       ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-0}
       RMW_IMPLEMENTATION: ${RMW_IMPLEMENTATION:-rmw_fastrtps_cpp}
       CARM_IP: ${CARM_IP:-192.168.31.60}
@@ -30,4 +30,4 @@ services:
     group_add:
       - video
       - dialout
-    working_dir: ${ROS_WORKSPACE:-/workspace}
+    working_dir: ${ROS_WORKSPACE:-/workspace/rl_ws}
