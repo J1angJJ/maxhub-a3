@@ -124,6 +124,8 @@ SDK 的使用 Demo 以后优先从官方 GitHub 获取，本仓库只保存本�
 
 原装相机组件已安装到机械臂上，并通过 USB 连接到 Ubuntu 20.04 虚拟机。当前系统已能识别该相机为标准 UVC 摄像头。
 
+2026-07-26 迁移到当前 Linux 本机后，相机 USB 枚举发生变化：内置摄像头占用 `/dev/video0` 到 `/dev/video3`，原装机械臂 USB 相机为 `05a3:9230 ARC International Camera`，当前主图像节点是 `/dev/video4`，伴随的非 capture 节点是 `/dev/video5`。ROS 配置已改用稳定路径 `/dev/v4l/by-id/usb-HD_Camera_Manufacturer_USB_2.0_Camera-video-index0`，避免后续 `/dev/video*` 编号漂移。
+
 Ubuntu 端识别信息：
 
 ```text
@@ -145,15 +147,16 @@ USB 2.0 Camera: HD USB Camera (usb-0000:03:00.0-2):
 
 当前判断：
 
-- `/dev/video0` 是主图像采集节点。
-- `/dev/video1` 是 UVC payload header metadata 节点，不作为普通图像输入使用。
+- 早期 Ubuntu 虚拟机里 `/dev/video0` 是主图像采集节点，`/dev/video1` 是 UVC payload header metadata 节点。
+- 当前 Linux 本机里 `/dev/video4` 是主图像采集节点，`/dev/video5` 是伴随的非 capture 节点。
+- ROS 配置优先使用 `/dev/v4l/by-id/usb-HD_Camera_Manufacturer_USB_2.0_Camera-video-index0`，不再依赖固定 `/dev/video0`。
 - 驱动为 `uvcvideo`，驱动版本显示为 `5.15.178`。
 - 默认图像格式为 `1920x1080 MJPG 30 fps`。
 - 相机控制项支持亮度、对比度、饱和度、白平衡、gamma、gain、工频、防背光、自动曝光等 UVC 参数。
 - VMware USB 透传可用，已通过 `guvcview` 完成实时预览验证。
 - `guvcview` 下 30 fps 预览流畅。
 - 当前画面方向与常规使用方向上下颠倒；暂不方便物理调整相机方向，后续在软件采集或 ROS 图像链路中做翻转校正。
-- 已新增 ROS Noetic 视觉包 `carm_a3_vision`，用于直接通过 V4L2 读取 `/dev/video0` 并发布 ROS 图像话题。
+- 已新增 ROS Noetic 视觉包 `carm_a3_vision`，用于直接通过 V4L2 读取原装 USB 相机并发布 ROS 图像话题。
 - `carm_a3_vision` 默认使用 `640x480 YUYV 30 fps` 输入，转换为 `rgb8` 后发布。
 - `carm_a3_vision` 默认启用 `rotate_180: true`，用于软件修正当前相机安装方向。
 - ROS 图像话题 `/carm_a3/camera/image_raw` 已验证稳定约 30 fps。
@@ -261,7 +264,8 @@ A3 底座主要接口包括：
 
 路由器/网关：192.168.31.1
 Windows 主机：192.168.31.10
-Ubuntu 虚拟机：192.168.31.11
+Ubuntu 虚拟机：192.168.31.11（历史）
+当前 Linux 本机：192.168.31.10
 MAXHUB A3：192.168.31.60
 ```
 
@@ -272,6 +276,12 @@ A3 机械臂 --网线-- 路由器 LAN 口
 Windows 主机 --Wi-Fi-- 路由器
 Ubuntu 虚拟机 --VMware 桥接/现有网络配置-- 路由器
 ```
+
+2026-07-26 当前 Linux 本机检查结果：
+
+- `wlp0s20f3` 获取到 `192.168.31.10/24`，默认网关为 `192.168.31.1`。
+- 路由器 `http://192.168.31.1` 可访问。
+- 机械臂 `192.168.31.60` ping 无响应，HTTP 访问超时，邻居表显示 `FAILED`。继续机械臂调试前，应先确认机械臂上电、网线接回路由器 LAN 口、路由器静态保留仍为 `.60`，或重新查找机械臂当前 IP。
 
 路由器已为机械臂地址 `192.168.31.60` 完成静态保留，避免与 DHCP 地址池中的其他设备冲突。
 
@@ -564,7 +574,8 @@ robot:
 | 2026-07-17 | 将设备、控制器和后端 IP 修改为 `192.168.31.60` |
 | 2026-07-17 | 完成路由器静态地址保留 |
 | 2026-07-17 | 完成网页控制、夹爪和拖动模式测试，未发现异常 |
-| 2026-07-18 | 安装原装相机，Ubuntu 虚拟机识别为 `05a3:9230 ARC International Camera`，主图像节点为 `/dev/video0` |
+| 2026-07-18 | 安装原装相机，Ubuntu 虚拟机识别为 `05a3:9230 ARC International Camera`，当时主图像节点为 `/dev/video0` |
+| 2026-07-26 | 迁移到当前 Linux 本机后，原装相机 capture 节点变为 `/dev/video4`，ROS 配置改用稳定 by-id 路径 |
 | 2026-07-18 | 通过 `guvcview` 验证相机 USB 透传和 30 fps 预览流畅；画面上下颠倒，后续通过软件校正 |
 | 2026-07-18 | 新增 `carm_a3_vision` ROS Noetic 视觉包，默认发布 `/carm_a3/camera/image_raw` 并启用 180 度软件校正 |
 | 2026-07-18 | 完成 ROS 图像话题测试，`/carm_a3/camera/image_raw` 稳定约 30 fps，`image_view` 可显示图像 |

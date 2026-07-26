@@ -2,7 +2,15 @@
 
 ROS Noetic vision package for the original CArm / MAXHUB A3 USB camera.
 
-The first node reads `/dev/video0` through V4L2, requests YUYV format, converts frames to `rgb8`, applies software orientation correction, loads camera calibration through `camera_info_manager`, and publishes ROS image topics. It intentionally avoids OpenCV, `cv_bridge`, `image_transport`, `usb_cam`, and `v4l2_camera` package dependencies so it can run in a minimal ROS environment.
+The first node reads the original USB camera through V4L2, requests YUYV format, converts frames to `rgb8`, applies software orientation correction, loads camera calibration through `camera_info_manager`, and publishes ROS image topics. It intentionally avoids OpenCV, `cv_bridge`, `image_transport`, `usb_cam`, and `v4l2_camera` package dependencies so it can run in a minimal ROS environment.
+
+The default device is the stable by-id symlink:
+
+```text
+/dev/v4l/by-id/usb-HD_Camera_Manufacturer_USB_2.0_Camera-video-index0
+```
+
+On the current Linux host reviewed on 2026-07-26, the integrated laptop camera occupies `/dev/video0` through `/dev/video3`; the robot USB camera appears as `/dev/video4` for capture and `/dev/video5` for the non-capture companion node. Prefer the by-id path instead of hard-coding a numbered `/dev/video*` path.
 
 ## Build
 
@@ -59,7 +67,7 @@ The current file is calibrated for `640x480`. Uploaded calibration data from `/c
 
 ## Camera Modes
 
-The original USB camera reports these modes through `v4l2-ctl -d /dev/video0 --list-formats-ext`:
+The original USB camera reports these modes through `v4l2-ctl -d /dev/v4l/by-id/usb-HD_Camera_Manufacturer_USB_2.0_Camera-video-index0 --list-formats-ext`:
 
 | Format | Resolution | FPS |
 | --- | --- | --- |

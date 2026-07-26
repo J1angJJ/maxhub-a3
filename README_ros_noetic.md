@@ -16,7 +16,7 @@
 
 `carm_a3_motion` 负责机器人底层 SDK 会话、状态、诊断和安全运动入口。`carm_a3_driver` 仅作为旧只读节点兼容保留。后续手眼标定、YOLO 抓取协作、强化学习等内容如果展开，建议拆成独立 ROS 包，避免底层控制包变成大杂烩。
 
-`carm_a3_vision` 负责原装 USB 相机的 ROS 图像采集、方向校正和后续视觉链路入口。当前版本不依赖 OpenCV、`cv_bridge`、`usb_cam` 或 `v4l2_camera`，直接通过 V4L2 读取 `/dev/video0` 并发布 `rgb8` 图像。
+`carm_a3_vision` 负责原装 USB 相机的 ROS 图像采集、方向校正和后续视觉链路入口。当前版本不依赖 OpenCV、`cv_bridge`、`usb_cam` 或 `v4l2_camera`，直接通过 V4L2 读取配置中的相机设备并发布 `rgb8` 图像。当前 Linux 本机优先使用 `/dev/v4l/by-id/usb-HD_Camera_Manufacturer_USB_2.0_Camera-video-index0`，避免 `/dev/video*` 编号随 USB 枚举变化。
 
 当前 TF 状态：
 
@@ -783,7 +783,7 @@ workspace/ubuntu/carm_ws/src/carm_a3_vision/config/camera.yaml
 
 默认参数：
 
-- 设备：`/dev/video0`
+- 设备：`/dev/v4l/by-id/usb-HD_Camera_Manufacturer_USB_2.0_Camera-video-index0`
 - 分辨率：`640x480`
 - 帧率：`30`
 - 输入格式：`YUYV`
@@ -797,7 +797,7 @@ workspace/ubuntu/carm_ws/src/carm_a3_vision/config/camera.yaml
 
 ### Camera Modes
 
-`v4l2-ctl -d /dev/video0 --list-formats-ext` 实测支持：
+`v4l2-ctl -d /dev/v4l/by-id/usb-HD_Camera_Manufacturer_USB_2.0_Camera-video-index0 --list-formats-ext` 实测支持：
 
 | Format | Resolution | FPS |
 | --- | --- | --- |
@@ -1317,6 +1317,8 @@ Ubuntu 20.04 + ROS Noetic 下已完成原装 USB 相机 ROS 图像链路测试�
 ```text
 camera_started,device=/dev/video0,width=640,height=480,fps=30,rotate_180=true
 ```
+
+2026-07-26 当前 Linux 本机相机枚举更新：内置摄像头占用 `/dev/video0` 到 `/dev/video3`；原装机械臂相机 `05a3:9230` 的 capture 节点为 `/dev/video4`，非 capture companion 节点为 `/dev/video5`。配置已改用 `/dev/v4l/by-id/usb-HD_Camera_Manufacturer_USB_2.0_Camera-video-index0`。
 
 - `/carm_a3/camera/camera_info` 可输出，当前尺寸为 `640x480`，`frame_id` 为 `carm_a3_camera_optical_frame`。
 - `camera_info.yaml` 已保存 `640x480` 内参；重新编译并启动当前版本后，`K/R/P/D` 应发布真实标定值。

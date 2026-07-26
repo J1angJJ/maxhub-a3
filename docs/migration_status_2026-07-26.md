@@ -43,6 +43,29 @@ R:\maxhub-a3
 - `carm_a3_perception` 已有红/绿方块 HSV 分割和调试图输出。
 - `carm_a3_tasks` 已推进到观测位初始化、桌面投影、方块抓取规划、视觉重定位、轨迹优先和失败回观测位。
 
+## Current Host Check - 2026-07-26
+
+当前 Linux 本机网络：
+
+- 主接口：`wlp0s20f3`
+- IPv4：`192.168.31.10/24`
+- 默认网关：`192.168.31.1`
+- 路由器 HTTP：可访问
+- 机械臂 `192.168.31.60`：ping 无响应，HTTP 超时，邻居表为 `FAILED`
+
+这说明当前主机已在 `192.168.31.0/24` 局域网内，但暂时没有看到机械臂。继续 ROS/SDK 连接前，先确认机械臂电源、网线、路由器 LAN 口和静态地址保留。
+
+当前 Linux 本机相机：
+
+- USB：`05a3:9230 ARC International Camera`
+- by-id capture 节点：`/dev/v4l/by-id/usb-HD_Camera_Manufacturer_USB_2.0_Camera-video-index0`
+- 当前数字节点：`/dev/video4`
+- companion/non-capture 节点：`/dev/video5`
+- 内置摄像头占用：`/dev/video0` 到 `/dev/video3`
+- 当前用户 `j1angjj` 对 `/dev/video4` 和 `/dev/video5` 有 ACL 读写权限
+
+`carm_a3_vision/config/camera.yaml` 已改用 by-id capture 节点，避免继续误开内置摄像头。
+
 ## Recommended Current Entry Points
 
 编译：
@@ -117,6 +140,6 @@ roslaunch carm_a3_tasks block_grasp.launch \
 
 1. 在当前 Linux 环境中完成 ROS build smoke test，确认 vendored SDK 和 catkin 链接正常。
 2. 只运行 `safe_motion.launch` 默认参数，检查 `/joint_states`、`/maxhub_a3/diagnostics` 和 SDK 状态。
-3. 检查相机设备节点是否仍为 `/dev/video0`，确认 `camera.launch` 能稳定发布图像。
+3. 检查相机 by-id capture 节点是否仍存在，确认 `camera.launch` 能稳定发布图像。
 4. 运行 `readonly_vision_handeye.launch launch_color_blocks:=true`，确认 TF、相机、手眼和红/绿分割同屏正常。
 5. 真实运动前先 dry-run `grasp_init.py plan` 和 `block_grasp.launch command:=plan`，再决定是否恢复 approach-only 实机执行。
