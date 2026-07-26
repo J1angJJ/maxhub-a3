@@ -115,6 +115,33 @@ docker compose run --rm foxy-maxhub-a3 \
   bash -lc 'test -f /opt/maxhub-a3/arm_control_sdk/setup.bash && ls /opt/maxhub-a3/reference/carm_demo/carm_ros2/src'
 ```
 
+## Desktop GUI
+
+当前 compose 已把宿主机 `DISPLAY`、`QT_X11_NO_MITSHM` 和 `/tmp/.X11-unix` 传入容器。宿主机先开放本地 X11 访问：
+
+```bash
+xhost +local:docker
+```
+
+进入容器后检查图形链路：
+
+```bash
+echo $DISPLAY
+ls -l /tmp/.X11-unix
+rviz2 --help
+```
+
+打开机械臂模型：
+
+```bash
+cd /workspace/rl_ws
+colcon build --symlink-install
+source install/setup.bash
+ros2 launch carm_a3_description display.launch.py
+```
+
+如果 `rviz2` 报 `could not connect to display`，优先检查宿主 `DISPLAY` 是否和 `/tmp/.X11-unix/X*` 对应，以及是否执行过 `xhost +local:docker`。Wayland 桌面通常仍可通过 XWayland 使用这套路径；如果后续要跑 Isaac Sim，建议单独建 NVIDIA 图形容器，不塞进当前 Foxy 项目镜像。
+
 ## Workspace
 
 新 ROS 2 包放在：
