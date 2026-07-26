@@ -27,6 +27,7 @@
 - 派生镜像 `ubuntu-env:noetic-user` 尚未构建。
 - 使用本项目 env 展开 `compose.yaml` 后，宿主机挂载范围确认为 `/home/j1angjj/workspace/maxhub-a3/workspace/ubuntu:/workspace`。
 - 当前 shell 的 `DISPLAY` 会覆盖 env 文件里的 `DISPLAY=:0`；本次 `docker compose config` 展开为 `DISPLAY=:1`。
+- 共享 Noetic dev 包清单已显式包含 `v4l-utils`、`ros-noetic-image-view`、`ros-noetic-camera-calibration`、`ros-noetic-cv-bridge`、`ros-noetic-camera-info-manager`、`ros-noetic-tf2-ros`、`python3-opencv` 和 `python3-yaml` 等视觉/TF/标定排查基础包。若这些包是新增的，需要重新构建 `ubuntu-env:noetic-user`。
 
 ## Project Env
 
@@ -75,6 +76,12 @@ docker image inspect ubuntu-env:noetic-user
 
 以下命令会启动一次性容器，由操作者亲自执行和排查。
 
+为了避免共享 `compose.hardware.yaml` 默认映射不存在的 `/dev/ttyUSB0`，MAXHUB A3 当前推荐直接使用本仓库的项目覆盖文件：
+
+```text
+/home/j1angjj/workspace/maxhub-a3/workspace/ubuntu/noetic-maxhub-a3.hardware.compose.yaml
+```
+
 进入 bash：
 
 ```bash
@@ -84,25 +91,7 @@ cd /home/j1angjj/workspace/ubuntu-env/docker/noetic
   bash
 ```
 
-带相机/串口硬件映射进入 bash：
-
-```bash
-cd /home/j1angjj/workspace/ubuntu-env/docker/noetic
-./scripts/run.sh \
-  --env-file /home/j1angjj/workspace/maxhub-a3/workspace/ubuntu/noetic-docker.env \
-  --hardware \
-  bash
-```
-
-注意：共享 `compose.hardware.yaml` 会同时映射 `VIDEO_DEVICE` 和 `SERIAL_DEVICE`。如果宿主机没有 `/dev/ttyUSB0`，只为了相机使用 `--hardware` 可能失败。MAXHUB A3 当前更推荐使用本仓库里的项目覆盖文件：
-
-```text
-/home/j1angjj/workspace/maxhub-a3/workspace/ubuntu/noetic-maxhub-a3.hardware.compose.yaml
-```
-
-相机覆盖文件会映射 `/dev/video4`，并只读挂载 `/dev/v4l`，让仓库默认的 by-id 相机路径在容器内可见。
-
-用项目覆盖文件进入 bash：
+带相机硬件映射和 `/dev/v4l` by-id 路径进入 bash：
 
 ```bash
 cd /home/j1angjj/workspace/ubuntu-env/docker/noetic
@@ -116,25 +105,57 @@ docker compose \
 检查 ROS 环境：
 
 ```bash
-./scripts/run.sh \
+cd /home/j1angjj/workspace/ubuntu-env/docker/noetic
+docker compose \
   --env-file /home/j1angjj/workspace/maxhub-a3/workspace/ubuntu/noetic-docker.env \
-  rosversion -d
+  -f compose.yaml \
+  run --rm noetic rosversion -d
 ```
 
 编译本项目 catkin 工作区：
 
 ```bash
-./scripts/run.sh \
+cd /home/j1angjj/workspace/ubuntu-env/docker/noetic
+docker compose \
   --env-file /home/j1angjj/workspace/maxhub-a3/workspace/ubuntu/noetic-docker.env \
+  -f compose.yaml \
+  run --rm noetic \
   bash -lc 'source /workspace/carm_ws/vendor/arm_control_sdk/setup.bash && cd /workspace/carm_ws && catkin_make'
 ```
 
 默认只读启动 motion 节点：
 
 ```bash
-./scripts/run.sh \
+cd /home/j1angjj/workspace/ubuntu-env/docker/noetic
+docker compose \
   --env-file /home/j1angjj/workspace/maxhub-a3/workspace/ubuntu/noetic-docker.env \
+  -f compose.yaml \
+  run --rm noetic \
   bash -lc 'source /workspace/carm_ws/vendor/arm_control_sdk/setup.bash && source /workspace/carm_ws/devel/setup.bash && roslaunch carm_a3_motion safe_motion.launch'
+```
+
+启动相机节点时使用项目硬件覆盖：
+
+```bash
+cd /home/j1angjj/workspace/ubuntu-env/docker/noetic
+docker compose \
+  --env-file /home/j1angjj/workspace/maxhub-a3/workspace/ubuntu/noetic-docker.env \
+  -f compose.yaml \
+  -f /home/j1angjj/workspace/maxhub-a3/workspace/ubuntu/noetic-maxhub-a3.hardware.compose.yaml \
+  run --rm noetic \
+  bash -lc 'source /workspace/carm_ws/devel/setup.bash && roslaunch carm_a3_vision camera.launch'
+```
+
+检查相机枚举和格式：
+
+```bash
+cd /home/j1angjj/workspace/ubuntu-env/docker/noetic
+docker compose \
+  --env-file /home/j1angjj/workspace/maxhub-a3/workspace/ubuntu/noetic-docker.env \
+  -f compose.yaml \
+  -f /home/j1angjj/workspace/maxhub-a3/workspace/ubuntu/noetic-maxhub-a3.hardware.compose.yaml \
+  run --rm noetic \
+  bash -lc 'ls -l /dev/video4 /dev/v4l/by-id && v4l2-ctl -d /dev/v4l/by-id/usb-HD_Camera_Manufacturer_USB_2.0_Camera-video-index0 --list-formats-ext'
 ```
 
 ## Camera Notes
