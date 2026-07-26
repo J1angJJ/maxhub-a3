@@ -1,5 +1,5 @@
 services:
-  maxhub-a3-foxy:
+  foxy-maxhub-a3:
     environment:
       VIDEO_DEVICE: ${VIDEO_DEVICE:-/dev/video4}
     volumes:

@@ -1,6 +1,11 @@
 services:
-  maxhub-a3-foxy:
-    image: ${FOXY_IMAGE:-ubuntu-env:foxy-user}
+  foxy-maxhub-a3:
+    image: ${FOXY_MAXHUB_A3_IMAGE:-foxy-maxhub-a3:latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BASE_IMAGE: ${FOXY_BASE_IMAGE:-ubuntu-env:foxy-user}
     network_mode: host
     ipc: host
     stdin_open: true
