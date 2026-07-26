@@ -1,0 +1,34 @@
+services:
+  noetic-maxhub-a3:
+    image: ${MAXHUB_A3_IMAGE:-noetic-maxhub-a3:latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BASE_IMAGE: ${NOETIC_BASE_IMAGE:-ubuntu-env:noetic-user}
+        NOETIC_USER: ${NOETIC_USER:-developer}
+    network_mode: host
+    ipc: host
+    stdin_open: true
+    tty: true
+    environment:
+      DISPLAY: ${DISPLAY:-:0}
+      QT_X11_NO_MITSHM: "1"
+      WORKSPACE: /workspace
+      ROS_WORKSPACE: /workspace/carm_ws
+      ROS_MASTER_URI: ${ROS_MASTER_URI:-http://localhost:11311}
+      ROS_HOSTNAME: ${ROS_HOSTNAME:-localhost}
+      NO_PROXY: ${NO_PROXY:-localhost,127.0.0.1,::1,192.168.0.0/16,10.0.0.0/8,172.16.0.0/12}
+      VIDEO_DEVICE: ${VIDEO_DEVICE:-/dev/video4}
+    volumes:
+      - ${WORKSPACE_DIR:-/home/j1angjj/workspace/maxhub-a3/workspace/ubuntu}:/workspace
+      - ${WORKSPACE_DIR:-/home/j1angjj/workspace/maxhub-a3/workspace/ubuntu}:/home/${NOETIC_USER:-developer}/maxhub-a3/workspace/ubuntu
+      - /dev/v4l:/dev/v4l:ro
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - /etc/localtime:/etc/localtime:ro
+    devices:
+      - ${VIDEO_DEVICE:-/dev/video4}:${VIDEO_DEVICE:-/dev/video4}
+    group_add:
+      - video
+      - dialout
+    working_dir: /workspace/carm_ws
