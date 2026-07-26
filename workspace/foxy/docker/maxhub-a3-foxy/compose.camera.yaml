@@ -1,0 +1,8 @@
+services:
+  maxhub-a3-foxy:
+    environment:
+      VIDEO_DEVICE: ${VIDEO_DEVICE:-/dev/video4}
+    volumes:
+      - /dev/v4l:/dev/v4l:ro
+    devices:
+      - ${VIDEO_DEVICE:-/dev/video4}:${VIDEO_DEVICE:-/dev/video4}

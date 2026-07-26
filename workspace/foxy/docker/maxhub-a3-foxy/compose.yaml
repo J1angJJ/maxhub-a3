@@ -1,0 +1,28 @@
+services:
+  maxhub-a3-foxy:
+    image: ${FOXY_IMAGE:-ubuntu-env:foxy-user}
+    network_mode: host
+    ipc: host
+    stdin_open: true
+    tty: true
+    environment:
+      DISPLAY: ${DISPLAY:-:0}
+      QT_X11_NO_MITSHM: "1"
+      WORKSPACE: /workspace
+      ROS_WORKSPACE: ${ROS_WORKSPACE:-/workspace}
+      ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-0}
+      RMW_IMPLEMENTATION: ${RMW_IMPLEMENTATION:-rmw_fastrtps_cpp}
+      CARM_IP: ${CARM_IP:-192.168.31.60}
+      NO_PROXY: ${NO_PROXY:-localhost,127.0.0.1,::1,192.168.0.0/16,10.0.0.0/8,172.16.0.0/12}
+      CMAKE_PREFIX_PATH: /opt/maxhub-a3/arm_control_sdk:${CMAKE_PREFIX_PATH:-}
+      LD_LIBRARY_PATH: /opt/maxhub-a3/arm_control_sdk/lib:/opt/maxhub-a3/arm_control_sdk/poco/lib:${LD_LIBRARY_PATH:-}
+    volumes:
+      - ${FOXY_WORKSPACE_DIR:-/home/j1angjj/workspace/maxhub-a3/workspace/foxy}:/workspace
+      - ${ARM_CONTROL_SDK_DIR:-/home/j1angjj/workspace/maxhub-a3/workspace/ubuntu/carm_ws/vendor/arm_control_sdk}:/opt/maxhub-a3/arm_control_sdk:ro
+      - ${CARM_DEMO_DIR:-/home/j1angjj/workspace/maxhub-a3/reference/carm_demo}:/opt/maxhub-a3/reference/carm_demo:ro
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - /etc/localtime:/etc/localtime:ro
+    group_add:
+      - video
+      - dialout
+    working_dir: ${ROS_WORKSPACE:-/workspace}
