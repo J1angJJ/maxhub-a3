@@ -1,5 +1,6 @@
 # Private local materials
 /private/
+/reference/
 
 # OS files
 .DS_Store
