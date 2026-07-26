@@ -1,6 +1,65 @@
 # ROS Noetic Bring-up Notes
 
-本文档记录 Ubuntu 20.04 + ROS Noetic 下的开发流程。当前推荐入口是 `carm_a3_motion/safe_motion_node`：同一个 SDK 会话负责只读状态发布和安全门控运动服务。默认启动不使能、不回零、不运动。
+本文档记录 Ubuntu 20.04 + ROS Noetic 下的开发流程。当前本机推荐用项目专属 Docker 镜像 `noetic-maxhub-a3:latest` 进入 ROS 环境；旧 Ubuntu 20.04 虚拟机/裸机仍可按同样的 ROS 命令执行，只需要把工作区路径替换为本机实际路径。
+
+当前推荐入口是 `carm_a3_motion/safe_motion_node`：同一个 SDK 会话负责只读状态发布和安全门控运动服务。默认启动不使能、不回零、不运动。
+
+## Enter Docker Bash
+
+先在宿主机进入项目容器。本文后续命令默认已经在这个容器 bash 里执行：
+
+```bash
+cd /home/j1angjj/workspace/maxhub-a3/workspace/ubuntu/docker/noetic-maxhub-a3
+docker compose run --rm noetic-maxhub-a3 bash
+```
+
+进入容器后，工作区默认是：
+
+```text
+/workspace/carm_ws
+```
+
+每个新容器终端建议先确认/加载一次环境：
+
+```bash
+cd /workspace/carm_ws
+source /opt/ros/noetic/setup.bash
+source vendor/arm_control_sdk/setup.bash
+[ -f devel/setup.bash ] && source devel/setup.bash
+```
+
+后文命令默认已经在 ROS Noetic 环境中。示例里保留的 `source` 行主要用于多终端和裸机兼容；如果当前 shell 已经加载过对应环境，可直接跳过重复 `source`。
+
+容器配置来自：
+
+```text
+workspace/ubuntu/docker/noetic-maxhub-a3/
+```
+
+镜像关系：
+
+```text
+osrf/ros:noetic-desktop-full -> ubuntu-env:noetic-user -> noetic-maxhub-a3:latest
+```
+
+如果镜像缺失，按顺序构建：
+
+```bash
+cd /home/j1angjj/workspace/ubuntu-env/docker/noetic
+./scripts/build.sh
+cd /home/j1angjj/workspace/maxhub-a3/workspace/ubuntu/docker/noetic-maxhub-a3
+docker compose build
+```
+
+当前 Docker 约定：
+
+- 宿主只挂载 `/home/j1angjj/workspace/maxhub-a3/workspace/ubuntu`。
+- 容器主工作区为 `/workspace`，catkin 工作区为 `/workspace/carm_ws`。
+- 容器使用 host 网络，机械臂仍访问 `192.168.31.60`。
+- 当前相机 capture 节点为 `/dev/video4`，稳定配置优先使用 `/dev/v4l/by-id/usb-HD_Camera_Manufacturer_USB_2.0_Camera-video-index0`。
+- `.env` 可在 `workspace/ubuntu/docker/noetic-maxhub-a3/.env` 中覆盖 `VIDEO_DEVICE`、`DISPLAY`、`ROS_HOSTNAME` 等本机参数。
+
+裸机 Ubuntu 20.04 兼容用法：确保已安装 ROS Noetic 和本文所需依赖，然后把本文中的 `/workspace/carm_ws` 换成本机 catkin 工作区路径。旧虚拟机历史路径通常是 `/home/noetic/maxhub-a3/workspace/ubuntu/carm_ws`。
 
 ## Recommended Order
 
@@ -32,20 +91,19 @@
 厂家 C++ SDK 已移植到 ROS 工作区内：
 
 ```bash
-cd /home/noetic/maxhub-a3
-ls workspace/ubuntu/carm_ws/vendor/arm_control_sdk
-source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash
+cd /workspace/carm_ws
+ls vendor/arm_control_sdk
+source vendor/arm_control_sdk/setup.bash
 ```
 
 ## Build Workspace
 
-在 Ubuntu 虚拟机中执行：
+在容器 bash 或 Ubuntu 20.04 裸机环境中执行：
 
 ```bash
-cd /home/noetic/maxhub-a3
+cd /workspace/carm_ws
 source /opt/ros/noetic/setup.bash
-source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash
-cd workspace/ubuntu/carm_ws
+source vendor/arm_control_sdk/setup.bash
 catkin_make
 source devel/setup.bash
 ```
@@ -53,17 +111,16 @@ source devel/setup.bash
 如果 `readonly_state_node` 链接阶段出现 `libPocoNet.so.71 not found` 或 `undefined reference to Poco::...`，先确认本终端已经加载厂家 SDK 环境：
 
 ```bash
-cd /home/noetic/maxhub-a3
-source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash
+cd /workspace/carm_ws
+source vendor/arm_control_sdk/setup.bash
 echo "$LD_LIBRARY_PATH" | tr ':' '\n' | grep arm_control_sdk
-cd workspace/ubuntu/carm_ws
 catkin_make
 ```
 
 ## Network Check
 
 ```bash
-cd /home/noetic/maxhub-a3
+cd /workspace/carm_ws
 ping -c 4 192.168.31.60
 curl -I http://192.168.31.60
 ```
@@ -114,8 +171,8 @@ curl 'http://192.168.31.60:1999/api/config/load?path=config/config.json&module=c
 ## SDK Inspection
 
 ```bash
-cd /home/noetic/maxhub-a3
-source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash
+cd /workspace/carm_ws
+source vendor/arm_control_sdk/setup.bash
 echo "$arm_control_sdk_DIR"
 echo "$LD_LIBRARY_PATH"
 ```
@@ -132,10 +189,10 @@ roscore
 终端 2：
 
 ```bash
-cd /home/noetic/maxhub-a3
+cd /workspace/carm_ws
 source /opt/ros/noetic/setup.bash
-source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash
-source workspace/ubuntu/carm_ws/devel/setup.bash
+source vendor/arm_control_sdk/setup.bash
+source devel/setup.bash
 roslaunch carm_a3_motion safe_motion.launch
 ```
 
@@ -177,10 +234,9 @@ rostopic echo -n 1 /maxhub_a3/flange_pose
 ### Compile
 
 ```bash
-cd /home/noetic/maxhub-a3
+cd /workspace/carm_ws
 source /opt/ros/noetic/setup.bash
-source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash
-cd workspace/ubuntu/carm_ws
+source vendor/arm_control_sdk/setup.bash
 catkin_make
 source devel/setup.bash
 ```
@@ -249,7 +305,7 @@ roslaunch carm_a3_motion safe_motion.launch \
 
 ```bash
 source /opt/ros/noetic/setup.bash
-source /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/devel/setup.bash
+source devel/setup.bash
 rosrun carm_a3_motion motion_cli.py set-gripper 0.04 --tau 10
 ```
 
@@ -309,10 +365,10 @@ rosrun image_view image_view image:=/carm_a3/perception/color_blocks/debug_image
 任务链路默认应先拉起相机、手眼 TF、颜色分割和图像窗口：
 
 ```bash
-cd /home/noetic/maxhub-a3
+cd /workspace/carm_ws
 source /opt/ros/noetic/setup.bash
-source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash
-source workspace/ubuntu/carm_ws/devel/setup.bash
+source vendor/arm_control_sdk/setup.bash
+source devel/setup.bash
 roslaunch carm_a3_tasks pregrasp_overview.launch
 ```
 
@@ -325,10 +381,10 @@ roslaunch carm_a3_tasks pregrasp_overview.launch
 注意：该观测 launch 默认不启动 `carm_a3_motion`，避免和真实运动 gate 同名冲突。需要执行运动时，只保留一个真实 motion 节点：
 
 ```bash
-cd /home/noetic/maxhub-a3
+cd /workspace/carm_ws
 source /opt/ros/noetic/setup.bash
-source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash
-source workspace/ubuntu/carm_ws/devel/setup.bash
+source vendor/arm_control_sdk/setup.bash
+source devel/setup.bash
 roslaunch carm_a3_motion safe_motion.launch \
   allow_motion:=true \
   allow_gripper:=true \
@@ -384,7 +440,7 @@ rosrun carm_a3_tasks grasp_init.py execute
 roslaunch carm_a3_tasks grasp_init.launch command:=plan
 ```
 
-如果桌面不在画面中心，先调整 `workspace/ubuntu/carm_ws/src/carm_a3_tasks/config/grasp_init.yaml` 中的 `workspace/table_region_m`、`overview/coverage_margin_m`、`overview/max_camera_height_m` 或临时关闭 `overview/use_fov_solver` 后手动改 `overview/target_xyz_m` 和 `overview/target_quat_xyzw`。
+如果桌面不在画面中心，先调整 `/workspace/carm_ws/src/carm_a3_tasks/config/grasp_init.yaml` 中的 `workspace/table_region_m`、`overview/coverage_margin_m`、`overview/max_camera_height_m` 或临时关闭 `overview/use_fov_solver` 后手动改 `overview/target_xyz_m` 和 `overview/target_quat_xyzw`。
 
 注意：如果日志提示所需相机高度超过 `max_camera_height_m`，说明几何上无法在当前高度限制内完整覆盖桌面加余量；此时脚本会裁剪到最大高度，但实际画面可能只覆盖部分区域。
 
@@ -436,7 +492,7 @@ roslaunch carm_a3_tasks block_grasp.launch command:=execute color:=green extra_a
 当前抓取配置在：
 
 ```text
-workspace/ubuntu/carm_ws/src/carm_a3_tasks/config/block_grasp.yaml
+/workspace/carm_ws/src/carm_a3_tasks/config/block_grasp.yaml
 ```
 
 第一版仍使用当前法兰姿态和保守固定高度，主要用于验证“检测 -> 桌面投影 -> IK -> 分段运动 -> 可选夹爪”的任务链路。后续需要根据实际夹爪 TCP、抓取方向、方块摆放姿态和 J2 控制表现继续调参。刚才实测发生过下探触桌，已将默认执行改为 approach-only，并加入 `grasp/min_flange_z_m` 防止规划出过低法兰高度。
@@ -554,7 +610,7 @@ docs/vendor/cpp_sdk_inverse_kine_probe_notes.md
 
 本地环境排查项：
 
-- 确认每个终端都重新 `source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash`。
+- 确认每个终端都重新 `source vendor/arm_control_sdk/setup.bash`。
 - 用干净终端只加载 `/opt/ros/noetic/setup.bash`、vendored SDK setup、`carm_ws/devel/setup.bash`，避免其它 `LD_LIBRARY_PATH` 污染。
 - 确认没有多个运动客户端同时发命令。
 - 若要进一步定位，可用 `ldd devel/lib/carm_a3_motion/official_topic_motion_node` 查看是否链接到仓库内 vendored SDK/Poco 库。
@@ -589,9 +645,8 @@ docs/vendor/cpp_sdk_move_joint_gdb_full.txt
 ### Build
 
 ```bash
-cd /home/noetic/maxhub-a3
+cd /workspace/carm_ws
 source /opt/ros/noetic/setup.bash
-cd workspace/ubuntu/carm_ws
 catkin_make
 source devel/setup.bash
 ```
@@ -662,10 +717,10 @@ move_joint(msg->position, -1, false)
 终端 1：
 
 ```bash
-cd /home/noetic/maxhub-a3
+cd /workspace/carm_ws
 source /opt/ros/noetic/setup.bash
-source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash
-source workspace/ubuntu/carm_ws/devel/setup.bash
+source vendor/arm_control_sdk/setup.bash
+source devel/setup.bash
 roslaunch carm_a3_motion official_topic_motion.launch \
   allow_move_joint:=true \
   auto_ready:=true \
@@ -677,7 +732,7 @@ roslaunch carm_a3_motion official_topic_motion.launch \
 
 ```bash
 source /opt/ros/noetic/setup.bash
-source /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/devel/setup.bash
+source devel/setup.bash
 rosservice call /carm_a3/official_motion/status
 rostopic pub -1 /carm_a3/official_motion/move_joint sensor_msgs/JointState "header:
   seq: 0
@@ -695,7 +750,7 @@ effort: []"
 
 厂家纯 Python/WebSocket 轻量接口作为 C++ 路径之外的并行 fallback。该节点直接加载 vendored SDK 里的 `carm.py`，发送 `TASK_MOVJ`，不导入 `carm_py` C++ 扩展。
 
-如系统 Python 缺依赖，先安装：
+Docker 项目镜像已包含该路径所需的 `websocket-client`。只有在裸机/旧虚拟机 Python 环境缺依赖时，再安装：
 
 ```bash
 pip3 install --user websocket-client
@@ -704,9 +759,8 @@ pip3 install --user websocket-client
 编译：
 
 ```bash
-cd /home/noetic/maxhub-a3
+cd /workspace/carm_ws
 source /opt/ros/noetic/setup.bash
-cd workspace/ubuntu/carm_ws
 catkin_make
 source devel/setup.bash
 ```
@@ -752,9 +806,9 @@ roscore
 终端 2：
 
 ```bash
-cd /home/noetic/maxhub-a3
+cd /workspace/carm_ws
 source /opt/ros/noetic/setup.bash
-source workspace/ubuntu/carm_ws/devel/setup.bash
+source devel/setup.bash
 roslaunch carm_a3_vision camera.launch
 ```
 
@@ -762,7 +816,7 @@ roslaunch carm_a3_vision camera.launch
 
 ```bash
 source /opt/ros/noetic/setup.bash
-source /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/devel/setup.bash
+source devel/setup.bash
 rostopic hz /carm_a3/camera/image_raw
 rostopic echo -n 1 /carm_a3/camera/diagnostics
 rostopic echo -n 1 /carm_a3/camera/camera_info
@@ -778,7 +832,7 @@ rosrun image_view image_view image:=/carm_a3/camera/image_raw
 默认配置文件：
 
 ```text
-workspace/ubuntu/carm_ws/src/carm_a3_vision/config/camera.yaml
+/workspace/carm_ws/src/carm_a3_vision/config/camera.yaml
 ```
 
 默认参数：
@@ -791,7 +845,7 @@ workspace/ubuntu/carm_ws/src/carm_a3_vision/config/camera.yaml
 - 图像话题：`/carm_a3/camera/image_raw`
 - 相机信息话题：`/carm_a3/camera/camera_info`
 - 相机信息写入服务：`/carm_a3/camera/set_camera_info`
-- 标定文件：`workspace/ubuntu/carm_ws/src/carm_a3_vision/config/camera_info.yaml`
+- 标定文件：`/workspace/carm_ws/src/carm_a3_vision/config/camera_info.yaml`
 - 诊断话题：`/carm_a3/camera/diagnostics`
 - 软件方向校正：`rotate_180: true`
 
@@ -826,7 +880,7 @@ workspace/ubuntu/carm_ws/src/carm_a3_vision/config/camera.yaml
 
 ```bash
 source /opt/ros/noetic/setup.bash
-source /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/devel/setup.bash
+source devel/setup.bash
 rostopic echo -n 1 /tf
 rosrun tf tf_echo base_link flange
 ```
@@ -857,7 +911,7 @@ rosrun tf tf_echo base_link carm_a3_camera_optical_frame
 相机内参标定应在手眼标定之前完成。当前仓库已保存 `640x480` 标定文件，并且 `carm_a3_vision` 启动时会默认加载：
 
 ```text
-workspace/ubuntu/carm_ws/src/carm_a3_vision/config/camera_info.yaml
+/workspace/carm_ws/src/carm_a3_vision/config/camera_info.yaml
 ```
 
 启动相机节点后检查：
@@ -869,6 +923,8 @@ rostopic echo -n 1 /carm_a3/camera/camera_info
 期望 `K/D/R/P` 不再是全零。
 
 ### Install Tools
+
+Docker 项目镜像和共享 Noetic 镜像已包含这些常用标定/图像查看工具。裸机或旧虚拟机缺包时再执行：
 
 ```bash
 sudo apt update
@@ -911,9 +967,9 @@ roscore
 终端 2：
 
 ```bash
-cd /home/noetic/maxhub-a3
+cd /workspace/carm_ws
 source /opt/ros/noetic/setup.bash
-source workspace/ubuntu/carm_ws/devel/setup.bash
+source devel/setup.bash
 roslaunch carm_a3_vision camera.launch
 ```
 
@@ -950,7 +1006,7 @@ Service not found
 标定完成后点击 `CALIBRATE`，结果稳定后点击 `SAVE`。保存得到的 YAML 后，再放入仓库：
 
 ```text
-workspace/ubuntu/carm_ws/src/carm_a3_vision/config/camera_info.yaml
+/workspace/carm_ws/src/carm_a3_vision/config/camera_info.yaml
 ```
 
 如果 YAML 中的 `camera_name` 不是 `carm_a3_camera`，建议改成 `carm_a3_camera`，与 `config/camera.yaml` 保持一致。
@@ -975,9 +1031,9 @@ workspace/ubuntu/carm_ws/src/carm_a3_vision/config/camera_info.yaml
 - 黑色标记外边长：`0.1 m`
 - 机器人位姿：读取 TF `base_link -> flange`
 - 相机观测：估计 `carm_a3_camera_optical_frame -> aruco_marker`
-- 默认保存目录：`workspace/ubuntu/logs/handeye_samples`
+- 默认保存目录：`/workspace/logs/handeye_samples`
 
-安装依赖：
+Docker 项目镜像和共享 Noetic 镜像已包含这些常用依赖。裸机或旧虚拟机缺包时再安装：
 
 ```bash
 sudo apt update
@@ -994,28 +1050,28 @@ roscore
 终端 2，启动统一 SDK 节点发布机械臂状态：
 
 ```bash
-cd /home/noetic/maxhub-a3
+cd /workspace/carm_ws
 source /opt/ros/noetic/setup.bash
-source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash
-source workspace/ubuntu/carm_ws/devel/setup.bash
+source vendor/arm_control_sdk/setup.bash
+source devel/setup.bash
 roslaunch carm_a3_motion safe_motion.launch
 ```
 
 终端 3，启动相机：
 
 ```bash
-cd /home/noetic/maxhub-a3
+cd /workspace/carm_ws
 source /opt/ros/noetic/setup.bash
-source workspace/ubuntu/carm_ws/devel/setup.bash
+source devel/setup.bash
 roslaunch carm_a3_vision camera.launch
 ```
 
 终端 4，启动采样器：
 
 ```bash
-cd /home/noetic/maxhub-a3
+cd /workspace/carm_ws
 source /opt/ros/noetic/setup.bash
-source workspace/ubuntu/carm_ws/devel/setup.bash
+source devel/setup.bash
 roslaunch carm_a3_calibration aruco_handeye_sampler.launch
 ```
 
@@ -1023,7 +1079,7 @@ roslaunch carm_a3_calibration aruco_handeye_sampler.launch
 
 ```bash
 source /opt/ros/noetic/setup.bash
-source /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/devel/setup.bash
+source devel/setup.bash
 rosservice call /carm_a3/handeye/save_sample
 ```
 
@@ -1032,7 +1088,7 @@ rosservice call /carm_a3/handeye/save_sample
 原始样本默认在：
 
 ```text
-workspace/ubuntu/logs/handeye_samples
+/workspace/logs/handeye_samples
 ```
 
 该目录默认不进入 Git。确认采样质量后，再整理出可提交的标定结果。
@@ -1040,17 +1096,17 @@ workspace/ubuntu/logs/handeye_samples
 采样完成后求解：
 
 ```bash
-cd /home/noetic/maxhub-a3
+cd /workspace/carm_ws
 source /opt/ros/noetic/setup.bash
-source workspace/ubuntu/carm_ws/devel/setup.bash
+source devel/setup.bash
 rosrun carm_a3_calibration solve_handeye.py \
-  --samples-dir /home/noetic/maxhub-a3/workspace/ubuntu/logs/handeye_samples
+  --samples-dir /workspace/logs/handeye_samples
 ```
 
 输出文件：
 
 ```text
-workspace/ubuntu/logs/handeye_samples/handeye_result.yaml
+/workspace/logs/handeye_samples/handeye_result.yaml
 ```
 
 脚本默认使用 `PARK` 作为推荐方法。先重点看 `sample_count`、`motion_summary`、`recommended_transform` 和 `method_consistency_to_recommended`。推荐结果表达的是：
@@ -1064,7 +1120,7 @@ flange -> carm_a3_camera_optical_frame
 当前 30 组样本的 PARK 草案结果已整理到：
 
 ```text
-workspace/ubuntu/carm_ws/src/carm_a3_calibration/config/handeye_flange_camera.yaml
+/workspace/carm_ws/src/carm_a3_calibration/config/handeye_flange_camera.yaml
 ```
 
 结果质量摘要：
@@ -1076,9 +1132,9 @@ workspace/ubuntu/carm_ws/src/carm_a3_calibration/config/handeye_flange_camera.ya
 发布草案静态 TF：
 
 ```bash
-cd /home/noetic/maxhub-a3
+cd /workspace/carm_ws
 source /opt/ros/noetic/setup.bash
-source workspace/ubuntu/carm_ws/devel/setup.bash
+source devel/setup.bash
 roslaunch carm_a3_calibration publish_handeye_tf.launch
 ```
 
@@ -1118,9 +1174,9 @@ rosrun tf tf_echo base_link aruco_marker
 启动默认链路：
 
 ```bash
-cd /home/noetic/maxhub-a3
+cd /workspace/carm_ws
 source /opt/ros/noetic/setup.bash
-source workspace/ubuntu/carm_ws/devel/setup.bash
+source devel/setup.bash
 roslaunch carm_a3_bringup readonly_vision_handeye.launch
 ```
 
@@ -1147,10 +1203,10 @@ roslaunch carm_a3_bringup handeye_validation.launch
 每个新终端先准备 ROS 和 SDK 环境：
 
 ```bash
-cd /home/noetic/maxhub-a3
+cd /workspace/carm_ws
 source /opt/ros/noetic/setup.bash
-source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash
-source workspace/ubuntu/carm_ws/devel/setup.bash
+source vendor/arm_control_sdk/setup.bash
+source devel/setup.bash
 ```
 
 确认环境变量：
@@ -1163,14 +1219,14 @@ rospack find carm_a3_motion
 
 期望：
 
-- `arm_control_sdk_DIR` 指向 `workspace/ubuntu/carm_ws/vendor/arm_control_sdk`。
+- `arm_control_sdk_DIR` 指向 `/workspace/carm_ws/vendor/arm_control_sdk`。
 - `LD_LIBRARY_PATH` 中包含 `arm_control_sdk/lib` 和 `arm_control_sdk/poco/lib`。
-- `rospack find carm_a3_motion` 能找到 `workspace/ubuntu/carm_ws/src/carm_a3_motion`。
+- `rospack find carm_a3_motion` 能找到 `/workspace/carm_ws/src/carm_a3_motion`。
 
 ### 2. Network Reachability
 
 ```bash
-cd /home/noetic/maxhub-a3
+cd /workspace/carm_ws
 ping -c 4 192.168.31.60
 curl -I http://192.168.31.60
 ```
@@ -1180,7 +1236,7 @@ curl -I http://192.168.31.60
 - `ping` 无丢包或基本稳定。
 - `curl` 能返回 HTTP 响应头。
 
-如果失败，先检查虚拟机桥接网络、Ubuntu IP 是否在 `192.168.31.0/24` 网段、机械臂是否接回路由器。
+如果失败，先检查本机或容器 host 网络是否在 `192.168.31.0/24` 网段、机械臂是否接回路由器、急停按钮是否已经复位。旧虚拟机环境还需要检查桥接网络。
 
 ### 3. Start roscore
 
@@ -1198,10 +1254,10 @@ roscore
 终端 2：
 
 ```bash
-cd /home/noetic/maxhub-a3
+cd /workspace/carm_ws
 source /opt/ros/noetic/setup.bash
-source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash
-source workspace/ubuntu/carm_ws/devel/setup.bash
+source vendor/arm_control_sdk/setup.bash
+source devel/setup.bash
 roslaunch carm_a3_motion safe_motion.launch
 ```
 
@@ -1214,8 +1270,8 @@ roslaunch carm_a3_motion safe_motion.launch
 如果出现动态库错误，重新 source SDK：
 
 ```bash
-cd /home/noetic/maxhub-a3
-source workspace/ubuntu/carm_ws/vendor/arm_control_sdk/setup.bash
+cd /workspace/carm_ws
+source vendor/arm_control_sdk/setup.bash
 echo "$LD_LIBRARY_PATH" | tr ':' '\n' | grep arm_control_sdk
 ```
 
@@ -1227,7 +1283,7 @@ echo "$LD_LIBRARY_PATH" | tr ':' '\n' | grep arm_control_sdk
 
 ```bash
 source /opt/ros/noetic/setup.bash
-source /home/noetic/maxhub-a3/workspace/ubuntu/carm_ws/devel/setup.bash
+source devel/setup.bash
 rostopic list
 rostopic echo -n 1 /maxhub_a3/diagnostics
 rostopic echo -n 1 /joint_states
@@ -1249,13 +1305,13 @@ rostopic echo -n 1 /maxhub_a3/flange_pose
 测试成功后建议保存一次只读 bring-up 记录：
 
 ```bash
-cd /home/noetic/maxhub-a3
-mkdir -p workspace/ubuntu/logs/readonly_test
-date > workspace/ubuntu/logs/readonly_test/date.txt
-rostopic list > workspace/ubuntu/logs/readonly_test/topics.txt
-rostopic echo -n 1 /maxhub_a3/diagnostics > workspace/ubuntu/logs/readonly_test/diagnostics.txt
-rostopic echo -n 1 /joint_states > workspace/ubuntu/logs/readonly_test/joint_states.txt
-rostopic echo -n 1 /maxhub_a3/flange_pose > workspace/ubuntu/logs/readonly_test/flange_pose.txt
+cd /workspace/carm_ws
+mkdir -p /workspace/logs/readonly_test
+date > /workspace/logs/readonly_test/date.txt
+rostopic list > /workspace/logs/readonly_test/topics.txt
+rostopic echo -n 1 /maxhub_a3/diagnostics > /workspace/logs/readonly_test/diagnostics.txt
+rostopic echo -n 1 /joint_states > /workspace/logs/readonly_test/joint_states.txt
+rostopic echo -n 1 /maxhub_a3/flange_pose > /workspace/logs/readonly_test/flange_pose.txt
 ```
 
 注意：`logs/` 默认被 `.gitignore` 忽略。需要长期保留的结论请整理成文档，不直接提交原始日志。
