@@ -29,7 +29,7 @@ workspace/ubuntu/docker/noetic-maxhub-a3/
 先确保共享 Noetic 源镜像和共享开发镜像存在：
 
 ```bash
-docker image inspect osrf/ros:noetic-desktop-full
+docker image inspect ubuntu-env:noetic-source
 docker image inspect ubuntu-env:noetic-user
 ```
 
@@ -37,6 +37,7 @@ docker image inspect ubuntu-env:noetic-user
 
 ```bash
 docker pull osrf/ros:noetic-desktop-full
+docker tag osrf/ros:noetic-desktop-full ubuntu-env:noetic-source
 ```
 
 如果缺少共享开发镜像，先构建共享环境：
