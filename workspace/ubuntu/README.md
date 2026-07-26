@@ -28,6 +28,9 @@ roslaunch carm_a3_motion safe_motion.launch
 
 - `environment.yml`: conda 环境快照。
 - `requirements.txt`: pip 依赖快照。
+- `README_noetic_docker.md`: 当前 Linux 本机使用共享 Ubuntu 20.04 + ROS Noetic Docker 环境的记录和命令。
+- `noetic-docker.env.example`: MAXHUB A3 的 Docker env 示例，只挂载本目录到容器 `/workspace`。
+- `noetic-maxhub-a3.hardware.compose.yaml`: 项目专用 Docker 硬件覆盖，映射当前机械臂相机并暴露 `/dev/v4l` by-id 路径。
 - `config/robot.yaml`: 当前机械臂的非敏感配置。
 - `scripts/check_network.py`: 只做网络连通性检查。
 - `scripts/inspect_carm_sdk.py`: 只导入并检查 `carm` SDK 模块。

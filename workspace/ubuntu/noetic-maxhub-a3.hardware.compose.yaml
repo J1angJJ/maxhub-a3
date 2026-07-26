@@ -1,0 +1,11 @@
+services:
+  noetic:
+    devices:
+      - ${VIDEO_DEVICE:-/dev/video4}:${VIDEO_DEVICE:-/dev/video4}
+    volumes:
+      - /dev/v4l:/dev/v4l:ro
+    group_add:
+      - video
+      - dialout
+    environment:
+      VIDEO_DEVICE: ${VIDEO_DEVICE:-/dev/video4}
