@@ -1,6 +1,6 @@
 # Ubuntu Development Notes
 
-本文档记录 MAXHUB A3 项目在 Ubuntu 20.04 虚拟机端的开发约定。Windows 端主要用于资料整理、Git 同步和快照归档；实际 SDK、ROS、Python 调试优先在 Ubuntu 虚拟机中完成。
+本文档记录 MAXHUB A3 项目在 Ubuntu 20.04 侧的开发约定。早期是在 Windows + Ubuntu 虚拟机中完成；当前计划迁移到 Linux 本机路径 `/home/j1angjj/workspace/maxhub-a3`。旧路径保留作历史记录，执行命令时按当前机器替换路径前缀。
 
 ## Local Paths
 
@@ -23,14 +23,27 @@ Expected output:
 /home/noetic/maxhub-a3
 ```
 
-Ubuntu-side development area inside this repository:
+Current Linux workspace:
 
 ```bash
-cd /home/noetic/maxhub-a3/workspace/ubuntu
+cd /home/j1angjj/workspace/maxhub-a3
 pwd
 ```
 
-后续虚拟机环境快照、环境记录、只读连接脚本和 ROS / SDK 适配内容优先放在 `workspace/ubuntu/` 下，避免和 Windows 端资料混在一起。
+Expected output:
+
+```text
+/home/j1angjj/workspace/maxhub-a3
+```
+
+Ubuntu-side development area inside this repository:
+
+```bash
+cd /home/j1angjj/workspace/maxhub-a3/workspace/ubuntu
+pwd
+```
+
+后续 Linux/Ubuntu 环境快照、环境记录、连接脚本和 ROS / SDK 适配内容优先放在 `workspace/ubuntu/` 下，避免和 Windows 端资料混在一起。
 
 ## Conda Environment
 
@@ -102,9 +115,10 @@ echo "$arm_control_sdk_DIR"
 1. 确认 Ubuntu 网络可达机械臂。
 2. 声明 vendored C++ SDK 环境。
 3. 编译 `workspace/ubuntu/carm_ws` ROS Noetic 工作区。
-4. 先运行只读 ROS 状态发布节点，只读取状态、关节角度和末端位姿。
-5. 保存设备固件版本、SDK 版本、Python 版本和环境快照。
-6. 只读连接稳定后，再进入低速、小幅、单关节运动测试。
+4. 先运行 `carm_a3_motion/safe_motion.launch` 默认参数，只读取状态、关节角度和末端位姿。
+5. 再启动 `carm_a3_bringup readonly_vision_handeye.launch`，确认 URDF TF、相机、手眼和颜色分割链路。
+6. 保存设备固件版本、SDK 版本、Python 版本和环境快照。
+7. 只读连接稳定后，再进入 dry-run、低速小幅运动、观测位和抓取 approach-only 测试。
 
 ROS Noetic 详细步骤见 [README_ros_noetic.md](README_ros_noetic.md)。
 
@@ -117,7 +131,17 @@ cd /home/noetic/maxhub-a3
 python workspace/ubuntu/scripts/check_network.py
 ```
 
-`check_network.py` 只检查 TCP / HTTP 连通性，不调用机械臂 SDK。  
+`check_network.py` 只检查 TCP / HTTP 连通性，不调用机械臂 SDK。
+
+## Migration Note
+
+从当前 Linux 工作区继续开发时，先看：
+
+```text
+docs/migration_status_2026-07-26.md
+```
+
+该文档汇总了当前主线包、已知风险和迁移后的推荐入口。
 
 ## Safety Rule
 

@@ -2,13 +2,14 @@
 
 本仓库用于维护 MAXHUB A3 六轴智能柔性机械臂的开发资料、实验记录、脚本、配置和后续 ROS / Python / C++ 代码。
 
-当前阶段以设备接入、网络确认、SDK 只读连接和低速安全运动测试为主。正式运动控制前，请先完成安全检查，并确认急停、电源、夹具、线缆和工作空间状态。
+当前阶段已从早期设备接入进入 ROS Noetic 下的视觉辅助抓取调试：统一 SDK motion 节点、只读状态、URDF TF、USB 相机、手眼标定、红/绿方块分割和任务层抓取草案均已有记录。正式运动控制前，请先完成安全检查，并确认急停、电源、夹具、线缆和工作空间状态。
 
 ## 文档入口
 
 - [README_getting_started.md](README_getting_started.md)：开箱清单、安装记录、电源急停、网络配置、网页验收和开发前置准备。
-- [README_ubuntu.md](README_ubuntu.md)：Ubuntu 20.04 虚拟机端开发路径、conda 环境、快照和安全 bring-up 顺序。
-- [README_ros_noetic.md](README_ros_noetic.md)：ROS Noetic 工作区、`carm_a3_driver` 只读状态节点和后续迁移路线。
+- [README_ubuntu.md](README_ubuntu.md)：Ubuntu 20.04 开发路径、conda 环境、快照和安全 bring-up 顺序。
+- [README_ros_noetic.md](README_ros_noetic.md)：ROS Noetic 工作区、`carm_a3_motion` 安全门控节点、视觉/手眼/抓取链路和后续调试路线。
+- [docs/migration_status_2026-07-26.md](docs/migration_status_2026-07-26.md)：从 Windows/虚拟机迁移到当前 Linux 工作区的交接状态、风险和下一步。
 
 ## 厂家资料
 
@@ -34,24 +35,39 @@ SDK 的使用 Demo 优先从官方 GitHub 获取。本仓库主要保存本地�
 | 推荐 Python | Python 3.8 |
 | 推荐 ROS | ROS 1 Noetic / ROS 2 Foxy |
 
-## 建议仓库结构
+## 当前本机路径
+
+历史文档里常见的旧 Ubuntu 虚拟机路径是：
+
+```text
+/home/noetic/maxhub-a3
+```
+
+当前全线迁移目标路径是：
+
+```text
+/home/j1angjj/workspace/maxhub-a3
+```
+
+照旧文档执行命令时，将路径前缀替换为当前路径即可。其余相对路径保持不变，例如 ROS 工作区仍为 `workspace/ubuntu/carm_ws`。
+
+## 当前仓库结构
 
 ```text
 .
 ├── README.md
 ├── README_getting_started.md
-├── config/
-│   └── robot.yaml
 ├── docs/
-│   ├── images/
-│   ├── network/
-│   └── troubleshooting/
-├── scripts/
-│   ├── connection_test/
-│   ├── state_read/
-│   ├── motion_test/
-│   └── gripper_test/
-└── src/
+│   ├── calibration/
+│   ├── migration_status_2026-07-26.md
+│   └── vendor/
+└── workspace/
+    └── ubuntu/
+        ├── config/
+        ├── scripts/
+        └── carm_ws/
+            ├── src/
+            └── vendor/arm_control_sdk/
 ```
 
 ## 隐私与同步约定
