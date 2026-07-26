@@ -28,6 +28,7 @@
 - 使用本项目 env 展开 `compose.yaml` 后，宿主机挂载范围确认为 `/home/j1angjj/workspace/maxhub-a3/workspace/ubuntu:/workspace`。
 - 当前 shell 的 `DISPLAY` 会覆盖 env 文件里的 `DISPLAY=:0`；本次 `docker compose config` 展开为 `DISPLAY=:1`。
 - 共享 Noetic dev 包清单已显式包含 `v4l-utils`、`ros-noetic-image-view`、`ros-noetic-camera-calibration`、`ros-noetic-cv-bridge`、`ros-noetic-camera-info-manager`、`ros-noetic-tf2-ros`、`python3-opencv` 和 `python3-yaml` 等视觉/TF/标定排查基础包。若这些包是新增的，需要重新构建 `ubuntu-env:noetic-user`。
+- 阅读本项目代码后，ROS/apt 依赖已基本由共享 Noetic 镜像覆盖；剩余项目级 Python 依赖集中在 WebSocket fallback 和官方 Python SDK 检查，记录在 `noetic-docker.pip-requirements.txt`。
 
 ## Project Env
 
@@ -50,6 +51,7 @@ cp /home/j1angjj/workspace/maxhub-a3/workspace/ubuntu/noetic-docker.env.example 
 - 容器内挂载点是 `/workspace`。
 - 容器内 catkin 工作区是 `/workspace/carm_ws`。
 - 因为 `compose.yaml` 使用 host 网络，容器内访问机械臂仍使用 `192.168.31.60`。
+- 项目硬件覆盖会把同一个宿主目录额外挂到 `/home/developer/maxhub-a3/workspace/ubuntu`，用于兼容手眼采样等历史默认输出路径；没有扩大宿主挂载范围。
 
 ## Build Image
 
@@ -71,6 +73,19 @@ docker pull osrf/ros:noetic-desktop-full
 ```bash
 docker image inspect ubuntu-env:noetic-user
 ```
+
+安装项目 Python 依赖：
+
+```bash
+cd /home/j1angjj/workspace/ubuntu-env/docker/noetic
+docker compose \
+  --env-file /home/j1angjj/workspace/maxhub-a3/workspace/ubuntu/noetic-docker.env \
+  -f compose.yaml \
+  run --rm noetic \
+  bash -lc 'python3 -m pip install --user -r /workspace/noetic-docker.pip-requirements.txt'
+```
+
+这些依赖不放进共享 Noetic 镜像，避免把 MAXHUB A3 的 Python SDK/WebSocket fallback 绑到其他项目。
 
 ## Run Commands
 
@@ -101,6 +116,8 @@ docker compose \
   -f /home/j1angjj/workspace/maxhub-a3/workspace/ubuntu/noetic-maxhub-a3.hardware.compose.yaml \
   run --rm noetic bash
 ```
+
+该项目覆盖文件还会把同一个宿主目录挂到容器内 `/home/developer/maxhub-a3/workspace/ubuntu`。这是为了让 `aruco_handeye_sampler.launch` 默认的 `$(env HOME)/maxhub-a3/workspace/ubuntu/logs/handeye_samples` 写到持久化目录，而不是写进一次性容器层。
 
 检查 ROS 环境：
 
@@ -158,6 +175,17 @@ docker compose \
   bash -lc 'ls -l /dev/video4 /dev/v4l/by-id && v4l2-ctl -d /dev/v4l/by-id/usb-HD_Camera_Manufacturer_USB_2.0_Camera-video-index0 --list-formats-ext'
 ```
 
+检查项目 Python fallback 依赖：
+
+```bash
+cd /home/j1angjj/workspace/ubuntu-env/docker/noetic
+docker compose \
+  --env-file /home/j1angjj/workspace/maxhub-a3/workspace/ubuntu/noetic-docker.env \
+  -f compose.yaml \
+  run --rm noetic \
+  python3 -c 'import carm, websocket, zeroconf, ifaddr; print("project python deps ok")'
+```
+
 ## Camera Notes
 
 当前宿主机相机枚举：
@@ -173,6 +201,17 @@ docker compose \
 2. 另写项目 override，额外挂载 `/dev/v4l:/dev/v4l:ro`，同时仍用 `VIDEO_DEVICE=/dev/video4` 映射真实字符设备。
 
 暂时不要把整个 `/dev` 或 `privileged: true` 加进共享 compose；只有厂商 SDK 或设备访问确实需要时，再写项目专用 override。
+
+## Dependency Notes
+
+本项目代码检查到的关键依赖：
+
+- C++ SDK 节点：`arm_control_sdk`、Poco 和相关 `.so` 已 vendored 在 `/workspace/carm_ws/vendor/arm_control_sdk`，不需要额外挂载。
+- 相机节点：直接 V4L2，运行时需要 `/dev/video4` 和 `/dev/v4l/by-id`，项目硬件覆盖已处理。
+- 感知/标定：`cv_bridge`、OpenCV、YAML、TF、`image_view`、`camera_calibration` 已放在共享 Noetic dev 包清单。
+- 描述/TF：`robot_state_publisher`、`joint_state_publisher`、RViz、`xacro`、`urdf`、`tf2_tools` 已由共享镜像覆盖。
+- Python WebSocket fallback：`websocket-client` 是实际 import 依赖。
+- 官方 Python SDK 检查：`carm`、`zeroconf`、`ifaddr` 属于 MAXHUB A3 项目级依赖，使用 `noetic-docker.pip-requirements.txt` 安装。
 
 ## Current Network Note
 

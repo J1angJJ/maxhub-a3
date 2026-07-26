@@ -1,0 +1,7 @@
+# Project-specific Python dependencies for the MAXHUB A3 Noetic container.
+# Keep shared ROS/system packages in /home/j1angjj/workspace/ubuntu-env/docker/noetic.
+
+carm==0.1.20260716
+ifaddr==0.2.0
+websocket-client==1.8.0
+zeroconf==0.136.2
