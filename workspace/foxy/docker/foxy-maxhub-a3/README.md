@@ -15,6 +15,7 @@ workspace/foxy/docker/foxy-maxhub-a3/
 ├── Dockerfile
 ├── compose.yaml
 ├── compose.camera.yaml
+├── compose.gpu.yaml
 ├── .env.example
 └── README.md
 ```
@@ -68,7 +69,7 @@ cp .env.example .env
 - 机械臂 IP：`192.168.31.60`
 - 相机映射：通过 `compose.camera.yaml` 按需打开，当前默认 `VIDEO_DEVICE=/dev/video4`
 
-`.env` 可以按当前机器情况调整，例如 `DISPLAY`、`LIBGL_ALWAYS_SOFTWARE`、`VIDEO_DEVICE`、`ROS_DOMAIN_ID`。串口设备暂不默认映射，后续确实需要时再加实验 overlay。
+`.env` 可以按当前机器情况调整，例如 `DISPLAY`、`LIBGL_ALWAYS_SOFTWARE`、`GPU_LIBGL_ALWAYS_SOFTWARE`、`VIDEO_DEVICE`、`ROS_DOMAIN_ID`。串口设备暂不默认映射，后续确实需要时再加实验 overlay。
 
 ## Validate Config
 
@@ -86,6 +87,7 @@ docker compose config
 - `/home/j1angjj/workspace/maxhub-a3/workspace/foxy` 挂载到 `/workspace`
 - CArm SDK 和官方 demo 为只读挂载
 - 默认不映射相机；叠加 `compose.camera.yaml` 后再确认 `/dev/video*` 和 `/dev/v4l`
+- 默认使用软件 OpenGL；叠加 `compose.gpu.yaml` 后再确认 `gpus: all`、`/dev/dri`、NVIDIA 环境变量
 
 ## Run Shell
 
@@ -100,6 +102,18 @@ docker compose run --rm foxy-maxhub-a3 bash
 
 ```bash
 docker compose -f compose.yaml -f compose.camera.yaml run --rm foxy-maxhub-a3 bash
+```
+
+启用 NVIDIA GPU/DRI 图形设备：
+
+```bash
+docker compose -f compose.yaml -f compose.gpu.yaml run --rm foxy-maxhub-a3 bash
+```
+
+相机和 GPU 同时启用：
+
+```bash
+docker compose -f compose.yaml -f compose.camera.yaml -f compose.gpu.yaml run --rm foxy-maxhub-a3 bash
 ```
 
 检查 ROS 2：
@@ -141,6 +155,28 @@ ros2 launch carm_a3_description display.launch.py
 ```
 
 如果 `rviz2` 报 `could not connect to display`，优先检查宿主 `DISPLAY` 是否和 `/tmp/.X11-unix/X*` 对应，以及是否执行过 `xhost +local:docker`。当前默认 `LIBGL_ALWAYS_SOFTWARE=1`，适合没有 `/dev/dri` 的本机容器 RViz2；后续如果宿主提供 DRI/GPU 设备，可在 `.env` 中改为 `0` 并额外映射图形设备。Wayland 桌面通常仍可通过 XWayland 使用这套路径；如果后续要跑 Isaac Sim，建议单独建 NVIDIA 图形容器，不塞进当前 Foxy 项目镜像。
+
+## GPU Overlay
+
+宿主已安装 NVIDIA 驱动和 NVIDIA container runtime 时，使用 GPU overlay：
+
+```bash
+cd /home/j1angjj/workspace/maxhub-a3/workspace/foxy/docker/foxy-maxhub-a3
+docker compose -f compose.yaml -f compose.gpu.yaml run --rm foxy-maxhub-a3 nvidia-smi
+```
+
+检查容器内图形设备：
+
+```bash
+docker compose -f compose.yaml -f compose.gpu.yaml run --rm foxy-maxhub-a3 \
+  bash -lc 'echo LIBGL_ALWAYS_SOFTWARE=$LIBGL_ALWAYS_SOFTWARE && ls -l /dev/dri /dev/nvidia0 && nvidia-smi -L'
+```
+
+GPU overlay 会把 `LIBGL_ALWAYS_SOFTWARE` 改为 `GPU_LIBGL_ALWAYS_SOFTWARE`，默认值是 `0`。如果 RViz2 或 Gazebo 在显卡渲染路径上不稳定，可以临时改回：
+
+```bash
+GPU_LIBGL_ALWAYS_SOFTWARE=1
+```
 
 ## Workspace
 

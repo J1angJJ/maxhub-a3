@@ -28,6 +28,18 @@ docker compose run --rm foxy-maxhub-a3 bash
 docker compose -f compose.yaml -f compose.camera.yaml run --rm foxy-maxhub-a3 bash
 ```
 
+带 NVIDIA GPU/DRI 图形设备：
+
+```bash
+docker compose -f compose.yaml -f compose.gpu.yaml run --rm foxy-maxhub-a3 bash
+```
+
+相机和 GPU 同时启用：
+
+```bash
+docker compose -f compose.yaml -f compose.camera.yaml -f compose.gpu.yaml run --rm foxy-maxhub-a3 bash
+```
+
 ## 编译 rl_ws
 
 ```bash

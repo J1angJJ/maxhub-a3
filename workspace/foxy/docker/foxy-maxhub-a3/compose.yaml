@@ -30,5 +30,6 @@ services:
       - /etc/localtime:/etc/localtime:ro
     group_add:
       - video
+      - render
       - dialout
     working_dir: ${ROS_WORKSPACE:-/workspace/rl_ws}
