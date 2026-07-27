@@ -5,9 +5,11 @@
 ## 当前状态
 
 - `foxy-maxhub-a3:latest` 已支持 ROS 2 Foxy、Gymnasium、Stable-Baselines3、PyTorch、NVIDIA GPU overlay。
+- 项目镜像已安装 Gazebo Classic 11、`gazebo_ros_pkgs`、`gazebo_ros2_control` 和常用控制器包。
 - `carm_a3_description` 已提供 URDF、mesh、RViz launch。
+- `carm_gazebo` 已提供 headless 空世界和 A3 模型 spawn 入口。
 - `carm_rl_env` 已提供 toy reaching 环境、PPO/A2C 训练、续训、评估和 trace 工具。
-- 当前项目镜像尚未安装 Gazebo Classic、`gazebo_ros_pkgs`、`ros2_control` 或控制器包。
+- 当前 URDF 尚未补充 `ros2_control` 传动配置，Gazebo 中还不能通过控制器驱动关节。
 
 ## 目标
 
@@ -33,7 +35,7 @@ Gazebo 依赖不放进共享 `ubuntu-env:foxy-user`，而放进项目镜像或�
 - Gazebo/控制器是 MAXHUB A3 项目相关依赖，不是所有 Foxy 项目都需要。
 - 后续 Isaac/MuJoCo 也可能各自膨胀，项目层更容易拆分。
 
-建议先加到项目镜像：
+已加到项目镜像：
 
 ```text
 workspace/foxy/docker/foxy-maxhub-a3/

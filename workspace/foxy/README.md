@@ -12,6 +12,7 @@ workspace/foxy/
     └── src/
         ├── carm_api/
         ├── carm_a3_description/
+        ├── carm_gazebo/
         ├── carm_rl_env/
         └── carm_rl_bringup/
 ```
@@ -164,9 +165,30 @@ ros2 launch carm_a3_description display.launch.py
 ros2 launch carm_a3_description robot_state_publisher.launch.py
 ```
 
+## Gazebo Classic
+
+项目镜像已包含 Gazebo Classic 11、`gazebo_ros_pkgs`、`gazebo_ros2_control` 和常用控制器包。检查环境：
+
+```bash
+gzserver --version
+gzclient --version
+ros2 pkg list | grep -E "gazebo|ros2_control|controller"
+```
+
+启动 headless 空世界并加载 A3 模型：
+
+```bash
+cd /workspace/rl_ws
+colcon build --symlink-install
+source install/setup.bash
+ros2 launch carm_gazebo spawn_a3.launch.py
+```
+
+当前 `carm_gazebo` 只负责模型加载和仿真入口，URDF 尚未加入 `ros2_control` 传动配置，因此还不能通过 Gazebo 控制器驱动关节。
+
 ## 仿真方向
 
-当前先把真实机械臂 SDK 接口和 URDF 描述迁到 Foxy。下一步建议按下面顺序推进：
+当前先把真实机械臂 SDK 接口、URDF 描述和 Gazebo Classic 基础入口迁到 Foxy。下一步建议按下面顺序推进：
 
 1. Gazebo Classic：优先验证 URDF、关节轴、碰撞体、TF 和基础控制接口，和 Foxy 生态最贴近。
 2. MuJoCo：适合强化学习训练，需要从 URDF 整理 actuator、joint limit、collision 和 MJCF 资产。
