@@ -37,6 +37,7 @@ class CArmA3GazeboReachingEnv(gym.Env):
         joint_limit_penalty_scale=0.0,
         success_bonus=0.0,
         target_position=None,
+        reset_noise=0.0,
         node_name="carm_a3_gazebo_reaching_env",
     ):
         super().__init__()
@@ -59,6 +60,7 @@ class CArmA3GazeboReachingEnv(gym.Env):
         self.smoothness_penalty_scale = float(smoothness_penalty_scale)
         self.joint_limit_penalty_scale = float(joint_limit_penalty_scale)
         self.success_bonus = float(success_bonus)
+        self.reset_noise = float(reset_noise)
         self.fixed_target_position = None
         if target_position is not None:
             self.fixed_target_position = np.asarray(target_position, dtype=np.float32)
@@ -185,6 +187,8 @@ class CArmA3GazeboReachingEnv(gym.Env):
             target_joints = np.asarray(options["joint_positions"], dtype=np.float32)
         else:
             neutral = 0.5 * (JOINT_LOWER + JOINT_UPPER)
+            noise = self.np_random.uniform(-self.reset_noise, self.reset_noise, size=6).astype(np.float32)
+            neutral = neutral + noise
             target_joints = np.clip(neutral, JOINT_LOWER, JOINT_UPPER)
 
         self._publish_joint_target(target_joints)

@@ -30,6 +30,7 @@ def _env_kwargs(args):
         "joint_limit_penalty_scale": args.joint_limit_penalty_scale,
         "success_bonus": args.success_bonus,
         "target_position": args.target_position,
+        "reset_noise": args.reset_noise,
     }
 
 
@@ -79,6 +80,7 @@ def main():
     parser.add_argument("--joint-limit-penalty-scale", type=float, default=0.0)
     parser.add_argument("--success-bonus", type=float, default=0.0)
     parser.add_argument("--target-position", type=parse_target_position, default=None, help="Fixed target as x,y,z.")
+    parser.add_argument("--reset-noise", type=float, default=0.0, help="Uniform joint reset noise in radians.")
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--device", default="cpu", help="auto, cpu, cuda, or cuda:0")
     parser.add_argument("--save-dir", default="/workspace/rl_ws/artifacts/gazebo_reaching")
@@ -142,6 +144,7 @@ def main():
     print(f"joint_limit_penalty_scale={args.joint_limit_penalty_scale}")
     print(f"success_bonus={args.success_bonus}")
     print(f"target_position={args.target_position}")
+    print(f"reset_noise={args.reset_noise}")
     print(f"learning_rate={args.learning_rate}")
     print(f"batch_size={args.batch_size}")
     print(f"clip_range={args.clip_range}")
