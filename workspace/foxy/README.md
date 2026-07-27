@@ -82,9 +82,10 @@ ros2 launch carm_a3_vision camera.launch.py
 ros2 topic hz /carm_a3/camera/image_raw
 ros2 topic echo --once /carm_a3/camera/diagnostics
 ros2 topic echo --once /carm_a3/camera/camera_info
+ros2 run carm_a3_vision capture_image_sample --count 30 --save-every 30 --output-dir /workspace/rl_ws/artifacts/camera_samples
 ```
 
-当前已完成编译和 launch 参数检查；相机实时采集需要容器启动时正确映射 `/dev/video*` 和 `/dev/v4l`。
+当前已完成编译和 launch 参数检查；相机实时采集需要容器启动时正确映射 `/dev/video*` 和 `/dev/v4l`。ROS1 记录中相机画面倒置，Foxy 默认同样设置 `rotate_180: true`。
 
 ## 最小 Gymnasium 环境
 

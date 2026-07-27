@@ -46,6 +46,17 @@ ros2 service list | grep /carm_a3/camera/set_camera_info
 ros2 run image_tools showimage --ros-args -r image:=/carm_a3/camera/image_raw
 ```
 
+不打开图形界面时，可以采样少量帧并保存为 PPM：
+
+```bash
+ros2 run carm_a3_vision capture_image_sample \
+  --count 30 \
+  --save-every 30 \
+  --output-dir /workspace/rl_ws/artifacts/camera_samples
+```
+
+这个工具只订阅已经发布的 ROS 图像话题，不直接访问 `/dev/video*`。相机节点里的默认配置已经保持 ROS1 的倒置修正：`rotate_180: true`。
+
 ## 标定
 
 节点提供 `/carm_a3/camera/set_camera_info` 服务，后续可以用 ROS 相机标定工具写入内参。默认 launch 文件加载：
