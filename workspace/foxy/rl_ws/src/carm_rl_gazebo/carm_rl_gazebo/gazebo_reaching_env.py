@@ -41,6 +41,9 @@ class CArmA3GazeboReachingEnv(gym.Env):
         target_position=None,
         target_low=None,
         target_high=None,
+        hard_target_position=None,
+        hard_target_ratio=0.0,
+        hard_target_noise=0.03,
         reset_noise=0.0,
         reset_world_on_reset=False,
         node_name="carm_a3_gazebo_reaching_env",
@@ -71,6 +74,11 @@ class CArmA3GazeboReachingEnv(gym.Env):
         self.fixed_target_position = None
         if target_position is not None:
             self.fixed_target_position = np.asarray(target_position, dtype=np.float32)
+        self.hard_target_position = None
+        if hard_target_position is not None:
+            self.hard_target_position = np.asarray(hard_target_position, dtype=np.float32)
+        self.hard_target_ratio = float(hard_target_ratio)
+        self.hard_target_noise = float(hard_target_noise)
 
         observation_target_low = np.array([0.15, -0.25, 0.10], dtype=np.float32)
         observation_target_high = np.array([0.55, 0.25, 0.55], dtype=np.float32)
@@ -181,6 +189,9 @@ class CArmA3GazeboReachingEnv(gym.Env):
     def _sample_target(self):
         if self.fixed_target_position is not None:
             return self.fixed_target_position.copy()
+        if self.hard_target_position is not None and self.np_random.random() < self.hard_target_ratio:
+            noise = self.np_random.uniform(-self.hard_target_noise, self.hard_target_noise, size=3).astype(np.float32)
+            return np.clip(self.hard_target_position + noise, self.target_low, self.target_high).astype(np.float32)
         return self.np_random.uniform(low=self.target_low, high=self.target_high).astype(np.float32)
 
     def _joint_limit_penalty(self, joint_positions):

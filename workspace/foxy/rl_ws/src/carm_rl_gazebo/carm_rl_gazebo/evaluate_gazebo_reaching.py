@@ -82,6 +82,9 @@ def main():
     parser.add_argument("--target-position", type=parse_target_position, default=None, help="Fixed target as x,y,z.")
     parser.add_argument("--target-low", type=parse_target_position, default=None, help="Target sampling lower bound as x,y,z.")
     parser.add_argument("--target-high", type=parse_target_position, default=None, help="Target sampling upper bound as x,y,z.")
+    parser.add_argument("--hard-target-position", type=parse_target_position, default=None, help="Replay target center as x,y,z.")
+    parser.add_argument("--hard-target-ratio", type=float, default=0.0)
+    parser.add_argument("--hard-target-noise", type=float, default=0.03)
     parser.add_argument("--reset-noise", type=float, default=0.0, help="Uniform joint reset noise in radians.")
     parser.add_argument("--reset-world-on-reset", action="store_true", help="Call /reset_world before each env reset.")
     parser.add_argument("--device", default="cpu")
@@ -105,6 +108,9 @@ def main():
         "target_position": args.target_position,
         "target_low": args.target_low,
         "target_high": args.target_high,
+        "hard_target_position": args.hard_target_position,
+        "hard_target_ratio": args.hard_target_ratio,
+        "hard_target_noise": args.hard_target_noise,
         "reset_noise": args.reset_noise,
         "reset_world_on_reset": args.reset_world_on_reset,
     }
