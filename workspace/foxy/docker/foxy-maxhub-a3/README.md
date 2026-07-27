@@ -68,7 +68,7 @@ cp .env.example .env
 - 机械臂 IP：`192.168.31.60`
 - 相机映射：通过 `compose.camera.yaml` 按需打开，当前默认 `VIDEO_DEVICE=/dev/video4`
 
-`.env` 可以按当前机器情况调整，例如 `DISPLAY`、`VIDEO_DEVICE`、`ROS_DOMAIN_ID`。串口设备暂不默认映射，后续确实需要时再加实验 overlay。
+`.env` 可以按当前机器情况调整，例如 `DISPLAY`、`LIBGL_ALWAYS_SOFTWARE`、`VIDEO_DEVICE`、`ROS_DOMAIN_ID`。串口设备暂不默认映射，后续确实需要时再加实验 overlay。
 
 ## Validate Config
 
@@ -117,7 +117,7 @@ docker compose run --rm foxy-maxhub-a3 \
 
 ## Desktop GUI
 
-当前 compose 已把宿主机 `DISPLAY`、`QT_X11_NO_MITSHM` 和 `/tmp/.X11-unix` 传入容器。宿主机先开放本地 X11 访问：
+当前 compose 已把宿主机 `DISPLAY`、`QT_X11_NO_MITSHM`、`LIBGL_ALWAYS_SOFTWARE` 和 `/tmp/.X11-unix` 传入容器。宿主机先开放本地 X11 访问：
 
 ```bash
 xhost +local:docker
@@ -140,7 +140,7 @@ source install/setup.bash
 ros2 launch carm_a3_description display.launch.py
 ```
 
-如果 `rviz2` 报 `could not connect to display`，优先检查宿主 `DISPLAY` 是否和 `/tmp/.X11-unix/X*` 对应，以及是否执行过 `xhost +local:docker`。Wayland 桌面通常仍可通过 XWayland 使用这套路径；如果后续要跑 Isaac Sim，建议单独建 NVIDIA 图形容器，不塞进当前 Foxy 项目镜像。
+如果 `rviz2` 报 `could not connect to display`，优先检查宿主 `DISPLAY` 是否和 `/tmp/.X11-unix/X*` 对应，以及是否执行过 `xhost +local:docker`。当前默认 `LIBGL_ALWAYS_SOFTWARE=1`，适合没有 `/dev/dri` 的本机容器 RViz2；后续如果宿主提供 DRI/GPU 设备，可在 `.env` 中改为 `0` 并额外映射图形设备。Wayland 桌面通常仍可通过 XWayland 使用这套路径；如果后续要跑 Isaac Sim，建议单独建 NVIDIA 图形容器，不塞进当前 Foxy 项目镜像。
 
 ## Workspace
 
