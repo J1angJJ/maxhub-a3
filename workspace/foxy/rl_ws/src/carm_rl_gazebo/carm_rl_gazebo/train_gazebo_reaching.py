@@ -19,6 +19,8 @@ def _env_kwargs(args):
     return {
         "max_steps": args.max_steps,
         "action_scale": args.action_scale,
+        "near_target_action_scale_radius": args.near_target_action_scale_radius,
+        "near_target_action_scale_min": args.near_target_action_scale_min,
         "command_duration": args.command_duration,
         "command_settle_time": args.command_settle_time,
         "command_timeout": args.command_timeout,
@@ -80,6 +82,13 @@ def main():
     parser.add_argument("--timesteps", type=int, default=256)
     parser.add_argument("--max-steps", type=int, default=30)
     parser.add_argument("--action-scale", type=float, default=0.03)
+    parser.add_argument(
+        "--near-target-action-scale-radius",
+        type=float,
+        default=0.0,
+        help="Enable distance-based action scaling inside this TCP distance. 0 disables scaling.",
+    )
+    parser.add_argument("--near-target-action-scale-min", type=float, default=0.25)
     parser.add_argument("--command-duration", type=float, default=0.05)
     parser.add_argument("--command-settle-time", type=float, default=0.01)
     parser.add_argument("--command-timeout", type=float, default=0.05)
@@ -171,6 +180,8 @@ def main():
     print(f"timesteps={args.timesteps}")
     print(f"rollout_batch={args.n_steps}")
     print(f"action_scale={args.action_scale}")
+    print(f"near_target_action_scale_radius={args.near_target_action_scale_radius}")
+    print(f"near_target_action_scale_min={args.near_target_action_scale_min}")
     print(f"command_duration={args.command_duration}")
     print(f"command_settle_time={args.command_settle_time}")
     print(f"command_timeout={args.command_timeout}")

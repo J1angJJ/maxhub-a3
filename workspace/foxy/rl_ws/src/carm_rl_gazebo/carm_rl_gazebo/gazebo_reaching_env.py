@@ -27,6 +27,8 @@ class CArmA3GazeboReachingEnv(gym.Env):
         self,
         max_steps=50,
         action_scale=0.03,
+        near_target_action_scale_radius=0.0,
+        near_target_action_scale_min=0.25,
         command_duration=0.2,
         command_settle_time=0.05,
         command_timeout=None,
@@ -60,6 +62,8 @@ class CArmA3GazeboReachingEnv(gym.Env):
         self.joint_names = tuple(ARM_JOINT_NAMES)
         self.max_steps = int(max_steps)
         self.action_scale = float(action_scale)
+        self.near_target_action_scale_radius = float(near_target_action_scale_radius)
+        self.near_target_action_scale_min = float(near_target_action_scale_min)
         self.command_duration = float(command_duration)
         self.command_settle_time = float(command_settle_time)
         if command_timeout is None:
@@ -221,6 +225,14 @@ class CArmA3GazeboReachingEnv(gym.Env):
         limit_violation = np.maximum(0.0, 0.10 - margin) / 0.10
         return float(np.mean(limit_violation))
 
+    def _action_scale_multiplier(self, distance):
+        if self.near_target_action_scale_radius <= 0.0:
+            return 1.0
+        if distance >= self.near_target_action_scale_radius:
+            return 1.0
+        radius_ratio = max(0.0, distance / self.near_target_action_scale_radius)
+        return float(self.near_target_action_scale_min + (1.0 - self.near_target_action_scale_min) * radius_ratio)
+
     def _get_obs(self, joint_positions):
         tcp_position = forward_tcp_position(joint_positions)
         delta = self.target_position - tcp_position
@@ -281,7 +293,11 @@ class CArmA3GazeboReachingEnv(gym.Env):
         current = self._wait_for_joint_positions()
         action = np.asarray(action, dtype=np.float32)
         action = np.clip(action, self.action_space.low, self.action_space.high)
-        target_joints = np.clip(current + action * self.action_scale, JOINT_LOWER, JOINT_UPPER).astype(np.float32)
+        pre_info = self._get_info(current)
+        pre_distance = pre_info["distance"]
+        action_scale_multiplier = self._action_scale_multiplier(pre_distance)
+        effective_action_scale = self.action_scale * action_scale_multiplier
+        target_joints = np.clip(current + action * effective_action_scale, JOINT_LOWER, JOINT_UPPER).astype(np.float32)
         self._publish_joint_target(target_joints)
         current, joint_target_error, joint_target_reached = self._wait_for_command(target_joints)
         self._step_count += 1
@@ -317,6 +333,8 @@ class CArmA3GazeboReachingEnv(gym.Env):
         info["smoothness_penalty"] = smoothness_penalty
         info["joint_limit_penalty"] = joint_limit_penalty
         info["best_distance"] = self.best_distance
+        info["action_scale_multiplier"] = action_scale_multiplier
+        info["effective_action_scale"] = effective_action_scale
         info["commanded_joint_positions"] = target_joints.copy()
         info["joint_target_error"] = joint_target_error
         info["joint_target_reached"] = joint_target_reached

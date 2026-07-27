@@ -655,6 +655,45 @@ ros2 run carm_rl_gazebo evaluate_gazebo_reaching \
   --device cpu
 ```
 
+更轻多困难目标 replay 5k 评估结果：`success_rate=0.6900`、`mean_distance=0.0460`、`mean_best_distance=0.0333`、`worst_distance=0.3128`。它仍未保住 hard3036 的 76% 成功率，暂停继续 hard replay 盲训。
+
+近目标动态动作缩放评估：
+
+```bash
+ros2 run carm_rl_gazebo evaluate_gazebo_reaching \
+  --model /workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_action008_nearstop_multihard_light_5000.zip \
+  --episodes 100 \
+  --max-steps 45 \
+  --action-scale 0.08 \
+  --near-target-action-scale-radius 0.04 \
+  --near-target-action-scale-min 0.50 \
+  --command-duration 0.10 \
+  --command-settle-time 0.02 \
+  --command-timeout 0.12 \
+  --joint-target-tolerance 0.08 \
+  --progress-reward-scale 0.5 \
+  --distance-regression-penalty-scale 3.0 \
+  --near-target-action-penalty-scale 0.08 \
+  --near-target-action-penalty-radius 0.08 \
+  --smoothness-penalty-scale 0.01 \
+  --joint-limit-penalty-scale 0.05 \
+  --success-bonus 1.0 \
+  --reset-noise 0.05 \
+  --reset-world-on-reset \
+  --csv /workspace/rl_ws/artifacts/gazebo_reaching/eval100_light_damped_r004_min050.csv \
+  --device cpu
+```
+
+动态动作缩放 100 集评估结果：
+
+```text
+light model, radius=0.08, min=0.25: success_rate=0.5600, mean_distance=0.0483, worst_distance=0.2119
+light model, radius=0.04, min=0.50: success_rate=0.7400, mean_distance=0.0404, worst_distance=0.2898
+hard3036 model, radius=0.04, min=0.50: success_rate=0.6800, mean_distance=0.0432, worst_distance=0.1802
+```
+
+结论：动态动作缩放能救回部分“靠近后跑开”的 episode，并降低最坏距离，但会误伤整体成功率。当前作为诊断/稳定性对照，不作为默认评估配置。
+
 追踪单个 Gazebo 失败 seed：
 
 ```bash

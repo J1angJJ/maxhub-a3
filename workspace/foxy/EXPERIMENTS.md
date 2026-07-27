@@ -202,6 +202,20 @@ worst_failure=seed=3062 target=(0.2446,0.1443,0.1689) tcp=(0.0551,0.1412,0.0600)
 
 结论：多困难目标 replay 把 hard3036 单点续训造成的极端 worst distance 从 0.3425 拉回到 0.2186，但成功率回落到 69%，不能作为新主线。值得注意的是，低 z 失败目标的 best distance 有改善，说明多目标采样有帮助，但 10k steps 和 0.45 replay ratio 可能过强，导致整体策略被重新拉偏。
 
+更轻多困难目标 replay 5k 续训：
+
+```text
+model=/workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_action008_nearstop_multihard_light_5000.zip
+episodes=100
+success_rate=0.6900
+mean_distance=0.0460
+mean_best_distance=0.0333
+worst_distance=0.3128
+worst_failure=seed=3008 target=(0.3592,-0.0587,0.4807) tcp=(0.1814,-0.1237,0.2317)
+```
+
+结论：降低 replay ratio 和训练步数仍未保住 hard3036 的 76% 成功率，且 worst distance 仍偏大。当前不继续 hard replay 盲训。
+
 ### 诊断记录
 
 seed 3035 低位目标：
@@ -223,23 +237,46 @@ action_scale=0.06, max_steps=60, final_distance=0.1112
 
 结论：`0.06` 更稳但仍未达 3cm；继续延长到 60 步会回退。后续优先改 reward/采样，而不是只加步数。
 
-### 当前进行中
+近目标动态动作缩放诊断：
+
+```text
+light model, seed=3008, no damping: final_distance=0.3128, best_distance=0.0382
+light model, seed=3008, radius=0.08, min=0.25: final_distance=0.0207, terminated=True
+light model, seed=3008, radius=0.04, min=0.50: final_distance=0.0246, terminated=True
+```
+
+100 集评估：
+
+```text
+light model, radius=0.08, min=0.25:
+success_rate=0.5600
+mean_distance=0.0483
+mean_best_distance=0.0362
+worst_distance=0.2119
+
+light model, radius=0.04, min=0.50:
+success_rate=0.7400
+mean_distance=0.0404
+mean_best_distance=0.0320
+worst_distance=0.2898
+
+hard3036 model, radius=0.04, min=0.50:
+success_rate=0.6800
+mean_distance=0.0432
+mean_best_distance=0.0334
+worst_distance=0.1802
+```
+
+结论：动态动作缩放能有效救回“曾经靠近后跑开”的单点，且可以压低 worst distance；但全局会误伤一部分本来能成功的轨迹。`radius=0.08/min=0.25` 太重，`radius=0.04/min=0.50` 更可用但仍不适合作为默认主线。
+
+### 当前状态
 
 已新增多困难目标 replay 参数 `--hard-target-positions`，用于把多个失败中心混合采样，格式为 `x,y,z;x,y,z`。
 
-下一轮建议回到 `action008_nearstop_hard3036_5000` 主线，尝试更轻的多困难目标 replay，降低 replay ratio 和训练步数：
-
-```text
-load_model=/workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_action008_nearstop_hard3036_5000.zip
-run_name=action008_nearstop_multihard_light_5000
-hard_target_positions=0.1542,0.2146,0.1086;0.5025,0.0751,0.5261;0.4676,-0.0989,0.1139;0.4279,-0.0001,0.1377;0.2446,0.1443,0.1689
-hard_target_ratio=0.25
-hard_target_noise=0.04
-timesteps=5000
-```
+已新增近目标动态动作缩放参数 `--near-target-action-scale-radius` 和 `--near-target-action-scale-min`。该机制默认关闭，当前仅作为评估/诊断开关。
 
 ### 下一步
 
-1. 运行并评估 `action008_nearstop_multihard_light_5000`。
-2. 如果成功率维持 75% 左右且 worst distance 回落，继续扩大多困难目标集合。
-3. 如果成功率再次回落到 70% 左右，暂停 hard replay，优先考虑近目标低速动作裁剪、success 后保持步数或基于 best distance 的终止/奖励设计。
+1. 暂定 `ppo_gazebo_reaching_action008_nearstop_hard3036_5000.zip` 为高成功率主线模型。
+2. 暂停继续 hard replay 盲训。
+3. 下一步优先设计“接近后保持/停止”机制，例如 success 后保持若干步、近目标动作裁剪只作用于策略输出过大的维度，或基于 best distance 的终止/奖励设计。

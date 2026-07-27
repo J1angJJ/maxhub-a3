@@ -29,6 +29,8 @@ def _row(step, action, reward, terminated, truncated, info, obs):
         "progress_reward": info.get("progress_reward", 0.0),
         "distance_regression_penalty": info.get("distance_regression_penalty", 0.0),
         "near_target_action_penalty": info.get("near_target_action_penalty", 0.0),
+        "action_scale_multiplier": info.get("action_scale_multiplier", 1.0),
+        "effective_action_scale": info.get("effective_action_scale", 0.0),
         "joint_target_error": info.get("joint_target_error", 0.0),
         "joint_target_reached": info.get("joint_target_reached", False),
         "gazebo_reset_called": info.get("gazebo_reset_called", False),
@@ -68,6 +70,13 @@ def main():
     parser.add_argument("--target-position", type=parse_target_position, default=None, help="Fixed target as x,y,z.")
     parser.add_argument("--max-steps", type=int, default=30)
     parser.add_argument("--action-scale", type=float, default=0.03)
+    parser.add_argument(
+        "--near-target-action-scale-radius",
+        type=float,
+        default=0.0,
+        help="Enable distance-based action scaling inside this TCP distance. 0 disables scaling.",
+    )
+    parser.add_argument("--near-target-action-scale-min", type=float, default=0.25)
     parser.add_argument("--command-duration", type=float, default=0.05)
     parser.add_argument("--command-settle-time", type=float, default=0.01)
     parser.add_argument("--command-timeout", type=float, default=0.05)
@@ -112,6 +121,8 @@ def main():
     env_kwargs = {
         "max_steps": args.max_steps,
         "action_scale": args.action_scale,
+        "near_target_action_scale_radius": args.near_target_action_scale_radius,
+        "near_target_action_scale_min": args.near_target_action_scale_min,
         "command_duration": args.command_duration,
         "command_settle_time": args.command_settle_time,
         "command_timeout": args.command_timeout,
