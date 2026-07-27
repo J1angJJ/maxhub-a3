@@ -25,6 +25,7 @@ setup(
         "console_scripts": [
             "random_rollout = carm_rl_env.random_rollout:main",
             "train_reaching = carm_rl_env.train_reaching:main",
+            "evaluate_reaching = carm_rl_env.evaluate_reaching:main",
         ],
     },
 )

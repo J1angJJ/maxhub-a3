@@ -85,6 +85,12 @@ ros2 run carm_rl_env train_reaching --algo ppo --timesteps 50000 --num-envs 4 --
 ros2 run carm_rl_env train_reaching --algo ppo --load-model /workspace/rl_ws/artifacts/reaching/ppo_reaching_50000_steps.zip --timesteps 200000 --num-envs 4 --n-steps 256 --batch-size 128 --device cpu --eval-episodes 50
 ```
 
+评估已训练模型：
+
+```bash
+ros2 run carm_rl_env evaluate_reaching --model /workspace/rl_ws/artifacts/reaching/ppo_reaching_200000_more_steps.zip --episodes 100 --csv /workspace/rl_ws/artifacts/reaching/eval_200000_more.csv
+```
+
 使用 A2C：
 
 ```bash
