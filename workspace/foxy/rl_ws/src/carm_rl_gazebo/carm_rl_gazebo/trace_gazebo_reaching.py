@@ -25,6 +25,7 @@ def _row(step, action, reward, terminated, truncated, info, obs):
         "distance": info["distance"],
         "terminated": bool(terminated),
         "truncated": bool(truncated),
+        "progress_reward": info.get("progress_reward", 0.0),
         "joint_target_error": info.get("joint_target_error", 0.0),
         "joint_target_reached": info.get("joint_target_reached", False),
         "gazebo_reset_called": info.get("gazebo_reset_called", False),
@@ -70,10 +71,13 @@ def main():
     parser.add_argument("--joint-target-tolerance", type=float, default=0.08)
     parser.add_argument("--success-threshold", type=float, default=0.03)
     parser.add_argument("--distance-reward-scale", type=float, default=1.0)
+    parser.add_argument("--progress-reward-scale", type=float, default=0.0)
     parser.add_argument("--action-penalty-scale", type=float, default=0.01)
     parser.add_argument("--smoothness-penalty-scale", type=float, default=0.0)
     parser.add_argument("--joint-limit-penalty-scale", type=float, default=0.0)
     parser.add_argument("--success-bonus", type=float, default=0.0)
+    parser.add_argument("--target-low", type=parse_target_position, default=None, help="Target sampling lower bound as x,y,z.")
+    parser.add_argument("--target-high", type=parse_target_position, default=None, help="Target sampling upper bound as x,y,z.")
     parser.add_argument("--reset-noise", type=float, default=0.0, help="Uniform joint reset noise in radians.")
     parser.add_argument("--reset-world-on-reset", action="store_true", help="Call /reset_world before env reset.")
     parser.add_argument("--device", default="cpu")
@@ -89,11 +93,14 @@ def main():
         "joint_target_tolerance": args.joint_target_tolerance,
         "success_threshold": args.success_threshold,
         "distance_reward_scale": args.distance_reward_scale,
+        "progress_reward_scale": args.progress_reward_scale,
         "action_penalty_scale": args.action_penalty_scale,
         "smoothness_penalty_scale": args.smoothness_penalty_scale,
         "joint_limit_penalty_scale": args.joint_limit_penalty_scale,
         "success_bonus": args.success_bonus,
         "target_position": args.target_position,
+        "target_low": args.target_low,
+        "target_high": args.target_high,
         "reset_noise": args.reset_noise,
         "reset_world_on_reset": args.reset_world_on_reset,
     }

@@ -25,11 +25,14 @@ def _env_kwargs(args):
         "joint_target_tolerance": args.joint_target_tolerance,
         "success_threshold": args.success_threshold,
         "distance_reward_scale": args.distance_reward_scale,
+        "progress_reward_scale": args.progress_reward_scale,
         "action_penalty_scale": args.action_penalty_scale,
         "smoothness_penalty_scale": args.smoothness_penalty_scale,
         "joint_limit_penalty_scale": args.joint_limit_penalty_scale,
         "success_bonus": args.success_bonus,
         "target_position": args.target_position,
+        "target_low": args.target_low,
+        "target_high": args.target_high,
         "reset_noise": args.reset_noise,
         "reset_world_on_reset": args.reset_world_on_reset,
     }
@@ -76,11 +79,14 @@ def main():
     parser.add_argument("--joint-target-tolerance", type=float, default=0.08)
     parser.add_argument("--success-threshold", type=float, default=0.03)
     parser.add_argument("--distance-reward-scale", type=float, default=1.0)
+    parser.add_argument("--progress-reward-scale", type=float, default=0.0)
     parser.add_argument("--action-penalty-scale", type=float, default=0.01)
     parser.add_argument("--smoothness-penalty-scale", type=float, default=0.0)
     parser.add_argument("--joint-limit-penalty-scale", type=float, default=0.0)
     parser.add_argument("--success-bonus", type=float, default=0.0)
     parser.add_argument("--target-position", type=parse_target_position, default=None, help="Fixed target as x,y,z.")
+    parser.add_argument("--target-low", type=parse_target_position, default=None, help="Target sampling lower bound as x,y,z.")
+    parser.add_argument("--target-high", type=parse_target_position, default=None, help="Target sampling upper bound as x,y,z.")
     parser.add_argument("--reset-noise", type=float, default=0.0, help="Uniform joint reset noise in radians.")
     parser.add_argument("--reset-world-on-reset", action="store_true", help="Call /reset_world before each env reset.")
     parser.add_argument("--seed", type=int, default=7)
@@ -141,11 +147,14 @@ def main():
     print(f"command_timeout={args.command_timeout}")
     print(f"joint_target_tolerance={args.joint_target_tolerance}")
     print(f"distance_reward_scale={args.distance_reward_scale}")
+    print(f"progress_reward_scale={args.progress_reward_scale}")
     print(f"action_penalty_scale={args.action_penalty_scale}")
     print(f"smoothness_penalty_scale={args.smoothness_penalty_scale}")
     print(f"joint_limit_penalty_scale={args.joint_limit_penalty_scale}")
     print(f"success_bonus={args.success_bonus}")
     print(f"target_position={args.target_position}")
+    print(f"target_low={args.target_low}")
+    print(f"target_high={args.target_high}")
     print(f"reset_noise={args.reset_noise}")
     print(f"reset_world_on_reset={args.reset_world_on_reset}")
     print(f"learning_rate={args.learning_rate}")

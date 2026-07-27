@@ -33,11 +33,14 @@ class CArmA3GazeboReachingEnv(gym.Env):
         joint_target_tolerance=0.02,
         success_threshold=0.03,
         distance_reward_scale=1.0,
+        progress_reward_scale=0.0,
         action_penalty_scale=0.01,
         smoothness_penalty_scale=0.0,
         joint_limit_penalty_scale=0.0,
         success_bonus=0.0,
         target_position=None,
+        target_low=None,
+        target_high=None,
         reset_noise=0.0,
         reset_world_on_reset=False,
         node_name="carm_a3_gazebo_reaching_env",
@@ -58,6 +61,7 @@ class CArmA3GazeboReachingEnv(gym.Env):
         self.joint_target_tolerance = float(joint_target_tolerance)
         self.success_threshold = float(success_threshold)
         self.distance_reward_scale = float(distance_reward_scale)
+        self.progress_reward_scale = float(progress_reward_scale)
         self.action_penalty_scale = float(action_penalty_scale)
         self.smoothness_penalty_scale = float(smoothness_penalty_scale)
         self.joint_limit_penalty_scale = float(joint_limit_penalty_scale)
@@ -68,15 +72,23 @@ class CArmA3GazeboReachingEnv(gym.Env):
         if target_position is not None:
             self.fixed_target_position = np.asarray(target_position, dtype=np.float32)
 
-        self.target_low = np.array([0.15, -0.25, 0.10], dtype=np.float32)
-        self.target_high = np.array([0.55, 0.25, 0.55], dtype=np.float32)
+        observation_target_low = np.array([0.15, -0.25, 0.10], dtype=np.float32)
+        observation_target_high = np.array([0.55, 0.25, 0.55], dtype=np.float32)
+        self.target_low = observation_target_low.copy()
+        self.target_high = observation_target_high.copy()
+        if target_low is not None:
+            self.target_low = np.asarray(target_low, dtype=np.float32)
+        if target_high is not None:
+            self.target_high = np.asarray(target_high, dtype=np.float32)
+        if np.any(self.target_low >= self.target_high):
+            raise ValueError("target_low must be smaller than target_high on every axis.")
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(6,), dtype=np.float32)
         tcp_low = np.array([-1.0, -1.0, -0.5], dtype=np.float32)
         tcp_high = np.array([1.0, 1.0, 1.0], dtype=np.float32)
-        delta_low = self.target_low - tcp_high
-        delta_high = self.target_high - tcp_low
-        obs_low = np.concatenate([JOINT_LOWER, tcp_low, self.target_low, delta_low]).astype(np.float32)
-        obs_high = np.concatenate([JOINT_UPPER, tcp_high, self.target_high, delta_high]).astype(np.float32)
+        delta_low = observation_target_low - tcp_high
+        delta_high = observation_target_high - tcp_low
+        obs_low = np.concatenate([JOINT_LOWER, tcp_low, observation_target_low, delta_low]).astype(np.float32)
+        obs_high = np.concatenate([JOINT_UPPER, tcp_high, observation_target_high, delta_high]).astype(np.float32)
         self.observation_space = spaces.Box(low=obs_low, high=obs_high, dtype=np.float32)
 
         self.publisher = self.node.create_publisher(
@@ -96,6 +108,7 @@ class CArmA3GazeboReachingEnv(gym.Env):
         self._latest_joint_positions = None
         self._step_count = 0
         self.previous_action = np.zeros(6, dtype=np.float32)
+        self.previous_distance = None
         self.target_position = np.zeros(3, dtype=np.float32)
 
     def _on_joint_state(self, msg):
@@ -200,6 +213,7 @@ class CArmA3GazeboReachingEnv(gym.Env):
         super().reset(seed=seed)
         self._step_count = 0
         self.previous_action = np.zeros(6, dtype=np.float32)
+        self.previous_distance = None
         options = options or {}
         gazebo_reset_called = self._call_reset_world() if self.reset_world_on_reset else False
         current = self._wait_for_joint_positions()
@@ -221,6 +235,7 @@ class CArmA3GazeboReachingEnv(gym.Env):
             self.target_position = self._sample_target()
 
         info = self._get_info(current)
+        self.previous_distance = info["distance"]
         info["joint_target_error"] = joint_target_error
         info["joint_target_reached"] = joint_target_reached
         info["gazebo_reset_called"] = gazebo_reset_called
@@ -237,18 +252,22 @@ class CArmA3GazeboReachingEnv(gym.Env):
 
         info = self._get_info(current)
         distance = info["distance"]
+        previous_distance = self.previous_distance if self.previous_distance is not None else distance
+        progress_reward = self.progress_reward_scale * (previous_distance - distance)
         action_penalty = self.action_penalty_scale * float(np.linalg.norm(action))
         smoothness_penalty = self.smoothness_penalty_scale * float(np.linalg.norm(action - self.previous_action))
         joint_limit_penalty = self.joint_limit_penalty_scale * self._joint_limit_penalty(current)
         terminated = distance < self.success_threshold
         reward = (
             -self.distance_reward_scale * distance
+            + progress_reward
             - action_penalty
             - smoothness_penalty
             - joint_limit_penalty
             + (self.success_bonus if terminated else 0.0)
         )
         truncated = self._step_count >= self.max_steps
+        info["progress_reward"] = progress_reward
         info["action_penalty"] = action_penalty
         info["smoothness_penalty"] = smoothness_penalty
         info["joint_limit_penalty"] = joint_limit_penalty
@@ -256,6 +275,7 @@ class CArmA3GazeboReachingEnv(gym.Env):
         info["joint_target_error"] = joint_target_error
         info["joint_target_reached"] = joint_target_reached
         self.previous_action = action.copy()
+        self.previous_distance = distance
         return self._get_obs(current), float(reward), terminated, truncated, info
 
     def close(self):
