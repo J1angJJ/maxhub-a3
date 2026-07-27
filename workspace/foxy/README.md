@@ -190,7 +190,20 @@ source install/setup.bash
 ros2 launch carm_gazebo spawn_a3.launch.py
 ```
 
-当前 `carm_gazebo` 只负责模型加载和仿真入口，URDF 尚未加入 `ros2_control` 传动配置，因此还不能通过 Gazebo 控制器驱动关节。
+启动带 ROS 2 control 的 Gazebo：
+
+```bash
+ros2 launch carm_gazebo spawn_a3_control.launch.py
+```
+
+发送一个 6 关节位置目标：
+
+```bash
+ros2 topic pub --once /arm_controller/joint_trajectory trajectory_msgs/msg/JointTrajectory \
+  "{joint_names: [joint1, joint2, joint3, joint4, joint5, joint6], points: [{positions: [0.1, 0.3, -0.3, 0.1, 0.1, 0.0], time_from_start: {sec: 2, nanosec: 0}}]}"
+```
+
+当前 `carm_gazebo` 已能通过 `joint_trajectory_controller` 控制 `joint1` 到 `joint6`。夹爪关节暂未纳入控制器；reaching 第一阶段先只控制主臂。
 
 ## 仿真方向
 

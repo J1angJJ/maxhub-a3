@@ -7,9 +7,9 @@
 - `foxy-maxhub-a3:latest` 已支持 ROS 2 Foxy、Gymnasium、Stable-Baselines3、PyTorch、NVIDIA GPU overlay。
 - 项目镜像已安装 Gazebo Classic 11、`gazebo_ros_pkgs`、`gazebo_ros2_control` 和常用控制器包。
 - `carm_a3_description` 已提供 URDF、mesh、RViz launch。
-- `carm_gazebo` 已提供 headless 空世界和 A3 模型 spawn 入口。
+- `carm_gazebo` 已提供 headless 空世界、A3 模型 spawn 入口和 6 轴主臂 `joint_trajectory_controller`。
 - `carm_rl_env` 已提供 toy reaching 环境、PPO/A2C 训练、续训、评估和 trace 工具。
-- 当前 URDF 尚未补充 `ros2_control` 传动配置，Gazebo 中还不能通过控制器驱动关节。
+- 夹爪关节暂未纳入 Gazebo 控制器；第一阶段 reaching 先只控制 `joint1` 到 `joint6`。
 
 ## 目标
 
