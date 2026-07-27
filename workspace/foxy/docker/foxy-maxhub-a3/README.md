@@ -227,6 +227,13 @@ docker compose run --rm foxy-maxhub-a3 \
   bash -lc 'cd /workspace/rl_ws && source install/setup.bash && ros2 run carm_rl_env train_reaching --algo ppo --timesteps 50000 --num-envs 4 --n-steps 256 --batch-size 128 --device cpu --eval-episodes 20'
 ```
 
+运行 4 个多进程环境的 PPO baseline：
+
+```bash
+docker compose run --rm foxy-maxhub-a3 \
+  bash -lc 'cd /workspace/rl_ws && source install/setup.bash && ros2 run carm_rl_env train_reaching --algo ppo --timesteps 50000 --num-envs 4 --vec-env subproc --n-steps 256 --batch-size 128 --device cpu --eval-episodes 20'
+```
+
 从已有模型继续训练：
 
 ```bash

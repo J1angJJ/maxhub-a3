@@ -80,6 +80,12 @@ ros2 run carm_rl_env train_reaching --algo ppo --timesteps 10000 --num-envs 1 --
 ros2 run carm_rl_env train_reaching --algo ppo --timesteps 50000 --num-envs 4 --n-steps 256 --batch-size 128 --device cpu --eval-episodes 20
 ```
 
+需要真正多进程采样时加 `--vec-env subproc`：
+
+```bash
+ros2 run carm_rl_env train_reaching --algo ppo --timesteps 50000 --num-envs 4 --vec-env subproc --n-steps 256 --batch-size 128 --device cpu --eval-episodes 20
+```
+
 从已有模型继续训练：
 
 ```bash
@@ -128,7 +134,7 @@ ros2 run carm_rl_env train_reaching --algo a2c --timesteps 10000 --device auto
 ros2 run carm_rl_env train_reaching --algo ppo --timesteps 10000 --num-envs 4 --n-steps 256 --batch-size 128 --device cuda
 ```
 
-训练产物默认保存到 `/workspace/rl_ws/artifacts/reaching`，该目录不入库。`--num-envs` 会创建多个向量化环境；PPO 每轮采样量约为 `n_steps * num_envs`。当前轻量 MLP 环境在 CPU 上通常更快；GPU 路径主要用于后续图像观测、更大网络或 Gazebo/Isaac 并行仿真。
+训练产物默认保存到 `/workspace/rl_ws/artifacts/reaching`，该目录不入库。`--num-envs` 会创建多个向量化环境；默认 `--vec-env dummy` 在同一进程顺序采样，`--vec-env subproc` 会开启多进程采样。PPO 每轮采样量约为 `n_steps * num_envs`。当前轻量 MLP 环境在 CPU 上通常更快；GPU 路径主要用于后续图像观测、更大网络或 Gazebo/Isaac 并行仿真。
 
 实验记录维护在 [EXPERIMENTS.md](EXPERIMENTS.md)。
 

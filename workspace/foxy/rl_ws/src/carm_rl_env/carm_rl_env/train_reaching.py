@@ -4,6 +4,7 @@ from pathlib import Path
 from stable_baselines3 import A2C, PPO
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.env_util import make_vec_env
+from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv
 
 from carm_rl_env.cli_utils import parse_target_position
 from carm_rl_env.reaching_env import CArmA3ReachingEnv
@@ -65,6 +66,18 @@ def main():
     parser.add_argument("--hard-target-ratio", type=float, default=0.0)
     parser.add_argument("--hard-target-noise", type=float, default=0.03)
     parser.add_argument("--num-envs", type=int, default=1, help="Number of parallel vectorized env instances.")
+    parser.add_argument(
+        "--vec-env",
+        choices=("dummy", "subproc"),
+        default="dummy",
+        help="Vectorized env backend. dummy is compatible; subproc uses multiple processes.",
+    )
+    parser.add_argument(
+        "--subproc-start-method",
+        choices=("fork", "forkserver", "spawn"),
+        default="fork",
+        help="Process start method used only with --vec-env subproc.",
+    )
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--device", default="auto", help="auto, cpu, cuda, or cuda:0")
     parser.add_argument("--save-dir", default="/workspace/rl_ws/artifacts/reaching")
@@ -89,12 +102,19 @@ def main():
     if args.check_env:
         check_env(raw_env, warn=True)
 
+    vec_env_cls = SubprocVecEnv if args.vec_env == "subproc" else DummyVecEnv
+    vec_env_kwargs = {}
+    if args.vec_env == "subproc":
+        vec_env_kwargs["start_method"] = args.subproc_start_method
+
     env = make_vec_env(
         CArmA3ReachingEnv,
         n_envs=args.num_envs,
         seed=args.seed,
         monitor_dir=str(save_dir / "monitor"),
         env_kwargs=env_kwargs,
+        vec_env_cls=vec_env_cls,
+        vec_env_kwargs=vec_env_kwargs,
     )
     algo_cls = ALGORITHMS[args.algo]
     model_kwargs = {
@@ -106,6 +126,9 @@ def main():
 
     print(f"algo={args.algo}")
     print(f"num_envs={args.num_envs}")
+    print(f"vec_env={args.vec_env}")
+    if args.vec_env == "subproc":
+        print(f"subproc_start_method={args.subproc_start_method}")
     print(f"max_steps={args.max_steps}")
     print(f"success_threshold={args.success_threshold}")
     print(f"timesteps={args.timesteps}")
