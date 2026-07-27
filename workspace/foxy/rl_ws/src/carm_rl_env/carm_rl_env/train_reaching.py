@@ -25,6 +25,9 @@ def _env_kwargs(args):
         "joint_limit_penalty_scale": args.joint_limit_penalty_scale,
         "success_bonus": args.success_bonus,
         "target_position": args.target_position,
+        "hard_target_position": args.hard_target_position,
+        "hard_target_ratio": args.hard_target_ratio,
+        "hard_target_noise": args.hard_target_noise,
     }
 
 
@@ -58,6 +61,9 @@ def main():
     parser.add_argument("--joint-limit-penalty-scale", type=float, default=0.0)
     parser.add_argument("--success-bonus", type=float, default=0.0)
     parser.add_argument("--target-position", type=parse_target_position, default=None, help="Fixed target as x,y,z.")
+    parser.add_argument("--hard-target-position", type=parse_target_position, default=None, help="Replay target center as x,y,z.")
+    parser.add_argument("--hard-target-ratio", type=float, default=0.0)
+    parser.add_argument("--hard-target-noise", type=float, default=0.03)
     parser.add_argument("--num-envs", type=int, default=1, help="Number of parallel vectorized env instances.")
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--device", default="auto", help="auto, cpu, cuda, or cuda:0")
@@ -110,6 +116,9 @@ def main():
     print(f"joint_limit_penalty_scale={args.joint_limit_penalty_scale}")
     print(f"success_bonus={args.success_bonus}")
     print(f"target_position={args.target_position}")
+    print(f"hard_target_position={args.hard_target_position}")
+    print(f"hard_target_ratio={args.hard_target_ratio}")
+    print(f"hard_target_noise={args.hard_target_noise}")
 
     if args.load_model:
         model = algo_cls.load(

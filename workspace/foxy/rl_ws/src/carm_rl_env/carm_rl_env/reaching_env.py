@@ -26,6 +26,9 @@ class CArmA3ReachingEnv(gym.Env):
         joint_limit_penalty_scale=0.0,
         success_bonus=0.0,
         target_position=None,
+        hard_target_position=None,
+        hard_target_ratio=0.0,
+        hard_target_noise=0.03,
     ):
         super().__init__()
         self.max_steps = int(max_steps)
@@ -39,16 +42,21 @@ class CArmA3ReachingEnv(gym.Env):
         self.fixed_target_position = None
         if target_position is not None:
             self.fixed_target_position = np.asarray(target_position, dtype=np.float32)
+        self.hard_target_position = None
+        if hard_target_position is not None:
+            self.hard_target_position = np.asarray(hard_target_position, dtype=np.float32)
+        self.hard_target_ratio = float(hard_target_ratio)
+        self.hard_target_noise = float(hard_target_noise)
+        self.target_low = np.array([0.15, -0.25, 0.10], dtype=np.float32)
+        self.target_high = np.array([0.55, 0.25, 0.55], dtype=np.float32)
 
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(6,), dtype=np.float32)
         tcp_low = np.array([-1.0, -1.0, -0.5], dtype=np.float32)
         tcp_high = np.array([1.0, 1.0, 1.0], dtype=np.float32)
-        target_low = np.array([0.15, -0.25, 0.10], dtype=np.float32)
-        target_high = np.array([0.55, 0.25, 0.55], dtype=np.float32)
-        delta_low = target_low - tcp_high
-        delta_high = target_high - tcp_low
-        obs_low = np.concatenate([JOINT_LOWER, tcp_low, target_low, delta_low]).astype(np.float32)
-        obs_high = np.concatenate([JOINT_UPPER, tcp_high, target_high, delta_high]).astype(np.float32)
+        delta_low = self.target_low - tcp_high
+        delta_high = self.target_high - tcp_low
+        obs_low = np.concatenate([JOINT_LOWER, tcp_low, self.target_low, delta_low]).astype(np.float32)
+        obs_high = np.concatenate([JOINT_UPPER, tcp_high, self.target_high, delta_high]).astype(np.float32)
         self.observation_space = spaces.Box(low=obs_low, high=obs_high, dtype=np.float32)
 
         self._step_count = 0
@@ -65,10 +73,10 @@ class CArmA3ReachingEnv(gym.Env):
     def _sample_target(self):
         if self.fixed_target_position is not None:
             return self.fixed_target_position.copy()
-        return self._rng.uniform(
-            low=np.array([0.15, -0.25, 0.10], dtype=np.float32),
-            high=np.array([0.55, 0.25, 0.55], dtype=np.float32),
-        ).astype(np.float32)
+        if self.hard_target_position is not None and self._rng.random() < self.hard_target_ratio:
+            noise = self._rng.uniform(-self.hard_target_noise, self.hard_target_noise, size=3).astype(np.float32)
+            return np.clip(self.hard_target_position + noise, self.target_low, self.target_high).astype(np.float32)
+        return self._rng.uniform(low=self.target_low, high=self.target_high).astype(np.float32)
 
     def _get_obs(self):
         tcp_position = forward_tcp_position(self.joint_positions)

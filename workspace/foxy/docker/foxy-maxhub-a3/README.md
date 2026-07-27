@@ -238,6 +238,13 @@ docker compose run --rm foxy-maxhub-a3 \
   bash -lc 'cd /workspace/rl_ws && source install/setup.bash && ros2 run carm_rl_env train_reaching --algo ppo --load-model /workspace/rl_ws/artifacts/reaching/ppo_reaching_100000_more_steps.zip --target-position 0.1593,0.2044,0.4493 --timesteps 20000 --num-envs 4 --n-steps 128 --batch-size 64 --device cpu --success-threshold 0.02 --distance-reward-scale 2.0 --action-penalty-scale 0.02 --smoothness-penalty-scale 0.01 --joint-limit-penalty-scale 0.05 --success-bonus 1.0'
 ```
 
+混合 hard target replay 训练：
+
+```bash
+docker compose run --rm foxy-maxhub-a3 \
+  bash -lc 'cd /workspace/rl_ws && source install/setup.bash && ros2 run carm_rl_env train_reaching --algo ppo --load-model /workspace/rl_ws/artifacts/reaching/ppo_reaching_100000_more_steps.zip --hard-target-position 0.1593,0.2044,0.4493 --hard-target-ratio 0.2 --hard-target-noise 0.03 --timesteps 100000 --num-envs 4 --n-steps 256 --batch-size 128 --device cpu --success-threshold 0.02 --distance-reward-scale 2.0 --action-penalty-scale 0.02 --smoothness-penalty-scale 0.01 --joint-limit-penalty-scale 0.05 --success-bonus 1.0'
+```
+
 评估已训练模型：
 
 ```bash
