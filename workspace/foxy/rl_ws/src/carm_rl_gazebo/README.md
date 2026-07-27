@@ -221,26 +221,28 @@ ros2 run carm_rl_gazebo evaluate_gazebo_reaching \
 
 ```bash
 ros2 run carm_rl_gazebo trace_gazebo_reaching \
-  --model /workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_toy200k_reset_noise_lr1e4_clip005_reward_4096.zip \
-  --seed 3002 \
-  --action-scale 0.05 \
-  --command-duration 0.08 \
+  --model /workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_action008_hard3035_progress_20000.zip \
+  --seed 3035 \
+  --max-steps 45 \
+  --action-scale 0.08 \
+  --command-duration 0.10 \
   --command-settle-time 0.02 \
-  --command-timeout 0.10 \
-  --joint-target-tolerance 0.06 \
+  --command-timeout 0.12 \
+  --joint-target-tolerance 0.08 \
+  --progress-reward-scale 0.5 \
   --smoothness-penalty-scale 0.01 \
   --joint-limit-penalty-scale 0.05 \
   --success-bonus 1.0 \
   --reset-noise 0.05 \
   --reset-world-on-reset \
-  --csv /workspace/rl_ws/artifacts/gazebo_reaching/trace_seed_3002.csv \
+  --csv /workspace/rl_ws/artifacts/gazebo_reaching/trace_seed3035_action008_20000_45steps.csv \
   --device cpu
 ```
 
 ## 当前边界
 
 - 环境不负责自动启动或关闭 Gazebo，需要外部先启动 `spawn_a3_control.launch.py`。
-- `reset()` 当前通过向中位关节姿态发布 trajectory 做软复位，还没有调用 Gazebo reset/pause/step service。
+- 使用 `--reset-world-on-reset` 时，`reset()` 会先调用 `/reset_world`，再通过 trajectory 回到带噪声的中位关节姿态。
 - 每步动作发布后会监听 `/joint_states`，关节误差低于 `joint_target_tolerance` 时提前继续，否则等到 `command_timeout`。
 - 动作空间、观测结构和 reward shaping 尽量贴近 `carm_rl_env` 的 toy reaching 环境。
 - 第一阶段只控制 `joint1` 到 `joint6`，夹爪暂不纳入训练。

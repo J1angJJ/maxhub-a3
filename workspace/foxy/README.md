@@ -413,23 +413,25 @@ ros2 run carm_rl_gazebo evaluate_gazebo_reaching \
 
 ```bash
 ros2 run carm_rl_gazebo trace_gazebo_reaching \
-  --model /workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_toy200k_reset_noise_lr1e4_clip005_reward_4096.zip \
-  --seed 3002 \
-  --action-scale 0.05 \
-  --command-duration 0.08 \
+  --model /workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_action008_hard3035_progress_20000.zip \
+  --seed 3035 \
+  --max-steps 45 \
+  --action-scale 0.08 \
+  --command-duration 0.10 \
   --command-settle-time 0.02 \
-  --command-timeout 0.10 \
-  --joint-target-tolerance 0.06 \
+  --command-timeout 0.12 \
+  --joint-target-tolerance 0.08 \
+  --progress-reward-scale 0.5 \
   --smoothness-penalty-scale 0.01 \
   --joint-limit-penalty-scale 0.05 \
   --success-bonus 1.0 \
   --reset-noise 0.05 \
   --reset-world-on-reset \
-  --csv /workspace/rl_ws/artifacts/gazebo_reaching/trace_seed_3002.csv \
+  --csv /workspace/rl_ws/artifacts/gazebo_reaching/trace_seed3035_action008_20000_45steps.csv \
   --device cpu
 ```
 
-当前 `carm_rl_gazebo` 不负责自动起停 Gazebo，`reset()` 也只是通过 trajectory 回到中位关节姿态。每步会根据 `/joint_states` 的关节目标误差提前结束等待；后续需要继续补 Gazebo reset/pause/step service，再进入更长 PPO 训练。
+当前 `carm_rl_gazebo` 不负责自动起停 Gazebo，需要先启动 `carm_gazebo spawn_a3_control.launch.py`。使用 `--reset-world-on-reset` 时，环境会在每个 episode reset 前调用 `/reset_world`，随后通过 trajectory 回到带噪声的中位关节姿态。每步会根据 `/joint_states` 的关节目标误差提前结束等待。
 
 ## 仿真方向
 
