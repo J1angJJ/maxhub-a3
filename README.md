@@ -2,13 +2,15 @@
 
 本仓库用于维护 MAXHUB A3 六轴智能柔性机械臂的开发资料、实验记录、脚本、配置和后续 ROS / Python / C++ 代码。
 
-当前阶段已从早期设备接入进入 ROS Noetic 下的视觉辅助抓取调试：统一 SDK motion 节点、只读状态、URDF TF、USB 相机、手眼标定、红/绿方块分割和任务层抓取草案均已有记录。正式运动控制前，请先完成安全检查，并确认急停、电源、夹具、线缆和工作空间状态。
+当前阶段已完成两条阶段性工作：ROS Noetic 下的设备接入/视觉辅助抓取调试，以及 ROS2 Foxy 下的强化学习原型验证。Foxy/RL 方向已阶段性冻结，后续主 RL 研究建议迁移到官方 RL demo 更完备的平台。正式运动控制前，请先完成安全检查，并确认急停、电源、夹具、线缆和工作空间状态。
 
 ## 文档入口
 
 - [README_getting_started.md](README_getting_started.md)：开箱清单、安装记录、电源急停、网络配置、网页验收和开发前置准备。
 - [README_ubuntu.md](README_ubuntu.md)：Ubuntu 20.04 开发路径、conda 环境、快照和安全 bring-up 顺序。
 - [README_ros_noetic.md](README_ros_noetic.md)：ROS Noetic 工作区、`carm_a3_motion` 安全门控节点、视觉/手眼/抓取链路和后续调试路线。
+- [workspace/foxy/README.md](workspace/foxy/README.md)：ROS2 Foxy、Docker、Gazebo、Gymnasium/SB3 reaching 和相机迁移入口。
+- [workspace/foxy/PROJECT_SUMMARY_RL.md](workspace/foxy/PROJECT_SUMMARY_RL.md)：Foxy/RL 阶段冻结总结、代表性结果、边界和简历表述。
 - [docs/migration_status_2026-07-26.md](docs/migration_status_2026-07-26.md)：从 Windows/虚拟机迁移到当前 Linux 工作区的交接状态、风险和下一步。
 
 ## 厂家资料
@@ -62,6 +64,11 @@ SDK 的使用 Demo 优先从官方 GitHub 获取。本仓库主要保存本地�
 │   ├── migration_status_2026-07-26.md
 │   └── vendor/
 └── workspace/
+    ├── foxy/
+    │   ├── docker/
+    │   ├── rl_ws/
+    │   ├── EXPERIMENTS.md
+    │   └── PROJECT_SUMMARY_RL.md
     └── ubuntu/
         ├── config/
         ├── scripts/

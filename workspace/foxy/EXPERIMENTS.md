@@ -2,6 +2,70 @@
 
 本文档记录 Foxy/RL 方向的实验进度、模型路径、关键命令和下一步计划。原则是轻量记录，避免训练结果和代码版本脱节。
 
+## 2026-07-27 阶段冻结摘要
+
+本阶段目标是验证 MAXHUB A3 能否迁入 Linux Docker + ROS2 Foxy，并形成一个可运行的强化学习 reaching 实验闭环。当前目标已经达到，可以作为阶段性成果冻结。
+
+### 已完成
+
+- 项目镜像：`foxy-maxhub-a3:latest`
+- ROS2 工作区：`/workspace/rl_ws`
+- 机器人描述：`carm_a3_description`
+- Gazebo Classic 11 控制：`carm_gazebo`，使用 `joint_trajectory_controller` 控制 6 轴主臂
+- Toy Gymnasium reaching：`carm_rl_env`
+- Gazebo Gymnasium reaching：`carm_rl_gazebo`
+- 训练库：Stable-Baselines3 `2.3.2`
+- 算法：PPO，A2C 入口保留但非主线
+- 诊断工具：evaluation CSV、single-seed trace CSV、trace PNG 可视化
+- 相机迁移：ROS1 `carm_a3_vision` V4L2 节点已迁移到 Foxy，并保留 `rotate_180: true`
+
+### 主要结果
+
+Toy kinematics reaching：
+
+```text
+model=/workspace/rl_ws/artifacts/reaching/ppo_reaching_200000_more_steps.zip
+episodes=100
+success_threshold=0.0300
+success_rate=0.9900
+mean_distance=0.0254
+worst_distance=0.1622
+```
+
+Gazebo reaching 当前主线：
+
+```text
+model=/workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_action008_nearstop_hold3_5000.zip
+episodes=100
+success_hold_steps=3
+success_threshold=0.0300
+success_rate=0.7700
+mean_distance=0.0312
+mean_best_distance=0.0250
+worst_distance=0.1549
+```
+
+### 冻结判断
+
+该项目已经足够证明：
+
+- 能把 ROS1/虚拟机开发路径迁到本机 Docker + ROS2 Foxy。
+- 能把官方 SDK/参考 demo、URDF、Gazebo、ROS2 control 和 SB3/Gymnasium 接成可训练闭环。
+- 能针对失败 seed 做 trace、reward shaping、hard target replay 和稳定成功口径评估。
+
+但不建议继续把它作为长期主 RL 平台：
+
+- 官方 RL demo 和标准 benchmark 支持薄，需要持续自建环境、调接口和补诊断。
+- Gazebo 与实机控制链路之间仍缺安全执行层、延迟/限幅建模和 sim-to-real 校验。
+- 相机已迁移但尚未进入视觉观测训练；继续推进会迅速转向设备工程而不是算法实验。
+
+### 停止点
+
+- 不继续盲目增加 hard replay 或长训。
+- 不把当前 Gazebo 策略直接下发到实机。
+- 后续如恢复本项目，优先做“相机实测”和“实机安全执行层”，而不是继续调 PPO。
+- 下一阶段 RL 主线建议迁到官方 RL demo 更完备的平台，例如 Franka Panda + MuJoCo/Gymnasium/Isaac Lab。
+
 ## 2026-07-27 Reaching Toy Baseline
 
 ### 环境

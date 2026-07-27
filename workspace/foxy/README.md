@@ -1,6 +1,21 @@
 # MAXHUB A3 Foxy 工作区
 
-这个目录是 MAXHUB A3 的 ROS 2 Foxy 开发入口，当前聚焦强化学习方向。
+这个目录是 MAXHUB A3 的 ROS 2 Foxy 开发入口，阶段性聚焦强化学习方向。
+
+## 阶段冻结说明
+
+截至 2026-07-27，本工作区作为“低成本机械臂 ROS2/RL 迁移与验证项目”阶段性冻结。当前已经完成 Docker/Foxy 环境、ROS2 基础包、URDF/Gazebo 控制、Gymnasium/SB3 reaching baseline、Gazebo PPO 训练评估、轨迹可视化和 ROS2 相机节点迁移。
+
+考虑到 MAXHUB A3 官方 RL/仿真支持较薄，后续不建议继续把它作为长期主 RL 平台。更合理的定位是保留为工程迁移、ROS2/Gazebo/RL 接入和设备环境整理案例；下一阶段 RL 主线建议切换到官方 RL demo 更完备的平台。
+
+当前冻结结论：
+
+- Toy kinematics reaching：PPO 100 集评估 `success_rate=0.9900`，平均终点距离约 `0.0254 m`。
+- Gazebo reaching：当前主线模型为 `/workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_action008_nearstop_hold3_5000.zip`，100 集稳定成功口径评估 `success_rate=0.7700`，平均终点距离约 `0.0312 m`。
+- 相机：ROS1 V4L2 节点已迁移到 Foxy，保持 ROS1 的 `rotate_180: true` 倒置修正；已通过编译和 launch 参数检查，真实采集需进入带 camera overlay 的容器后验证。
+- 实机运动：Foxy/RL 侧未接入实机安全执行层，未进行真机 RL；不要直接把 Gazebo 策略下发到机械臂。
+
+项目总结见 [PROJECT_SUMMARY_RL.md](PROJECT_SUMMARY_RL.md)，实验流水见 [EXPERIMENTS.md](EXPERIMENTS.md)。
 
 ## 目录结构
 
