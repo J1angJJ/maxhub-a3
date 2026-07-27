@@ -81,7 +81,7 @@ ros2 launch carm_a3_description robot_state_publisher.launch.py
 
 ## 已知建模事项
 
-`robot_state_publisher` 可以解析当前 URDF，但会提示根 link `base_link` 带 inertia，而 KDL 不支持根 link inertia。这个问题不影响先在 RViz2 查看模型；后续接 Gazebo/MuJoCo/Isaac 前，建议补一个固定的 `world`/`base_footprint` dummy link，把惯性留在真实机身 link 上。
+当前 URDF 已增加无质量虚拟根 `world -> base_link`，用于避免 KDL 把带惯性的 `base_link` 当作根节点。关节信息和初步 RL 动作空间记录在 `carm_a3_description/docs/joints.md`。
 
 ## 迁移边界
 

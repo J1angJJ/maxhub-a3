@@ -5,6 +5,19 @@
 <robot
   name="carm_a3">
   <link
+    name="world" />
+  <joint
+    name="world_to_base_link"
+    type="fixed">
+    <origin
+      xyz="0 0 0"
+      rpy="0 0 0" />
+    <parent
+      link="world" />
+    <child
+      link="base_link" />
+  </joint>
+  <link
     name="base_link">
     <inertial>
       <origin

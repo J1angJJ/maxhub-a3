@@ -5,6 +5,7 @@ find_package(ament_cmake REQUIRED)
 
 install(DIRECTORY
   bind
+  docs
   launch
   meshes
   rviz
