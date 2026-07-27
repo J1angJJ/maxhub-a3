@@ -338,6 +338,27 @@ ros2 run carm_rl_gazebo train_gazebo_reaching \
   --device cpu
 ```
 
+当前最佳 Gazebo reaching 评估基线：
+
+```bash
+ros2 run carm_rl_gazebo evaluate_gazebo_reaching \
+  --model /workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_low_z_hard3035_progress_4096.zip \
+  --episodes 100 \
+  --action-scale 0.08 \
+  --command-duration 0.10 \
+  --command-settle-time 0.02 \
+  --command-timeout 0.12 \
+  --joint-target-tolerance 0.08 \
+  --progress-reward-scale 0.5 \
+  --smoothness-penalty-scale 0.01 \
+  --joint-limit-penalty-scale 0.05 \
+  --success-bonus 1.0 \
+  --reset-noise 0.05 \
+  --reset-world-on-reset \
+  --csv /workspace/rl_ws/artifacts/gazebo_reaching/eval100_best_low_z_hard3035_action008_full_space.csv \
+  --device cpu
+```
+
 追踪单个 Gazebo 失败 seed：
 
 ```bash
