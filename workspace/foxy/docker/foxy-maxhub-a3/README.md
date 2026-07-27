@@ -231,11 +231,25 @@ docker compose run --rm foxy-maxhub-a3 \
   bash -lc 'cd /workspace/rl_ws && source install/setup.bash && ros2 run carm_rl_env train_reaching --algo ppo --load-model /workspace/rl_ws/artifacts/reaching/ppo_reaching_200000_more_steps.zip --timesteps 100000 --num-envs 4 --n-steps 256 --batch-size 128 --device cpu --eval-episodes 50 --success-threshold 0.02 --distance-reward-scale 2.0 --action-penalty-scale 0.02 --smoothness-penalty-scale 0.01 --joint-limit-penalty-scale 0.05 --success-bonus 1.0'
 ```
 
+固定失败目标微调：
+
+```bash
+docker compose run --rm foxy-maxhub-a3 \
+  bash -lc 'cd /workspace/rl_ws && source install/setup.bash && ros2 run carm_rl_env train_reaching --algo ppo --load-model /workspace/rl_ws/artifacts/reaching/ppo_reaching_100000_more_steps.zip --target-position 0.1593,0.2044,0.4493 --timesteps 20000 --num-envs 4 --n-steps 128 --batch-size 64 --device cpu --success-threshold 0.02 --distance-reward-scale 2.0 --action-penalty-scale 0.02 --smoothness-penalty-scale 0.01 --joint-limit-penalty-scale 0.05 --success-bonus 1.0'
+```
+
 评估已训练模型：
 
 ```bash
 docker compose run --rm foxy-maxhub-a3 \
   bash -lc 'cd /workspace/rl_ws && source install/setup.bash && ros2 run carm_rl_env evaluate_reaching --model /workspace/rl_ws/artifacts/reaching/ppo_reaching_200000_more_steps.zip --episodes 100 --csv /workspace/rl_ws/artifacts/reaching/eval_200000_more.csv'
+```
+
+追踪单个失败 seed：
+
+```bash
+docker compose run --rm foxy-maxhub-a3 \
+  bash -lc 'cd /workspace/rl_ws && source install/setup.bash && ros2 run carm_rl_env trace_reaching --model /workspace/rl_ws/artifacts/reaching/ppo_reaching_100000_more_steps.zip --seed 2080 --success-threshold 0.02 --csv /workspace/rl_ws/artifacts/reaching/trace_seed_2080.csv'
 ```
 
 使用 GPU overlay 后可以指定 CUDA：

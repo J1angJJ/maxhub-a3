@@ -25,6 +25,7 @@ class CArmA3ReachingEnv(gym.Env):
         smoothness_penalty_scale=0.0,
         joint_limit_penalty_scale=0.0,
         success_bonus=0.0,
+        target_position=None,
     ):
         super().__init__()
         self.max_steps = int(max_steps)
@@ -35,6 +36,9 @@ class CArmA3ReachingEnv(gym.Env):
         self.smoothness_penalty_scale = float(smoothness_penalty_scale)
         self.joint_limit_penalty_scale = float(joint_limit_penalty_scale)
         self.success_bonus = float(success_bonus)
+        self.fixed_target_position = None
+        if target_position is not None:
+            self.fixed_target_position = np.asarray(target_position, dtype=np.float32)
 
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(6,), dtype=np.float32)
         tcp_low = np.array([-1.0, -1.0, -0.5], dtype=np.float32)
@@ -59,6 +63,8 @@ class CArmA3ReachingEnv(gym.Env):
         return float(np.mean(limit_violation))
 
     def _sample_target(self):
+        if self.fixed_target_position is not None:
+            return self.fixed_target_position.copy()
         return self._rng.uniform(
             low=np.array([0.15, -0.25, 0.10], dtype=np.float32),
             high=np.array([0.55, 0.25, 0.55], dtype=np.float32),

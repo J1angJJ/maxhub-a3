@@ -4,6 +4,7 @@ from pathlib import Path
 
 from stable_baselines3 import A2C, PPO
 
+from carm_rl_env.cli_utils import parse_target_position
 from carm_rl_env.reaching_env import CArmA3ReachingEnv
 
 
@@ -13,9 +14,10 @@ ALGORITHMS = {
 }
 
 
-def _run_episode(model, seed, max_steps, success_threshold):
+def _run_episode(model, seed, max_steps, success_threshold, target_position):
     env = CArmA3ReachingEnv(max_steps=max_steps)
-    obs, info = env.reset(seed=seed)
+    reset_options = {"target_position": target_position} if target_position is not None else None
+    obs, info = env.reset(seed=seed, options=reset_options)
     total_reward = 0.0
     terminated = False
     truncated = False
@@ -57,14 +59,20 @@ def main():
     parser.add_argument("--seed", type=int, default=2000)
     parser.add_argument("--max-steps", type=int, default=100)
     parser.add_argument("--success-threshold", type=float, default=0.03)
+    parser.add_argument("--target-seed", type=int, default=None, help="Evaluate one target seed repeatedly.")
+    parser.add_argument("--target-position", type=parse_target_position, default=None, help="Fixed target as x,y,z.")
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--csv", default=None, help="Optional CSV path for per-episode metrics.")
     args = parser.parse_args()
 
     model = ALGORITHMS[args.algo].load(args.model, device=args.device)
+    if args.target_seed is not None:
+        seeds = [args.target_seed for _ in range(args.episodes)]
+    else:
+        seeds = [args.seed + idx for idx in range(args.episodes)]
     rows = [
-        _run_episode(model, args.seed + idx, args.max_steps, args.success_threshold)
-        for idx in range(args.episodes)
+        _run_episode(model, seed, args.max_steps, args.success_threshold, args.target_position)
+        for seed in seeds
     ]
 
     distances = [row["distance"] for row in rows]

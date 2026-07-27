@@ -5,6 +5,7 @@ from stable_baselines3 import A2C, PPO
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.env_util import make_vec_env
 
+from carm_rl_env.cli_utils import parse_target_position
 from carm_rl_env.reaching_env import CArmA3ReachingEnv
 
 
@@ -23,6 +24,7 @@ def _env_kwargs(args):
         "smoothness_penalty_scale": args.smoothness_penalty_scale,
         "joint_limit_penalty_scale": args.joint_limit_penalty_scale,
         "success_bonus": args.success_bonus,
+        "target_position": args.target_position,
     }
 
 
@@ -55,6 +57,7 @@ def main():
     parser.add_argument("--smoothness-penalty-scale", type=float, default=0.0)
     parser.add_argument("--joint-limit-penalty-scale", type=float, default=0.0)
     parser.add_argument("--success-bonus", type=float, default=0.0)
+    parser.add_argument("--target-position", type=parse_target_position, default=None, help="Fixed target as x,y,z.")
     parser.add_argument("--num-envs", type=int, default=1, help="Number of parallel vectorized env instances.")
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--device", default="auto", help="auto, cpu, cuda, or cuda:0")
@@ -106,6 +109,7 @@ def main():
     print(f"smoothness_penalty_scale={args.smoothness_penalty_scale}")
     print(f"joint_limit_penalty_scale={args.joint_limit_penalty_scale}")
     print(f"success_bonus={args.success_bonus}")
+    print(f"target_position={args.target_position}")
 
     if args.load_model:
         model = algo_cls.load(
