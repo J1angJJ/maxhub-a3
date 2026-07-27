@@ -54,6 +54,13 @@ obs, info = env.reset()
 obs, reward, terminated, truncated, info = env.step(action)
 ```
 
+训练脚本使用 Stable-Baselines3，当前提供 PPO/A2C：
+
+```bash
+ros2 run carm_rl_env train_reaching --algo ppo --timesteps 10000 --n-steps 256 --batch-size 64
+ros2 run carm_rl_env train_reaching --algo a2c --timesteps 10000
+```
+
 后续再逐步加入：
 
 - 动作平滑惩罚：避免抖动。

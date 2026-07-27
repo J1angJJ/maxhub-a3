@@ -10,7 +10,12 @@ setup(
         ("share/ament_index/resource_index/packages", [f"resource/{package_name}"]),
         (f"share/{package_name}", ["package.xml"]),
     ],
-    install_requires=["setuptools", "gymnasium==0.29.1", "numpy>=1.23,<2"],
+    install_requires=[
+        "setuptools",
+        "gymnasium==0.29.1",
+        "numpy>=1.23,<2",
+        "stable-baselines3==2.3.2",
+    ],
     zip_safe=True,
     maintainer="j1angjj",
     maintainer_email="j1angjj@todo.invalid",
@@ -19,6 +24,7 @@ setup(
     entry_points={
         "console_scripts": [
             "random_rollout = carm_rl_env.random_rollout:main",
+            "train_reaching = carm_rl_env.train_reaching:main",
         ],
     },
 )

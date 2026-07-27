@@ -79,6 +79,7 @@ install/
 .rosinstall.bak
 CATKIN_IGNORE
 COLCON_IGNORE
+artifacts/
 ament_cmake_index/
 ament_index/
 local_setup.*

@@ -67,6 +67,26 @@ source install/setup.bash
 ros2 run carm_rl_env random_rollout
 ```
 
+快速启动一次 PPO 训练：
+
+```bash
+ros2 run carm_rl_env train_reaching --algo ppo --timesteps 10000 --n-steps 256 --batch-size 64 --device auto
+```
+
+使用 A2C：
+
+```bash
+ros2 run carm_rl_env train_reaching --algo a2c --timesteps 10000 --device auto
+```
+
+如果使用 `compose.gpu.yaml` 进入容器，可以显式指定 CUDA：
+
+```bash
+ros2 run carm_rl_env train_reaching --algo ppo --timesteps 10000 --n-steps 256 --batch-size 64 --device cuda
+```
+
+训练产物默认保存到 `/workspace/rl_ws/artifacts/reaching`，该目录不入库。当前轻量 MLP 环境在 CPU 上通常更快；GPU 路径主要用于后续图像观测、更大网络或 Gazebo/Isaac 并行仿真。
+
 第一版 reaching 任务只做轻量基线，不接动力学仿真：
 
 ```text

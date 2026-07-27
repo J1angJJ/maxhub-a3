@@ -1,3 +1,4 @@
 gymnasium==0.29.1
 numpy>=1.23,<2
 packaging>=24,<25
+stable-baselines3==2.3.2
