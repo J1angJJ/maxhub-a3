@@ -107,3 +107,109 @@ mean_reward=-3.3578
 2. 加难度评估：尝试 `--success-threshold 0.02` 的 2cm 标准。
 3. 改进 reward：加入动作平滑惩罚、关节限位惩罚。
 4. 接 Gazebo Classic：把当前 toy baseline 作为对照组，逐步迁移到仿真动力学环境。
+
+## 2026-07-27 Gazebo Classic Reaching
+
+### 环境
+
+- ROS 2：Foxy
+- 容器镜像：`foxy-maxhub-a3:latest`
+- Gazebo：Gazebo Classic 11
+- Gazebo 启动入口：`ros2 launch carm_gazebo spawn_a3_control.launch.py`
+- 环境包：`carm_rl_gazebo`
+- 环境类：`carm_rl_gazebo.CArmA3GazeboReachingEnv`
+- 训练库：Stable-Baselines3 `2.3.2`
+- 算法：PPO
+- 并行环境：单 Gazebo world，暂不并行
+- 常用控制参数：`action_scale=0.08`、`command_duration=0.10`、`command_timeout=0.12`
+- 常用 reset：`--reset-world-on-reset`、`reset_noise=0.05`
+
+### 主要模型与评估
+
+当前 Gazebo 最佳基线之一：
+
+```text
+model=/workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_low_z_hard3035_progress_4096.zip
+episodes=100
+success_rate=0.6500
+mean_distance=0.0376
+worst_distance=0.1469
+```
+
+基于 seed 3035 低位困难目标 20k 续训：
+
+```text
+model=/workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_action008_hard3035_progress_20000.zip
+episodes=100
+success_rate=0.6600
+mean_distance=0.0372
+worst_distance=0.1488
+worst_failure=seed=3035 target=(0.1542,0.2146,0.1086) tcp=(0.1236,0.1035,0.2027)
+```
+
+距离回退惩罚续训：
+
+```text
+model=/workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_action008_regress3_hard3035_10000.zip
+episodes=100
+success_rate=0.6500
+mean_distance=0.0455
+mean_best_distance=0.0339
+worst_distance=0.1706
+```
+
+结论：单纯惩罚距离回退没有带来泛化收益，反而拉高了平均终点距离；但 `mean_best_distance` 显示大量 episode 曾经靠近过目标，保持/刹车是主要问题。
+
+近目标动作惩罚续训：
+
+```text
+model=/workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_action008_nearstop_hard3035_10000.zip
+episodes=100
+success_rate=0.6900
+mean_distance=0.0392
+mean_best_distance=0.0321
+worst_distance=0.1462
+worst_failure=seed=3036 target=(0.5025,0.0751,0.5261) tcp=(0.4499,0.1142,0.3954)
+```
+
+结论：近目标动作惩罚是当前有效方向，成功率提升到 69%，失败数从 34 降到 31。剩余失败目标已经分散到低 z、高 z、正 y、负 y，不宜继续只围绕 seed 3035 加权。
+
+### 诊断记录
+
+seed 3035 低位目标：
+
+```text
+target=(0.1542,0.2146,0.1086)
+```
+
+30 步 trace 曾到 `final_distance=0.1015`，且尾段仍在接近。45 步 trace 反而退到 `final_distance=0.1811`，说明不是单纯 episode 长度不够，而是靠近后策略继续动作导致偏离。
+
+不同 action scale 的 45/60 步诊断：
+
+```text
+action_scale=0.08, max_steps=45, final_distance=0.1811
+action_scale=0.06, max_steps=45, final_distance=0.0808
+action_scale=0.04, max_steps=45, final_distance=0.1599
+action_scale=0.06, max_steps=60, final_distance=0.1112
+```
+
+结论：`0.06` 更稳但仍未达 3cm；继续延长到 60 步会回退。后续优先改 reward/采样，而不是只加步数。
+
+### 当前进行中
+
+正在从近目标动作惩罚模型出发，对当前最坏失败 seed 3036 的高 z 目标做 5k steps 短续训：
+
+```text
+load_model=/workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_action008_nearstop_hard3035_10000.zip
+run_name=action008_nearstop_hard3036_5000
+hard_target_position=0.5025,0.0751,0.5261
+hard_target_ratio=0.35
+hard_target_noise=0.04
+timesteps=5000
+```
+
+### 下一步
+
+1. 记录 `action008_nearstop_hard3036_5000` 的 100 集评估。
+2. 如果成功率达到 70% 以上，新增多困难目标 replay 参数，避免手动只绑定一个 hard target。
+3. 如果成功率没有提升，优先考虑 success 后保持步数、近目标低速动作裁剪或基于 best distance 的终止/奖励设计。

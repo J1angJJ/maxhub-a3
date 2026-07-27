@@ -475,6 +475,66 @@ ros2 run carm_rl_gazebo evaluate_gazebo_reaching \
   --device cpu
 ```
 
+当前最佳候选是 `ppo_gazebo_reaching_action008_nearstop_hard3035_10000.zip`。100 集评估结果为 `success_rate=0.6900`、`mean_distance=0.0392`、`mean_best_distance=0.0321`、`worst_distance=0.1462`。剩余最差失败为 seed `3036`，目标 `0.5025,0.0751,0.5261`。
+
+针对 seed 3036 高 z 目标的 5k steps 短续训：
+
+```bash
+ros2 run carm_rl_gazebo train_gazebo_reaching \
+  --load-model /workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_action008_nearstop_hard3035_10000.zip \
+  --run-name action008_nearstop_hard3036_5000 \
+  --timesteps 5000 \
+  --max-steps 45 \
+  --n-steps 64 \
+  --batch-size 64 \
+  --learning-rate 0.00008 \
+  --clip-range 0.05 \
+  --hard-target-position 0.5025,0.0751,0.5261 \
+  --hard-target-ratio 0.35 \
+  --hard-target-noise 0.04 \
+  --action-scale 0.08 \
+  --command-duration 0.10 \
+  --command-settle-time 0.02 \
+  --command-timeout 0.12 \
+  --joint-target-tolerance 0.08 \
+  --progress-reward-scale 0.5 \
+  --distance-regression-penalty-scale 3.0 \
+  --near-target-action-penalty-scale 0.08 \
+  --near-target-action-penalty-radius 0.08 \
+  --smoothness-penalty-scale 0.01 \
+  --joint-limit-penalty-scale 0.05 \
+  --success-bonus 1.0 \
+  --reset-noise 0.05 \
+  --reset-world-on-reset \
+  --eval-episodes 0 \
+  --device cpu
+```
+
+seed 3036 续训后的 100 集评估：
+
+```bash
+ros2 run carm_rl_gazebo evaluate_gazebo_reaching \
+  --model /workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_action008_nearstop_hard3036_5000.zip \
+  --episodes 100 \
+  --max-steps 45 \
+  --action-scale 0.08 \
+  --command-duration 0.10 \
+  --command-settle-time 0.02 \
+  --command-timeout 0.12 \
+  --joint-target-tolerance 0.08 \
+  --progress-reward-scale 0.5 \
+  --distance-regression-penalty-scale 3.0 \
+  --near-target-action-penalty-scale 0.08 \
+  --near-target-action-penalty-radius 0.08 \
+  --smoothness-penalty-scale 0.01 \
+  --joint-limit-penalty-scale 0.05 \
+  --success-bonus 1.0 \
+  --reset-noise 0.05 \
+  --reset-world-on-reset \
+  --csv /workspace/rl_ws/artifacts/gazebo_reaching/eval100_action008_nearstop_hard3036_5000.csv \
+  --device cpu
+```
+
 追踪单个 Gazebo 失败 seed：
 
 ```bash
