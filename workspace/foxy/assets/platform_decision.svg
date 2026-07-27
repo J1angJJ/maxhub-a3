@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="560" viewBox="0 0 1180 560" role="img" aria-labelledby="title desc">
+  <title id="title">MAXHUB A3 platform decision</title>
+  <desc id="desc">A decision diagram explaining why the project should be frozen and the main RL research should move to a better supported platform.</desc>
+  <defs>
+    <style>
+      .bg { fill: #fbfdff; }
+      .title { font: 700 26px Arial, "Noto Sans CJK SC", sans-serif; fill: #111827; }
+      .note { font: 16px Arial, "Noto Sans CJK SC", sans-serif; fill: #475569; }
+      .card { fill: #fff; stroke: #d0dae6; stroke-width: 2; rx: 10; }
+      .good { fill: #eefbf4; stroke: #16a34a; }
+      .warn { fill: #fff7ed; stroke: #f97316; }
+      .next { fill: #eef2ff; stroke: #6366f1; }
+      .label { font: 700 20px Arial, "Noto Sans CJK SC", sans-serif; fill: #111827; }
+      .item { font: 15px Arial, "Noto Sans CJK SC", sans-serif; fill: #334155; }
+      .score { font: 700 36px Arial, "Noto Sans CJK SC", sans-serif; fill: #111827; }
+      .arrow { fill: none; stroke: #64748b; stroke-width: 2.4; marker-end: url(#arrow); }
+    </style>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#64748b" />
+    </marker>
+  </defs>
+  <rect class="bg" width="1180" height="560" />
+  <text class="title" x="48" y="52">平台决策：A3 项目阶段冻结，主 RL 研究迁移</text>
+  <text class="note" x="48" y="82">判断标准不是“项目失败”，而是“工程验证已完成，继续深挖的边际收益下降”。</text>
+
+  <rect class="card good" x="60" y="130" width="310" height="290" />
+  <text class="label" x="90" y="170">已证明的能力</text>
+  <text class="score" x="90" y="224">77%</text>
+  <text class="item" x="170" y="218">Gazebo reaching</text>
+  <text class="item" x="170" y="242">稳定口径成功率</text>
+  <text class="item" x="90" y="288">Docker + ROS2 Foxy 环境</text>
+  <text class="item" x="90" y="318">URDF / Gazebo / ros2_control</text>
+  <text class="item" x="90" y="348">Gymnasium + SB3 PPO</text>
+  <text class="item" x="90" y="378">相机节点 ROS1 -> ROS2 迁移</text>
+
+  <rect class="card warn" x="435" y="130" width="310" height="290" />
+  <text class="label" x="465" y="170">继续投入的瓶颈</text>
+  <text class="item" x="465" y="218">官方 RL demo / benchmark 较薄</text>
+  <text class="item" x="465" y="254">Gazebo 与实机差距未建模</text>
+  <text class="item" x="465" y="290">缺少实机安全执行层</text>
+  <text class="item" x="465" y="326">视觉训练会转向设备工程</text>
+  <text class="item" x="465" y="362">长训收益不确定，时间成本高</text>
+
+  <rect class="card next" x="810" y="130" width="310" height="290" />
+  <text class="label" x="840" y="170">下一阶段主线</text>
+  <text class="item" x="840" y="218">Franka Panda</text>
+  <text class="item" x="840" y="254">MuJoCo / Gymnasium</text>
+  <text class="item" x="840" y="290">Isaac Lab 标准任务</text>
+  <text class="item" x="840" y="326">先做算法实验和展示材料</text>
+  <text class="item" x="840" y="362">A3 保留为工程迁移案例</text>
+
+  <path class="arrow" d="M370 275 H435" />
+  <path class="arrow" d="M745 275 H810" />
+  <text class="note" x="60" y="485">结论：A3 项目冻结是一次主动收束。保留成果，停止盲训，把后续精力切到资料、任务和 demo 更完备的平台。</text>
+</svg>

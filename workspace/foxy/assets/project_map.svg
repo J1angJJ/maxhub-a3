@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="680" viewBox="0 0 1180 680" role="img" aria-labelledby="title desc">
+  <title id="title">MAXHUB A3 repository closure map</title>
+  <desc id="desc">Repository map showing Noetic device integration, Foxy RL prototype, Docker environments, documentation, and ignored private/reference material.</desc>
+  <defs>
+    <style>
+      .bg { fill: #f8fafc; }
+      .title { font: 700 26px Arial, "Noto Sans CJK SC", sans-serif; fill: #111827; }
+      .subtitle { font: 16px Arial, "Noto Sans CJK SC", sans-serif; fill: #4b5563; }
+      .box { fill: #fff; stroke: #cbd5e1; stroke-width: 2; rx: 10; }
+      .noetic { fill: #eff6ff; stroke: #3b82f6; }
+      .foxy { fill: #ecfdf5; stroke: #10b981; }
+      .docs { fill: #fff7ed; stroke: #f97316; }
+      .private { fill: #f5f3ff; stroke: #8b5cf6; }
+      .label { font: 700 19px Arial, "Noto Sans CJK SC", sans-serif; fill: #111827; }
+      .item { font: 15px Arial, "Noto Sans CJK SC", sans-serif; fill: #334155; }
+      .muted { font: 14px Arial, "Noto Sans CJK SC", sans-serif; fill: #64748b; }
+      .arrow { fill: none; stroke: #64748b; stroke-width: 2.2; marker-end: url(#arrow); }
+      .line { stroke: #cbd5e1; stroke-width: 1.5; }
+    </style>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#64748b" />
+    </marker>
+  </defs>
+
+  <rect class="bg" width="1180" height="680" />
+  <text class="title" x="46" y="50">MAXHUB A3 工程收束地图</text>
+  <text class="subtitle" x="46" y="78">保留两条阶段成果：Noetic 实机/视觉工程线，Foxy 强化学习原型线；后续主 RL 研究建议迁出该硬件平台。</text>
+
+  <rect class="box docs" x="46" y="118" width="255" height="460" />
+  <text class="label" x="76" y="154">根文档 / 迁移记录</text>
+  <text class="item" x="76" y="192">README.md</text>
+  <text class="item" x="76" y="222">README_getting_started.md</text>
+  <text class="item" x="76" y="252">README_ubuntu.md</text>
+  <text class="item" x="76" y="282">README_ros_noetic.md</text>
+  <text class="item" x="76" y="312">docs/migration_status...</text>
+  <line class="line" x1="76" y1="340" x2="270" y2="340" />
+  <text class="muted" x="76" y="374">用途：入口、安全说明、</text>
+  <text class="muted" x="76" y="398">网络/IP、路径迁移、</text>
+  <text class="muted" x="76" y="422">厂商资料索引。</text>
+
+  <rect class="box noetic" x="356" y="118" width="350" height="460" />
+  <text class="label" x="386" y="154">workspace/ubuntu/carm_ws</text>
+  <text class="item" x="386" y="192">carm_a3_motion：安全门控 / SDK 会话</text>
+  <text class="item" x="386" y="222">carm_a3_driver：只读状态兼容</text>
+  <text class="item" x="386" y="252">carm_a3_description：URDF / TF</text>
+  <text class="item" x="386" y="282">carm_a3_vision：USB 相机 V4L2</text>
+  <text class="item" x="386" y="312">carm_a3_calibration：手眼标定</text>
+  <text class="item" x="386" y="342">carm_a3_perception：色块分割</text>
+  <text class="item" x="386" y="372">carm_a3_tasks：抓取任务草案</text>
+  <line class="line" x1="386" y1="400" x2="670" y2="400" />
+  <text class="muted" x="386" y="434">阶段价值：实机接入、状态读取、</text>
+  <text class="muted" x="386" y="458">视觉/手眼/抓取前期工程积累。</text>
+
+  <rect class="box foxy" x="760" y="118" width="350" height="460" />
+  <text class="label" x="790" y="154">workspace/foxy/rl_ws</text>
+  <text class="item" x="790" y="192">carm_api：官方 ROS2 demo 薄迁移</text>
+  <text class="item" x="790" y="222">carm_a3_description：Foxy 模型</text>
+  <text class="item" x="790" y="252">carm_gazebo：Gazebo + ros2_control</text>
+  <text class="item" x="790" y="282">carm_rl_env：toy Gymnasium baseline</text>
+  <text class="item" x="790" y="312">carm_rl_gazebo：PPO/Gazebo reaching</text>
+  <text class="item" x="790" y="342">carm_a3_vision：ROS2 相机节点</text>
+  <text class="item" x="790" y="372">assets：图形化总结与 trace 图</text>
+  <line class="line" x1="790" y1="400" x2="1074" y2="400" />
+  <text class="muted" x="790" y="434">阶段价值：Docker/Foxy/RL/Gazebo</text>
+  <text class="muted" x="790" y="458">完整原型，当前冻结。</text>
+
+  <rect class="box private" x="356" y="612" width="754" height="42" />
+  <text class="muted" x="386" y="638">private/ 与 reference/ 已 ignore；模型、CSV、bag、视频等运行产物默认不入库。</text>
+
+  <path class="arrow" d="M301 350 H356" />
+  <path class="arrow" d="M706 350 H760" />
+</svg>

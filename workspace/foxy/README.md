@@ -21,6 +21,8 @@
 
 ![MAXHUB A3 ROS2/RL pipeline](assets/rl_pipeline.svg)
 
+![Gazebo reaching rollout seed 3035](assets/gazebo_reaching_rollout_seed3035.gif)
+
 ## 目录结构
 
 ```text

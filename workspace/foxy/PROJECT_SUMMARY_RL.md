@@ -38,9 +38,21 @@ Vision: V4L2, sensor_msgs/Image, camera_info_manager
 
 ![MAXHUB A3 ROS2/RL pipeline](assets/rl_pipeline.svg)
 
+工程收束地图：
+
+![MAXHUB A3 project map](assets/project_map.svg)
+
 单个 Gazebo reaching episode 的轨迹诊断示例：
 
 ![Gazebo reaching trace seed 3035](assets/gazebo_trace_seed3035_action008_20000.png)
+
+同一条 trace 的简化动图：
+
+![Gazebo reaching rollout seed 3035](assets/gazebo_reaching_rollout_seed3035.gif)
+
+平台去留判断：
+
+![MAXHUB A3 platform decision](assets/platform_decision.svg)
 
 这张 trace 图来自历史失败样本 `trace_seed3035_action008_20000.csv`，展示了 TCP 轨迹、目标点、距离曲线和控制误差。它更适合说明当前项目已经具备训练后诊断能力，但该样本不是当前最佳 hold3 主线模型的最终效果图。
 
