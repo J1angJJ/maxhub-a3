@@ -92,6 +92,11 @@ def main():
     parser.add_argument("--learning-rate", type=float, default=3e-4)
     parser.add_argument("--n-steps", type=int, default=64, help="PPO rollout steps, or A2C update steps.")
     parser.add_argument("--batch-size", type=int, default=64, help="PPO minibatch size.")
+    parser.add_argument("--clip-range", type=float, default=0.2, help="PPO clipping range.")
+    parser.add_argument("--ent-coef", type=float, default=0.0, help="Entropy coefficient.")
+    parser.add_argument("--vf-coef", type=float, default=0.5, help="Value loss coefficient.")
+    parser.add_argument("--gae-lambda", type=float, default=0.95, help="PPO GAE lambda.")
+    parser.add_argument("--run-name", default=None, help="Optional model filename suffix to avoid overwriting runs.")
     parser.add_argument("--check-env", action="store_true")
     args = parser.parse_args()
 
@@ -111,9 +116,13 @@ def main():
     model_kwargs = {
         "learning_rate": args.learning_rate,
         "n_steps": args.n_steps,
+        "ent_coef": args.ent_coef,
+        "vf_coef": args.vf_coef,
     }
     if args.algo == "ppo":
         model_kwargs["batch_size"] = args.batch_size
+        model_kwargs["clip_range"] = args.clip_range
+        model_kwargs["gae_lambda"] = args.gae_lambda
 
     print(f"algo={args.algo}")
     print("num_envs=1")
@@ -133,6 +142,12 @@ def main():
     print(f"joint_limit_penalty_scale={args.joint_limit_penalty_scale}")
     print(f"success_bonus={args.success_bonus}")
     print(f"target_position={args.target_position}")
+    print(f"learning_rate={args.learning_rate}")
+    print(f"batch_size={args.batch_size}")
+    print(f"clip_range={args.clip_range}")
+    print(f"ent_coef={args.ent_coef}")
+    print(f"vf_coef={args.vf_coef}")
+    print(f"gae_lambda={args.gae_lambda}")
 
     if args.load_model:
         model = algo_cls.load(
@@ -141,8 +156,10 @@ def main():
             device=args.device,
             seed=args.seed,
             verbose=1,
+            custom_objects=model_kwargs,
         )
         print(f"loaded_model={args.load_model}")
+        print("loaded_model_custom_objects=enabled")
     else:
         model = algo_cls(
             "MlpPolicy",
@@ -161,7 +178,10 @@ def main():
     finally:
         env.close()
 
-    model_suffix = f"{args.timesteps}_more_steps" if args.load_model else f"{args.timesteps}_steps"
+    if args.run_name:
+        model_suffix = args.run_name
+    else:
+        model_suffix = f"{args.timesteps}_more_steps" if args.load_model else f"{args.timesteps}_steps"
     model_path = save_dir / f"{args.algo}_gazebo_reaching_{model_suffix}"
     model.save(model_path)
     print(f"saved_model={model_path}.zip")

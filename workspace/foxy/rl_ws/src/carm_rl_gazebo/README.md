@@ -49,9 +49,14 @@ ros2 run carm_rl_gazebo train_gazebo_reaching \
 ```bash
 ros2 run carm_rl_gazebo train_gazebo_reaching \
   --load-model /workspace/rl_ws/artifacts/reaching/ppo_reaching_200000_more_steps.zip \
+  --run-name toy200k_lr1e4_clip005_reward_4096 \
   --timesteps 4096 \
   --n-steps 64 \
   --batch-size 64 \
+  --learning-rate 0.0001 \
+  --clip-range 0.05 \
+  --ent-coef 0.0 \
+  --vf-coef 0.5 \
   --action-scale 0.05 \
   --command-duration 0.08 \
   --command-settle-time 0.02 \
@@ -68,9 +73,17 @@ ros2 run carm_rl_gazebo train_gazebo_reaching \
 
 ```bash
 ros2 run carm_rl_gazebo evaluate_gazebo_reaching \
-  --model /workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_1024_steps.zip \
+  --model /workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_toy200k_lr1e4_clip005_reward_4096.zip \
   --episodes 10 \
-  --csv /workspace/rl_ws/artifacts/gazebo_reaching/eval_1024.csv \
+  --action-scale 0.05 \
+  --command-duration 0.08 \
+  --command-settle-time 0.02 \
+  --command-timeout 0.10 \
+  --joint-target-tolerance 0.06 \
+  --smoothness-penalty-scale 0.01 \
+  --joint-limit-penalty-scale 0.05 \
+  --success-bonus 1.0 \
+  --csv /workspace/rl_ws/artifacts/gazebo_reaching/eval_toy200k_lr1e4_clip005_reward_4096.csv \
   --device cpu
 ```
 
