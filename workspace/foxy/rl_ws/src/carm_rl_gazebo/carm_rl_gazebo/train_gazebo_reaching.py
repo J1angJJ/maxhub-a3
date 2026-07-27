@@ -21,6 +21,8 @@ def _env_kwargs(args):
         "action_scale": args.action_scale,
         "command_duration": args.command_duration,
         "command_settle_time": args.command_settle_time,
+        "command_timeout": args.command_timeout,
+        "joint_target_tolerance": args.joint_target_tolerance,
         "success_threshold": args.success_threshold,
         "distance_reward_scale": args.distance_reward_scale,
         "action_penalty_scale": args.action_penalty_scale,
@@ -28,10 +30,9 @@ def _env_kwargs(args):
     }
 
 
-def _make_env(env_kwargs, seed):
+def _make_env(env_kwargs):
     def _init():
         env = CArmA3GazeboReachingEnv(**env_kwargs)
-        env.reset(seed=seed)
         return env
 
     return _init
@@ -64,8 +65,10 @@ def main():
     parser.add_argument("--timesteps", type=int, default=256)
     parser.add_argument("--max-steps", type=int, default=30)
     parser.add_argument("--action-scale", type=float, default=0.03)
-    parser.add_argument("--command-duration", type=float, default=0.15)
-    parser.add_argument("--command-settle-time", type=float, default=0.05)
+    parser.add_argument("--command-duration", type=float, default=0.05)
+    parser.add_argument("--command-settle-time", type=float, default=0.01)
+    parser.add_argument("--command-timeout", type=float, default=0.05)
+    parser.add_argument("--joint-target-tolerance", type=float, default=0.08)
     parser.add_argument("--success-threshold", type=float, default=0.03)
     parser.add_argument("--distance-reward-scale", type=float, default=1.0)
     parser.add_argument("--action-penalty-scale", type=float, default=0.01)
@@ -97,7 +100,7 @@ def main():
     finally:
         raw_env.close()
 
-    env = DummyVecEnv([_make_env(env_kwargs, args.seed)])
+    env = DummyVecEnv([_make_env(env_kwargs)])
     algo_cls = ALGORITHMS[args.algo]
     model_kwargs = {
         "learning_rate": args.learning_rate,
@@ -116,6 +119,8 @@ def main():
     print(f"action_scale={args.action_scale}")
     print(f"command_duration={args.command_duration}")
     print(f"command_settle_time={args.command_settle_time}")
+    print(f"command_timeout={args.command_timeout}")
+    print(f"joint_target_tolerance={args.joint_target_tolerance}")
     print(f"distance_reward_scale={args.distance_reward_scale}")
     print(f"action_penalty_scale={args.action_penalty_scale}")
     print(f"target_position={args.target_position}")
@@ -152,9 +157,10 @@ def main():
     model.save(model_path)
     print(f"saved_model={model_path}.zip")
 
-    distances, rewards = _evaluate(model, args.eval_episodes, env_kwargs)
-    mean_distance = sum(distances) / len(distances)
-    mean_reward = sum(rewards) / len(rewards)
     print(f"eval_episodes={args.eval_episodes}")
-    print(f"eval_mean_distance={mean_distance:.4f}")
-    print(f"eval_mean_reward={mean_reward:.4f}")
+    if args.eval_episodes > 0:
+        distances, rewards = _evaluate(model, args.eval_episodes, env_kwargs)
+        mean_distance = sum(distances) / len(distances)
+        mean_reward = sum(rewards) / len(rewards)
+        print(f"eval_mean_distance={mean_distance:.4f}")
+        print(f"eval_mean_reward={mean_reward:.4f}")

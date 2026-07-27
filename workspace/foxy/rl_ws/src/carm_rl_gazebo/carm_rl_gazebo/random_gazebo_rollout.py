@@ -10,12 +10,16 @@ def main():
     parser.add_argument("--max-steps", type=int, default=50)
     parser.add_argument("--command-duration", type=float, default=0.2)
     parser.add_argument("--command-settle-time", type=float, default=0.05)
+    parser.add_argument("--command-timeout", type=float, default=None)
+    parser.add_argument("--joint-target-tolerance", type=float, default=0.02)
     args = parser.parse_args()
 
     env = CArmA3GazeboReachingEnv(
         max_steps=args.max_steps,
         command_duration=args.command_duration,
         command_settle_time=args.command_settle_time,
+        command_timeout=args.command_timeout,
+        joint_target_tolerance=args.joint_target_tolerance,
     )
     try:
         obs, info = env.reset(seed=args.seed)
@@ -26,7 +30,10 @@ def main():
             total_reward += reward
             print(
                 f"step={step + 1:02d} reward={reward:.4f} "
-                f"distance={info['distance']:.4f} terminated={terminated} truncated={truncated}"
+                f"distance={info['distance']:.4f} "
+                f"joint_error={info['joint_target_error']:.4f} "
+                f"reached={info['joint_target_reached']} "
+                f"terminated={terminated} truncated={truncated}"
             )
             if terminated or truncated:
                 break

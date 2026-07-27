@@ -28,6 +28,8 @@ class CArmA3GazeboReachingEnv(gym.Env):
         action_scale=0.03,
         command_duration=0.2,
         command_settle_time=0.05,
+        command_timeout=None,
+        joint_target_tolerance=0.02,
         success_threshold=0.03,
         distance_reward_scale=1.0,
         action_penalty_scale=0.01,
@@ -44,6 +46,10 @@ class CArmA3GazeboReachingEnv(gym.Env):
         self.action_scale = float(action_scale)
         self.command_duration = float(command_duration)
         self.command_settle_time = float(command_settle_time)
+        if command_timeout is None:
+            command_timeout = self.command_duration + self.command_settle_time
+        self.command_timeout = float(command_timeout)
+        self.joint_target_tolerance = float(joint_target_tolerance)
         self.success_threshold = float(success_threshold)
         self.distance_reward_scale = float(distance_reward_scale)
         self.action_penalty_scale = float(action_penalty_scale)
@@ -93,6 +99,8 @@ class CArmA3GazeboReachingEnv(gym.Env):
         return False
 
     def _wait_for_joint_positions(self, timeout_sec=5.0):
+        if self._latest_joint_positions is not None and timeout_sec <= 0.0:
+            return self._latest_joint_positions.copy()
         ok = self._spin_until(lambda: self._latest_joint_positions is not None, timeout_sec)
         if not ok:
             raise TimeoutError("Timed out waiting for /joint_states. Start carm_gazebo spawn_a3_control.launch.py first.")
@@ -113,6 +121,20 @@ class CArmA3GazeboReachingEnv(gym.Env):
         deadline = time.monotonic() + duration_sec
         while time.monotonic() < deadline:
             rclpy.spin_once(self.node, timeout_sec=0.02)
+
+    def _wait_for_command(self, target_joints):
+        self._sleep_spin(self.command_settle_time)
+        target_joints = np.asarray(target_joints, dtype=np.float32)
+        deadline = time.monotonic() + max(0.0, self.command_timeout - self.command_settle_time)
+        latest = self._wait_for_joint_positions()
+        while time.monotonic() < deadline:
+            error = np.abs(latest - target_joints)
+            if float(np.max(error)) <= self.joint_target_tolerance:
+                return latest, float(np.max(error)), True
+            rclpy.spin_once(self.node, timeout_sec=0.02)
+            latest = self._wait_for_joint_positions(timeout_sec=0.0)
+        error = np.abs(latest - target_joints)
+        return latest, float(np.max(error)), False
 
     def _sample_target(self):
         if self.fixed_target_position is not None:
@@ -152,15 +174,17 @@ class CArmA3GazeboReachingEnv(gym.Env):
             target_joints = np.clip(neutral, JOINT_LOWER, JOINT_UPPER)
 
         self._publish_joint_target(target_joints)
-        self._sleep_spin(max(self.command_duration, 0.05) + self.command_settle_time)
-        current = self._wait_for_joint_positions()
+        current, joint_target_error, joint_target_reached = self._wait_for_command(target_joints)
 
         if "target_position" in options:
             self.target_position = np.asarray(options["target_position"], dtype=np.float32)
         else:
             self.target_position = self._sample_target()
 
-        return self._get_obs(current), self._get_info(current)
+        info = self._get_info(current)
+        info["joint_target_error"] = joint_target_error
+        info["joint_target_reached"] = joint_target_reached
+        return self._get_obs(current), info
 
     def step(self, action):
         current = self._wait_for_joint_positions()
@@ -168,8 +192,7 @@ class CArmA3GazeboReachingEnv(gym.Env):
         action = np.clip(action, self.action_space.low, self.action_space.high)
         target_joints = np.clip(current + action * self.action_scale, JOINT_LOWER, JOINT_UPPER).astype(np.float32)
         self._publish_joint_target(target_joints)
-        self._sleep_spin(self.command_duration + self.command_settle_time)
-        current = self._wait_for_joint_positions()
+        current, joint_target_error, joint_target_reached = self._wait_for_command(target_joints)
         self._step_count += 1
 
         info = self._get_info(current)
@@ -180,6 +203,8 @@ class CArmA3GazeboReachingEnv(gym.Env):
         truncated = self._step_count >= self.max_steps
         info["action_penalty"] = action_penalty
         info["commanded_joint_positions"] = target_joints.copy()
+        info["joint_target_error"] = joint_target_error
+        info["joint_target_reached"] = joint_target_reached
         return self._get_obs(current), float(reward), terminated, truncated, info
 
     def close(self):
