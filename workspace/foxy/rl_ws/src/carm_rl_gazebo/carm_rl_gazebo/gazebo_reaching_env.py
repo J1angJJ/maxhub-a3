@@ -36,6 +36,8 @@ class CArmA3GazeboReachingEnv(gym.Env):
         progress_reward_scale=0.0,
         distance_regression_penalty_scale=0.0,
         action_penalty_scale=0.01,
+        near_target_action_penalty_scale=0.0,
+        near_target_action_penalty_radius=0.08,
         smoothness_penalty_scale=0.0,
         joint_limit_penalty_scale=0.0,
         success_bonus=0.0,
@@ -68,6 +70,8 @@ class CArmA3GazeboReachingEnv(gym.Env):
         self.progress_reward_scale = float(progress_reward_scale)
         self.distance_regression_penalty_scale = float(distance_regression_penalty_scale)
         self.action_penalty_scale = float(action_penalty_scale)
+        self.near_target_action_penalty_scale = float(near_target_action_penalty_scale)
+        self.near_target_action_penalty_radius = float(near_target_action_penalty_radius)
         self.smoothness_penalty_scale = float(smoothness_penalty_scale)
         self.joint_limit_penalty_scale = float(joint_limit_penalty_scale)
         self.success_bonus = float(success_bonus)
@@ -274,6 +278,9 @@ class CArmA3GazeboReachingEnv(gym.Env):
         progress_reward = self.progress_reward_scale * (previous_distance - distance)
         distance_regression_penalty = self.distance_regression_penalty_scale * max(0.0, distance - previous_distance)
         action_penalty = self.action_penalty_scale * float(np.linalg.norm(action))
+        near_target_action_penalty = 0.0
+        if distance < self.near_target_action_penalty_radius:
+            near_target_action_penalty = self.near_target_action_penalty_scale * float(np.linalg.norm(action))
         smoothness_penalty = self.smoothness_penalty_scale * float(np.linalg.norm(action - self.previous_action))
         joint_limit_penalty = self.joint_limit_penalty_scale * self._joint_limit_penalty(current)
         self.best_distance = min(self.best_distance if self.best_distance is not None else distance, distance)
@@ -283,6 +290,7 @@ class CArmA3GazeboReachingEnv(gym.Env):
             + progress_reward
             - distance_regression_penalty
             - action_penalty
+            - near_target_action_penalty
             - smoothness_penalty
             - joint_limit_penalty
             + (self.success_bonus if terminated else 0.0)
@@ -291,6 +299,7 @@ class CArmA3GazeboReachingEnv(gym.Env):
         info["progress_reward"] = progress_reward
         info["distance_regression_penalty"] = distance_regression_penalty
         info["action_penalty"] = action_penalty
+        info["near_target_action_penalty"] = near_target_action_penalty
         info["smoothness_penalty"] = smoothness_penalty
         info["joint_limit_penalty"] = joint_limit_penalty
         info["best_distance"] = self.best_distance

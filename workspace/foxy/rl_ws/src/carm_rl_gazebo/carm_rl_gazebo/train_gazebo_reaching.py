@@ -28,6 +28,8 @@ def _env_kwargs(args):
         "progress_reward_scale": args.progress_reward_scale,
         "distance_regression_penalty_scale": args.distance_regression_penalty_scale,
         "action_penalty_scale": args.action_penalty_scale,
+        "near_target_action_penalty_scale": args.near_target_action_penalty_scale,
+        "near_target_action_penalty_radius": args.near_target_action_penalty_radius,
         "smoothness_penalty_scale": args.smoothness_penalty_scale,
         "joint_limit_penalty_scale": args.joint_limit_penalty_scale,
         "success_bonus": args.success_bonus,
@@ -91,6 +93,13 @@ def main():
         help="Penalty multiplier for steps that move farther from the target than the previous step.",
     )
     parser.add_argument("--action-penalty-scale", type=float, default=0.01)
+    parser.add_argument(
+        "--near-target-action-penalty-scale",
+        type=float,
+        default=0.0,
+        help="Extra action penalty when TCP is within the near-target radius.",
+    )
+    parser.add_argument("--near-target-action-penalty-radius", type=float, default=0.08)
     parser.add_argument("--smoothness-penalty-scale", type=float, default=0.0)
     parser.add_argument("--joint-limit-penalty-scale", type=float, default=0.0)
     parser.add_argument("--success-bonus", type=float, default=0.0)
@@ -163,6 +172,8 @@ def main():
     print(f"progress_reward_scale={args.progress_reward_scale}")
     print(f"distance_regression_penalty_scale={args.distance_regression_penalty_scale}")
     print(f"action_penalty_scale={args.action_penalty_scale}")
+    print(f"near_target_action_penalty_scale={args.near_target_action_penalty_scale}")
+    print(f"near_target_action_penalty_radius={args.near_target_action_penalty_radius}")
     print(f"smoothness_penalty_scale={args.smoothness_penalty_scale}")
     print(f"joint_limit_penalty_scale={args.joint_limit_penalty_scale}")
     print(f"success_bonus={args.success_bonus}")

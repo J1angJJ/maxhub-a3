@@ -417,12 +417,12 @@ colcon build --symlink-install --packages-select carm_rl_gazebo
 source install/setup.bash
 ```
 
-低位目标回退惩罚续训实验：
+低位目标近目标刹车续训实验：
 
 ```bash
 ros2 run carm_rl_gazebo train_gazebo_reaching \
   --load-model /workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_action008_hard3035_progress_20000.zip \
-  --run-name action008_regress3_hard3035_10000 \
+  --run-name action008_nearstop_hard3035_10000 \
   --timesteps 10000 \
   --max-steps 45 \
   --n-steps 64 \
@@ -439,6 +439,8 @@ ros2 run carm_rl_gazebo train_gazebo_reaching \
   --joint-target-tolerance 0.08 \
   --progress-reward-scale 0.5 \
   --distance-regression-penalty-scale 3.0 \
+  --near-target-action-penalty-scale 0.08 \
+  --near-target-action-penalty-radius 0.08 \
   --smoothness-penalty-scale 0.01 \
   --joint-limit-penalty-scale 0.05 \
   --success-bonus 1.0 \
@@ -448,11 +450,11 @@ ros2 run carm_rl_gazebo train_gazebo_reaching \
   --device cpu
 ```
 
-回退惩罚续训后的 100 集评估：
+近目标刹车续训后的 100 集评估：
 
 ```bash
 ros2 run carm_rl_gazebo evaluate_gazebo_reaching \
-  --model /workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_action008_regress3_hard3035_10000.zip \
+  --model /workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_action008_nearstop_hard3035_10000.zip \
   --episodes 100 \
   --max-steps 45 \
   --action-scale 0.08 \
@@ -462,12 +464,14 @@ ros2 run carm_rl_gazebo evaluate_gazebo_reaching \
   --joint-target-tolerance 0.08 \
   --progress-reward-scale 0.5 \
   --distance-regression-penalty-scale 3.0 \
+  --near-target-action-penalty-scale 0.08 \
+  --near-target-action-penalty-radius 0.08 \
   --smoothness-penalty-scale 0.01 \
   --joint-limit-penalty-scale 0.05 \
   --success-bonus 1.0 \
   --reset-noise 0.05 \
   --reset-world-on-reset \
-  --csv /workspace/rl_ws/artifacts/gazebo_reaching/eval100_action008_regress3_hard3035_10000.csv \
+  --csv /workspace/rl_ws/artifacts/gazebo_reaching/eval100_action008_nearstop_hard3035_10000.csv \
   --device cpu
 ```
 

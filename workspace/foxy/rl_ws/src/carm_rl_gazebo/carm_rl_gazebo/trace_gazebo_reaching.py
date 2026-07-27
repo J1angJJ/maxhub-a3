@@ -28,6 +28,7 @@ def _row(step, action, reward, terminated, truncated, info, obs):
         "truncated": bool(truncated),
         "progress_reward": info.get("progress_reward", 0.0),
         "distance_regression_penalty": info.get("distance_regression_penalty", 0.0),
+        "near_target_action_penalty": info.get("near_target_action_penalty", 0.0),
         "joint_target_error": info.get("joint_target_error", 0.0),
         "joint_target_reached": info.get("joint_target_reached", False),
         "gazebo_reset_called": info.get("gazebo_reset_called", False),
@@ -81,6 +82,13 @@ def main():
         help="Penalty multiplier for steps that move farther from the target than the previous step.",
     )
     parser.add_argument("--action-penalty-scale", type=float, default=0.01)
+    parser.add_argument(
+        "--near-target-action-penalty-scale",
+        type=float,
+        default=0.0,
+        help="Extra action penalty when TCP is within the near-target radius.",
+    )
+    parser.add_argument("--near-target-action-penalty-radius", type=float, default=0.08)
     parser.add_argument("--smoothness-penalty-scale", type=float, default=0.0)
     parser.add_argument("--joint-limit-penalty-scale", type=float, default=0.0)
     parser.add_argument("--success-bonus", type=float, default=0.0)
@@ -107,6 +115,8 @@ def main():
         "progress_reward_scale": args.progress_reward_scale,
         "distance_regression_penalty_scale": args.distance_regression_penalty_scale,
         "action_penalty_scale": args.action_penalty_scale,
+        "near_target_action_penalty_scale": args.near_target_action_penalty_scale,
+        "near_target_action_penalty_radius": args.near_target_action_penalty_radius,
         "smoothness_penalty_scale": args.smoothness_penalty_scale,
         "joint_limit_penalty_scale": args.joint_limit_penalty_scale,
         "success_bonus": args.success_bonus,
