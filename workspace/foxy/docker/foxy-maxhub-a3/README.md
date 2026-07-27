@@ -54,7 +54,7 @@ docker compose build
 ```
 
 `requirements.txt` 只放本项目运行所需的 Python 依赖，当前包含 Gymnasium、Stable-Baselines3 和 PyTorch。默认 PyTorch wheel 会包含 CUDA 运行库，镜像会明显变大，但后续可直接配合 GPU 容器运行。
-`apt/gazebo.packages` 记录 Gazebo Classic、`gazebo_ros_pkgs` 和 ROS 2 control 相关依赖。
+`apt/gazebo.packages` 记录 Gazebo Classic、`gazebo_ros_pkgs`、ROS 2 control 相关依赖和相机标定信息管理包。
 
 ## Local Env
 
@@ -108,6 +108,14 @@ docker compose run --rm foxy-maxhub-a3 bash
 
 ```bash
 docker compose -f compose.yaml -f compose.camera.yaml run --rm foxy-maxhub-a3 bash
+```
+
+容器内启动 ROS2 相机节点：
+
+```bash
+cd /workspace/rl_ws
+source install/setup.bash
+ros2 launch carm_a3_vision camera.launch.py
 ```
 
 启用 NVIDIA GPU/DRI 图形设备：

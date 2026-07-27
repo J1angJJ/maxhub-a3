@@ -5,3 +5,4 @@ ros-foxy-ros2-control
 ros-foxy-ros2-controllers
 ros-foxy-joint-state-broadcaster
 ros-foxy-joint-trajectory-controller
+ros-foxy-camera-info-manager

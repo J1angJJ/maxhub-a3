@@ -1,0 +1,19 @@
+carm_a3_usb_camera:
+  ros__parameters:
+    device: "/dev/v4l/by-id/usb-HD_Camera_Manufacturer_USB_2.0_Camera-video-index0"
+    width: 640
+    height: 480
+    fps: 30
+
+    frame_id: "carm_a3_camera_optical_frame"
+    camera_name: "carm_a3_camera"
+    image_topic: "/carm_a3/camera/image_raw"
+    camera_info_topic: "/carm_a3/camera/camera_info"
+    set_camera_info_service: "/carm_a3/camera/set_camera_info"
+    diagnostics_topic: "/carm_a3/camera/diagnostics"
+
+    # 当前机械安装姿态在 guvcview 中表现为倒置。
+    # rotate_180 等价于同时打开 flip_vertical 和 flip_horizontal。
+    flip_vertical: false
+    flip_horizontal: false
+    rotate_180: true

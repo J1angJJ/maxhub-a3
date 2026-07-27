@@ -12,6 +12,7 @@ workspace/foxy/
     └── src/
         ├── carm_api/
         ├── carm_a3_description/
+        ├── carm_a3_vision/
         ├── carm_gazebo/
         ├── carm_rl_gazebo/
         ├── carm_rl_env/
@@ -50,6 +51,40 @@ cd /workspace/rl_ws
 colcon build --symlink-install
 source install/setup.bash
 ```
+
+## USB 相机节点
+
+ROS1 `carm_a3_vision` 的 V4L2 相机节点已迁移到 Foxy，默认设备为：
+
+```text
+/dev/v4l/by-id/usb-HD_Camera_Manufacturer_USB_2.0_Camera-video-index0
+```
+
+启动相机需要用 camera overlay 进入容器：
+
+```bash
+cd /home/j1angjj/workspace/maxhub-a3/workspace/foxy/docker/foxy-maxhub-a3
+docker compose -f compose.yaml -f compose.camera.yaml run --rm foxy-maxhub-a3 bash
+```
+
+容器内编译并启动：
+
+```bash
+cd /workspace/rl_ws
+colcon build --symlink-install --packages-select carm_a3_vision
+source install/setup.bash
+ros2 launch carm_a3_vision camera.launch.py
+```
+
+检查图像和相机信息：
+
+```bash
+ros2 topic hz /carm_a3/camera/image_raw
+ros2 topic echo --once /carm_a3/camera/diagnostics
+ros2 topic echo --once /carm_a3/camera/camera_info
+```
+
+当前已完成编译和 launch 参数检查；相机实时采集需要容器启动时正确映射 `/dev/video*` 和 `/dev/v4l`。
 
 ## 最小 Gymnasium 环境
 
