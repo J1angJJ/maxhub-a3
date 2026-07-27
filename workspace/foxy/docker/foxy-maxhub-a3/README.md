@@ -13,6 +13,7 @@ ubuntu-env:foxy-source -> ubuntu-env:foxy-user -> foxy-maxhub-a3:latest
 ```text
 workspace/foxy/docker/foxy-maxhub-a3/
 ├── Dockerfile
+├── requirements.txt
 ├── compose.yaml
 ├── compose.camera.yaml
 ├── compose.gpu.yaml
@@ -49,6 +50,8 @@ cd /home/j1angjj/workspace/ubuntu-env/docker/foxy
 cd /home/j1angjj/workspace/maxhub-a3/workspace/foxy/docker/foxy-maxhub-a3
 docker compose build
 ```
+
+`requirements.txt` 只放本项目运行所需的薄 Python 依赖，当前包含 Gymnasium 最小 RL 环境依赖。
 
 ## Local Env
 
@@ -191,6 +194,13 @@ GPU_LIBGL_ALWAYS_SOFTWARE=1
 ```bash
 docker compose run --rm foxy-maxhub-a3 \
   bash -lc 'cd /workspace/rl_ws && colcon build --symlink-install'
+```
+
+运行最小 Gymnasium reaching 环境：
+
+```bash
+docker compose run --rm foxy-maxhub-a3 \
+  bash -lc 'cd /workspace/rl_ws && colcon build --symlink-install && source install/setup.bash && ros2 run carm_rl_env random_rollout'
 ```
 
 如果需要编译官方 `carm_ros2` 参考包，建议先复制到 `/workspace/src` 再改，保留 `/opt/maxhub-a3/reference/carm_demo` 只读。

@@ -83,6 +83,8 @@ ament_cmake_index/
 ament_index/
 local_setup.*
 setup.*
+!workspace/foxy/rl_ws/src/carm_rl_env/setup.py
+!workspace/foxy/rl_ws/src/carm_rl_env/setup.cfg
 
 # Node package and build artifacts
 node_modules/

@@ -47,6 +47,13 @@ observation = 当前关节位置/速度 + TCP 位姿 + 目标点
 reward = - TCP 到目标点的距离
 ```
 
+项目内最小环境实现位于 `carm_rl_env.CArmA3ReachingEnv`，采用 Gymnasium API：
+
+```python
+obs, info = env.reset()
+obs, reward, terminated, truncated, info = env.step(action)
+```
+
 后续再逐步加入：
 
 - 动作平滑惩罚：避免抖动。

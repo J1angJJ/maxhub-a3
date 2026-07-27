@@ -12,6 +12,7 @@ workspace/foxy/
     └── src/
         ├── carm_api/
         ├── carm_a3_description/
+        ├── carm_rl_env/
         └── carm_rl_bringup/
 ```
 
@@ -46,6 +47,34 @@ docker compose -f compose.yaml -f compose.camera.yaml -f compose.gpu.yaml run --
 cd /workspace/rl_ws
 colcon build --symlink-install
 source install/setup.bash
+```
+
+## 最小 Gymnasium 环境
+
+当前已提供 `carm_rl_env`，接口按 Gymnasium 编写：
+
+```python
+obs, info = env.reset()
+obs, reward, terminated, truncated, info = env.step(action)
+```
+
+运行随机动作 smoke test：
+
+```bash
+cd /workspace/rl_ws
+colcon build --symlink-install
+source install/setup.bash
+ros2 run carm_rl_env random_rollout
+```
+
+第一版 reaching 任务只做轻量基线，不接动力学仿真：
+
+```text
+action: 6 轴归一化关节增量
+observation: 关节位置 + TCP 位置 + 目标位置 + TCP 到目标的误差
+reward: -distance(tcp, target) - action_penalty
+terminated: TCP 距离目标小于阈值
+truncated: 达到最大步数
 ```
 
 ## 查看机器人模型
