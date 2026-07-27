@@ -172,6 +172,8 @@ ros2 launch carm_a3_description robot_state_publisher.launch.py
 2. MuJoCo：适合强化学习训练，需要从 URDF 整理 actuator、joint limit、collision 和 MJCF 资产。
 3. Isaac Sim / Isaac Lab：适合更重的视觉与并行仿真，但依赖 NVIDIA 图形栈和更大的镜像，建议单独建实验容器。
 
+Gazebo reaching 设计见 [GAZEBO_REACHING_PLAN.md](GAZEBO_REACHING_PLAN.md)。
+
 ## 已知建模事项
 
 当前 URDF 已增加无质量虚拟根 `world -> base_link`，用于避免 KDL 把带惯性的 `base_link` 当作根节点。关节信息和初步 RL 动作空间记录在 `carm_a3_description/docs/joints.md`。
