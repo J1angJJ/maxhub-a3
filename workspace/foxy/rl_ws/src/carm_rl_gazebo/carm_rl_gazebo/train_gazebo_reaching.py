@@ -26,6 +26,9 @@ def _env_kwargs(args):
         "success_threshold": args.success_threshold,
         "distance_reward_scale": args.distance_reward_scale,
         "action_penalty_scale": args.action_penalty_scale,
+        "smoothness_penalty_scale": args.smoothness_penalty_scale,
+        "joint_limit_penalty_scale": args.joint_limit_penalty_scale,
+        "success_bonus": args.success_bonus,
         "target_position": args.target_position,
     }
 
@@ -72,6 +75,9 @@ def main():
     parser.add_argument("--success-threshold", type=float, default=0.03)
     parser.add_argument("--distance-reward-scale", type=float, default=1.0)
     parser.add_argument("--action-penalty-scale", type=float, default=0.01)
+    parser.add_argument("--smoothness-penalty-scale", type=float, default=0.0)
+    parser.add_argument("--joint-limit-penalty-scale", type=float, default=0.0)
+    parser.add_argument("--success-bonus", type=float, default=0.0)
     parser.add_argument("--target-position", type=parse_target_position, default=None, help="Fixed target as x,y,z.")
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--device", default="cpu", help="auto, cpu, cuda, or cuda:0")
@@ -123,6 +129,9 @@ def main():
     print(f"joint_target_tolerance={args.joint_target_tolerance}")
     print(f"distance_reward_scale={args.distance_reward_scale}")
     print(f"action_penalty_scale={args.action_penalty_scale}")
+    print(f"smoothness_penalty_scale={args.smoothness_penalty_scale}")
+    print(f"joint_limit_penalty_scale={args.joint_limit_penalty_scale}")
+    print(f"success_bonus={args.success_bonus}")
     print(f"target_position={args.target_position}")
 
     if args.load_model:

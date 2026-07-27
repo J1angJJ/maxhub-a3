@@ -39,6 +39,9 @@ def _run_episode(model, seed, env_kwargs):
             "success": bool(success),
             "truncated": bool(truncated),
             "failure_reason": "" if success else ("timeout" if truncated else "distance"),
+            "action_penalty": info.get("action_penalty", 0.0),
+            "smoothness_penalty": info.get("smoothness_penalty", 0.0),
+            "joint_limit_penalty": info.get("joint_limit_penalty", 0.0),
             "joint_target_error": info.get("joint_target_error", 0.0),
             "joint_target_reached": info.get("joint_target_reached", False),
             "target_x": float(target[0]),
@@ -70,6 +73,9 @@ def main():
     parser.add_argument("--success-threshold", type=float, default=0.03)
     parser.add_argument("--distance-reward-scale", type=float, default=1.0)
     parser.add_argument("--action-penalty-scale", type=float, default=0.01)
+    parser.add_argument("--smoothness-penalty-scale", type=float, default=0.0)
+    parser.add_argument("--joint-limit-penalty-scale", type=float, default=0.0)
+    parser.add_argument("--success-bonus", type=float, default=0.0)
     parser.add_argument("--target-position", type=parse_target_position, default=None, help="Fixed target as x,y,z.")
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--csv", default=None, help="Optional CSV path for per-episode metrics.")
@@ -85,6 +91,9 @@ def main():
         "success_threshold": args.success_threshold,
         "distance_reward_scale": args.distance_reward_scale,
         "action_penalty_scale": args.action_penalty_scale,
+        "smoothness_penalty_scale": args.smoothness_penalty_scale,
+        "joint_limit_penalty_scale": args.joint_limit_penalty_scale,
+        "success_bonus": args.success_bonus,
         "target_position": args.target_position,
     }
 

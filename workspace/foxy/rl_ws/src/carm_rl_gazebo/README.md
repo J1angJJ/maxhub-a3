@@ -44,6 +44,26 @@ ros2 run carm_rl_gazebo train_gazebo_reaching \
   --device cpu
 ```
 
+从 toy reaching 策略迁移到 Gazebo 微调：
+
+```bash
+ros2 run carm_rl_gazebo train_gazebo_reaching \
+  --load-model /workspace/rl_ws/artifacts/reaching/ppo_reaching_200000_more_steps.zip \
+  --timesteps 4096 \
+  --n-steps 64 \
+  --batch-size 64 \
+  --action-scale 0.05 \
+  --command-duration 0.08 \
+  --command-settle-time 0.02 \
+  --command-timeout 0.10 \
+  --joint-target-tolerance 0.06 \
+  --smoothness-penalty-scale 0.01 \
+  --joint-limit-penalty-scale 0.05 \
+  --success-bonus 1.0 \
+  --eval-episodes 0 \
+  --device cpu
+```
+
 评估已训练模型：
 
 ```bash
@@ -59,7 +79,7 @@ ros2 run carm_rl_gazebo evaluate_gazebo_reaching \
 - 环境不负责自动启动或关闭 Gazebo，需要外部先启动 `spawn_a3_control.launch.py`。
 - `reset()` 当前通过向中位关节姿态发布 trajectory 做软复位，还没有调用 Gazebo reset/pause/step service。
 - 每步动作发布后会监听 `/joint_states`，关节误差低于 `joint_target_tolerance` 时提前继续，否则等到 `command_timeout`。
-- 动作空间、观测结构和 reward 第一版尽量贴近 `carm_rl_env` 的 toy reaching 环境。
+- 动作空间、观测结构和 reward shaping 尽量贴近 `carm_rl_env` 的 toy reaching 环境。
 - 第一阶段只控制 `joint1` 到 `joint6`，夹爪暂不纳入训练。
 - 当前训练入口只使用单实例 `DummyVecEnv`，Gazebo 多实例需要独立端口、namespace 和模型名隔离后再打开。
 - 默认训练参数偏向 smoke/快速迭代：`command_timeout=0.05`、`joint_target_tolerance=0.08`。需要更保守的控制追踪时可以调大 timeout、调小 tolerance。
