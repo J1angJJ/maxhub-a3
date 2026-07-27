@@ -224,6 +224,12 @@ source install/setup.bash
 ros2 run carm_rl_gazebo random_gazebo_rollout --steps 10
 ```
 
+终端 2 也可以跑一次很短的 Gazebo PPO smoke test：
+
+```bash
+ros2 run carm_rl_gazebo train_gazebo_reaching --timesteps 64 --n-steps 32 --batch-size 32 --eval-episodes 1 --device cpu
+```
+
 当前 `carm_rl_gazebo` 不负责自动起停 Gazebo，`reset()` 也只是通过 trajectory 回到中位关节姿态。后续需要继续补 Gazebo reset/pause/step service，再进入 PPO 训练。
 
 ## 仿真方向
