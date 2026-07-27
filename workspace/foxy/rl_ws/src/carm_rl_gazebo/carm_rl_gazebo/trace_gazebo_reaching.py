@@ -27,6 +27,7 @@ def _row(step, action, reward, terminated, truncated, info, obs):
         "truncated": bool(truncated),
         "joint_target_error": info.get("joint_target_error", 0.0),
         "joint_target_reached": info.get("joint_target_reached", False),
+        "gazebo_reset_called": info.get("gazebo_reset_called", False),
         "target_x": float(target[0]),
         "target_y": float(target[1]),
         "target_z": float(target[2]),
@@ -74,6 +75,7 @@ def main():
     parser.add_argument("--joint-limit-penalty-scale", type=float, default=0.0)
     parser.add_argument("--success-bonus", type=float, default=0.0)
     parser.add_argument("--reset-noise", type=float, default=0.0, help="Uniform joint reset noise in radians.")
+    parser.add_argument("--reset-world-on-reset", action="store_true", help="Call /reset_world before env reset.")
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--csv", required=True)
     args = parser.parse_args()
@@ -93,6 +95,7 @@ def main():
         "success_bonus": args.success_bonus,
         "target_position": args.target_position,
         "reset_noise": args.reset_noise,
+        "reset_world_on_reset": args.reset_world_on_reset,
     }
 
     model = ALGORITHMS[args.algo].load(args.model, device=args.device)

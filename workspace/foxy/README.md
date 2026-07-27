@@ -258,6 +258,7 @@ ros2 run carm_rl_gazebo train_gazebo_reaching \
   --joint-limit-penalty-scale 0.05 \
   --success-bonus 1.0 \
   --reset-noise 0.05 \
+  --reset-world-on-reset \
   --eval-episodes 0 \
   --device cpu
 ```
@@ -277,6 +278,7 @@ ros2 run carm_rl_gazebo evaluate_gazebo_reaching \
   --joint-limit-penalty-scale 0.05 \
   --success-bonus 1.0 \
   --reset-noise 0.05 \
+  --reset-world-on-reset \
   --csv /workspace/rl_ws/artifacts/gazebo_reaching/eval_toy200k_reset_noise_lr1e4_clip005_reward_4096.csv \
   --device cpu
 ```
@@ -296,6 +298,7 @@ ros2 run carm_rl_gazebo trace_gazebo_reaching \
   --joint-limit-penalty-scale 0.05 \
   --success-bonus 1.0 \
   --reset-noise 0.05 \
+  --reset-world-on-reset \
   --csv /workspace/rl_ws/artifacts/gazebo_reaching/trace_seed_3002.csv \
   --device cpu
 ```

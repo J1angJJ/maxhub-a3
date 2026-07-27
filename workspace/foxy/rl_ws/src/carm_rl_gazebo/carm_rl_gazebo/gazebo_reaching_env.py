@@ -7,6 +7,7 @@ from builtin_interfaces.msg import Duration
 from gymnasium import spaces
 from rclpy.node import Node
 from sensor_msgs.msg import JointState
+from std_srvs.srv import Empty
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 
 from carm_rl_env.kinematics import ARM_JOINT_NAMES, JOINT_LOWER, JOINT_UPPER, forward_tcp_position
@@ -38,6 +39,7 @@ class CArmA3GazeboReachingEnv(gym.Env):
         success_bonus=0.0,
         target_position=None,
         reset_noise=0.0,
+        reset_world_on_reset=False,
         node_name="carm_a3_gazebo_reaching_env",
     ):
         super().__init__()
@@ -61,6 +63,7 @@ class CArmA3GazeboReachingEnv(gym.Env):
         self.joint_limit_penalty_scale = float(joint_limit_penalty_scale)
         self.success_bonus = float(success_bonus)
         self.reset_noise = float(reset_noise)
+        self.reset_world_on_reset = bool(reset_world_on_reset)
         self.fixed_target_position = None
         if target_position is not None:
             self.fixed_target_position = np.asarray(target_position, dtype=np.float32)
@@ -87,6 +90,9 @@ class CArmA3GazeboReachingEnv(gym.Env):
             self._on_joint_state,
             10,
         )
+        self.reset_world_client = None
+        if self.reset_world_on_reset:
+            self.reset_world_client = self.node.create_client(Empty, "/reset_world")
         self._latest_joint_positions = None
         self._step_count = 0
         self.previous_action = np.zeros(6, dtype=np.float32)
@@ -130,6 +136,20 @@ class CArmA3GazeboReachingEnv(gym.Env):
         deadline = time.monotonic() + duration_sec
         while time.monotonic() < deadline:
             rclpy.spin_once(self.node, timeout_sec=0.02)
+
+    def _call_reset_world(self):
+        if self.reset_world_client is None:
+            return False
+        if not self.reset_world_client.wait_for_service(timeout_sec=2.0):
+            raise TimeoutError("Timed out waiting for /reset_world. Start Gazebo first.")
+        future = self.reset_world_client.call_async(Empty.Request())
+        rclpy.spin_until_future_complete(self.node, future, timeout_sec=2.0)
+        if not future.done():
+            raise TimeoutError("Timed out calling /reset_world.")
+        future.result()
+        self._latest_joint_positions = None
+        self._sleep_spin(0.05)
+        return True
 
     def _wait_for_command(self, target_joints):
         self._sleep_spin(self.command_settle_time)
@@ -181,6 +201,7 @@ class CArmA3GazeboReachingEnv(gym.Env):
         self._step_count = 0
         self.previous_action = np.zeros(6, dtype=np.float32)
         options = options or {}
+        gazebo_reset_called = self._call_reset_world() if self.reset_world_on_reset else False
         current = self._wait_for_joint_positions()
 
         if "joint_positions" in options:
@@ -202,6 +223,7 @@ class CArmA3GazeboReachingEnv(gym.Env):
         info = self._get_info(current)
         info["joint_target_error"] = joint_target_error
         info["joint_target_reached"] = joint_target_reached
+        info["gazebo_reset_called"] = gazebo_reset_called
         return self._get_obs(current), info
 
     def step(self, action):
