@@ -269,14 +269,60 @@ worst_distance=0.1802
 
 结论：动态动作缩放能有效救回“曾经靠近后跑开”的单点，且可以压低 worst distance；但全局会误伤一部分本来能成功的轨迹。`radius=0.08/min=0.25` 太重，`radius=0.04/min=0.50` 更可用但仍不适合作为默认主线。
 
+连续保持成功判定：
+
+```text
+base model=/workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_action008_nearstop_hard3036_5000.zip
+success_hold_steps=3
+success_rate=0.7000
+mean_distance=0.0355
+mean_best_distance=0.0269
+worst_distance=0.1695
+
+base model=/workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_action008_nearstop_hard3036_5000.zip
+success_hold_steps=5
+success_rate=0.5900
+mean_distance=0.0416
+mean_best_distance=0.0284
+worst_distance=0.3077
+```
+
+结论：`success_hold_steps=3` 是较好的稳定成功口径；`5` 过严，会明显拉低成功率并放大 worst distance。
+
+连续保持 3 步短续训：
+
+```text
+model=/workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_action008_nearstop_hold3_5000.zip
+train_from=/workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_action008_nearstop_hard3036_5000.zip
+timesteps=5000
+success_hold_steps=3
+hard_target_ratio=0.0
+
+eval with success_hold_steps=3:
+success_rate=0.7700
+mean_distance=0.0312
+mean_best_distance=0.0250
+worst_distance=0.1549
+
+eval with success_hold_steps=1:
+success_rate=0.7600
+mean_distance=0.0406
+mean_best_distance=0.0331
+worst_distance=0.2125
+```
+
+结论：hold3 短续训是当前最佳主线。它在稳定成功口径下从 70% 提升到 77%，同时普通成功口径仍保持 76%，没有牺牲原有指标。
+
 ### 当前状态
 
 已新增多困难目标 replay 参数 `--hard-target-positions`，用于把多个失败中心混合采样，格式为 `x,y,z;x,y,z`。
 
 已新增近目标动态动作缩放参数 `--near-target-action-scale-radius` 和 `--near-target-action-scale-min`。该机制默认关闭，当前仅作为评估/诊断开关。
 
+已新增连续保持成功参数 `--success-hold-steps`。默认值为 `1`，兼容旧实验；当前推荐训练/稳定评估口径为 `3`。
+
 ### 下一步
 
-1. 暂定 `ppo_gazebo_reaching_action008_nearstop_hard3036_5000.zip` 为高成功率主线模型。
+1. 暂定 `ppo_gazebo_reaching_action008_nearstop_hold3_5000.zip` 为当前主线模型。
 2. 暂停继续 hard replay 盲训。
-3. 下一步优先设计“接近后保持/停止”机制，例如 success 后保持若干步、近目标动作裁剪只作用于策略输出过大的维度，或基于 best distance 的终止/奖励设计。
+3. 下一步可以进入相机/视觉观测准备，或者围绕 hold3 主线做更保守的小步评估。

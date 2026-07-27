@@ -34,6 +34,7 @@ class CArmA3GazeboReachingEnv(gym.Env):
         command_timeout=None,
         joint_target_tolerance=0.02,
         success_threshold=0.03,
+        success_hold_steps=1,
         distance_reward_scale=1.0,
         progress_reward_scale=0.0,
         distance_regression_penalty_scale=0.0,
@@ -71,6 +72,7 @@ class CArmA3GazeboReachingEnv(gym.Env):
         self.command_timeout = float(command_timeout)
         self.joint_target_tolerance = float(joint_target_tolerance)
         self.success_threshold = float(success_threshold)
+        self.success_hold_steps = max(1, int(success_hold_steps))
         self.distance_reward_scale = float(distance_reward_scale)
         self.progress_reward_scale = float(progress_reward_scale)
         self.distance_regression_penalty_scale = float(distance_regression_penalty_scale)
@@ -134,6 +136,7 @@ class CArmA3GazeboReachingEnv(gym.Env):
         self.previous_action = np.zeros(6, dtype=np.float32)
         self.previous_distance = None
         self.best_distance = None
+        self.success_streak = 0
         self.target_position = np.zeros(3, dtype=np.float32)
 
     def _on_joint_state(self, msg):
@@ -251,6 +254,7 @@ class CArmA3GazeboReachingEnv(gym.Env):
             "target_position": self.target_position.copy(),
             "distance": distance,
             "best_distance": self.best_distance if self.best_distance is not None else distance,
+            "success_streak": self.success_streak,
             "step_count": self._step_count,
         }
 
@@ -260,6 +264,7 @@ class CArmA3GazeboReachingEnv(gym.Env):
         self.previous_action = np.zeros(6, dtype=np.float32)
         self.previous_distance = None
         self.best_distance = None
+        self.success_streak = 0
         options = options or {}
         gazebo_reset_called = self._call_reset_world() if self.reset_world_on_reset else False
         current = self._wait_for_joint_positions()
@@ -314,7 +319,9 @@ class CArmA3GazeboReachingEnv(gym.Env):
         smoothness_penalty = self.smoothness_penalty_scale * float(np.linalg.norm(action - self.previous_action))
         joint_limit_penalty = self.joint_limit_penalty_scale * self._joint_limit_penalty(current)
         self.best_distance = min(self.best_distance if self.best_distance is not None else distance, distance)
-        terminated = distance < self.success_threshold
+        is_success_step = distance < self.success_threshold
+        self.success_streak = self.success_streak + 1 if is_success_step else 0
+        terminated = self.success_streak >= self.success_hold_steps
         reward = (
             -self.distance_reward_scale * distance
             + progress_reward
@@ -333,6 +340,9 @@ class CArmA3GazeboReachingEnv(gym.Env):
         info["smoothness_penalty"] = smoothness_penalty
         info["joint_limit_penalty"] = joint_limit_penalty
         info["best_distance"] = self.best_distance
+        info["is_success_step"] = is_success_step
+        info["success_streak"] = self.success_streak
+        info["success_hold_steps"] = self.success_hold_steps
         info["action_scale_multiplier"] = action_scale_multiplier
         info["effective_action_scale"] = effective_action_scale
         info["commanded_joint_positions"] = target_joints.copy()

@@ -26,6 +26,7 @@ def _env_kwargs(args):
         "command_timeout": args.command_timeout,
         "joint_target_tolerance": args.joint_target_tolerance,
         "success_threshold": args.success_threshold,
+        "success_hold_steps": args.success_hold_steps,
         "distance_reward_scale": args.distance_reward_scale,
         "progress_reward_scale": args.progress_reward_scale,
         "distance_regression_penalty_scale": args.distance_regression_penalty_scale,
@@ -94,6 +95,12 @@ def main():
     parser.add_argument("--command-timeout", type=float, default=0.05)
     parser.add_argument("--joint-target-tolerance", type=float, default=0.08)
     parser.add_argument("--success-threshold", type=float, default=0.03)
+    parser.add_argument(
+        "--success-hold-steps",
+        type=int,
+        default=1,
+        help="Require this many consecutive below-threshold steps before episode success.",
+    )
     parser.add_argument("--distance-reward-scale", type=float, default=1.0)
     parser.add_argument("--progress-reward-scale", type=float, default=0.0)
     parser.add_argument(
@@ -187,6 +194,7 @@ def main():
     print(f"command_timeout={args.command_timeout}")
     print(f"joint_target_tolerance={args.joint_target_tolerance}")
     print(f"distance_reward_scale={args.distance_reward_scale}")
+    print(f"success_hold_steps={args.success_hold_steps}")
     print(f"progress_reward_scale={args.progress_reward_scale}")
     print(f"distance_regression_penalty_scale={args.distance_regression_penalty_scale}")
     print(f"action_penalty_scale={args.action_penalty_scale}")

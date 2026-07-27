@@ -40,6 +40,8 @@ def _run_episode(model, seed, env_kwargs):
             "success": bool(success),
             "truncated": bool(truncated),
             "failure_reason": "" if success else ("timeout" if truncated else "distance"),
+            "success_streak": info.get("success_streak", 0),
+            "success_hold_steps": info.get("success_hold_steps", env.success_hold_steps),
             "progress_reward": info.get("progress_reward", 0.0),
             "distance_regression_penalty": info.get("distance_regression_penalty", 0.0),
             "action_penalty": info.get("action_penalty", 0.0),
@@ -85,6 +87,12 @@ def main():
     parser.add_argument("--command-timeout", type=float, default=0.05)
     parser.add_argument("--joint-target-tolerance", type=float, default=0.08)
     parser.add_argument("--success-threshold", type=float, default=0.03)
+    parser.add_argument(
+        "--success-hold-steps",
+        type=int,
+        default=1,
+        help="Require this many consecutive below-threshold steps before episode success.",
+    )
     parser.add_argument("--distance-reward-scale", type=float, default=1.0)
     parser.add_argument("--progress-reward-scale", type=float, default=0.0)
     parser.add_argument(
@@ -132,6 +140,7 @@ def main():
         "command_timeout": args.command_timeout,
         "joint_target_tolerance": args.joint_target_tolerance,
         "success_threshold": args.success_threshold,
+        "success_hold_steps": args.success_hold_steps,
         "distance_reward_scale": args.distance_reward_scale,
         "progress_reward_scale": args.progress_reward_scale,
         "distance_regression_penalty_scale": args.distance_regression_penalty_scale,

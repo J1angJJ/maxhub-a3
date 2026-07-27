@@ -502,6 +502,71 @@ hard3036 model, radius=0.04, min=0.50: success_rate=0.6800, mean_distance=0.0432
 
 结论：动态动作缩放能救回部分“靠近后跑开”的 episode，并降低最坏距离，但会误伤整体成功率。当前作为诊断/稳定性对照，不作为默认评估配置。
 
+连续保持 3 步成功短续训：
+
+```bash
+ros2 run carm_rl_gazebo train_gazebo_reaching \
+  --load-model /workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_action008_nearstop_hard3036_5000.zip \
+  --run-name action008_nearstop_hold3_5000 \
+  --timesteps 5000 \
+  --max-steps 45 \
+  --n-steps 64 \
+  --batch-size 64 \
+  --learning-rate 0.00005 \
+  --clip-range 0.05 \
+  --action-scale 0.08 \
+  --command-duration 0.10 \
+  --command-settle-time 0.02 \
+  --command-timeout 0.12 \
+  --joint-target-tolerance 0.08 \
+  --success-hold-steps 3 \
+  --progress-reward-scale 0.5 \
+  --distance-regression-penalty-scale 3.0 \
+  --near-target-action-penalty-scale 0.08 \
+  --near-target-action-penalty-radius 0.08 \
+  --smoothness-penalty-scale 0.01 \
+  --joint-limit-penalty-scale 0.05 \
+  --success-bonus 1.0 \
+  --reset-noise 0.05 \
+  --reset-world-on-reset \
+  --eval-episodes 0 \
+  --device cpu
+```
+
+当前主线模型：
+
+```text
+/workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_action008_nearstop_hold3_5000.zip
+```
+
+稳定成功口径评估：
+
+```bash
+ros2 run carm_rl_gazebo evaluate_gazebo_reaching \
+  --model /workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_action008_nearstop_hold3_5000.zip \
+  --episodes 100 \
+  --max-steps 45 \
+  --action-scale 0.08 \
+  --command-duration 0.10 \
+  --command-settle-time 0.02 \
+  --command-timeout 0.12 \
+  --joint-target-tolerance 0.08 \
+  --success-hold-steps 3 \
+  --progress-reward-scale 0.5 \
+  --distance-regression-penalty-scale 3.0 \
+  --near-target-action-penalty-scale 0.08 \
+  --near-target-action-penalty-radius 0.08 \
+  --smoothness-penalty-scale 0.01 \
+  --joint-limit-penalty-scale 0.05 \
+  --success-bonus 1.0 \
+  --reset-noise 0.05 \
+  --reset-world-on-reset \
+  --csv /workspace/rl_ws/artifacts/gazebo_reaching/eval100_hold3_5000_hold3.csv \
+  --device cpu
+```
+
+当前主线 100 集结果：`success_hold_steps=3` 时 `success_rate=0.7700`、`mean_distance=0.0312`、`mean_best_distance=0.0250`、`worst_distance=0.1549`；普通口径 `success_hold_steps=1` 时 `success_rate=0.7600`。
+
 追踪单个 Gazebo 失败 seed：
 
 ```bash
