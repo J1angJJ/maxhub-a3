@@ -15,11 +15,26 @@ class CArmA3ReachingEnv(gym.Env):
 
     metadata = {"render_modes": []}
 
-    def __init__(self, max_steps=100, action_scale=0.05, success_threshold=0.03):
+    def __init__(
+        self,
+        max_steps=100,
+        action_scale=0.05,
+        success_threshold=0.03,
+        distance_reward_scale=1.0,
+        action_penalty_scale=0.01,
+        smoothness_penalty_scale=0.0,
+        joint_limit_penalty_scale=0.0,
+        success_bonus=0.0,
+    ):
         super().__init__()
         self.max_steps = int(max_steps)
         self.action_scale = float(action_scale)
         self.success_threshold = float(success_threshold)
+        self.distance_reward_scale = float(distance_reward_scale)
+        self.action_penalty_scale = float(action_penalty_scale)
+        self.smoothness_penalty_scale = float(smoothness_penalty_scale)
+        self.joint_limit_penalty_scale = float(joint_limit_penalty_scale)
+        self.success_bonus = float(success_bonus)
 
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(6,), dtype=np.float32)
         tcp_low = np.array([-1.0, -1.0, -0.5], dtype=np.float32)
@@ -34,7 +49,14 @@ class CArmA3ReachingEnv(gym.Env):
 
         self._step_count = 0
         self.joint_positions = np.zeros(6, dtype=np.float32)
+        self.previous_action = np.zeros(6, dtype=np.float32)
         self.target_position = np.zeros(3, dtype=np.float32)
+
+    def _joint_limit_penalty(self):
+        span = JOINT_UPPER - JOINT_LOWER
+        margin = np.minimum(self.joint_positions - JOINT_LOWER, JOINT_UPPER - self.joint_positions) / span
+        limit_violation = np.maximum(0.0, 0.10 - margin) / 0.10
+        return float(np.mean(limit_violation))
 
     def _sample_target(self):
         return self._rng.uniform(
@@ -66,6 +88,7 @@ class CArmA3ReachingEnv(gym.Env):
         super().reset(seed=seed)
         self._rng = self.np_random
         self._step_count = 0
+        self.previous_action = np.zeros(6, dtype=np.float32)
 
         options = options or {}
         if "joint_positions" in options:
@@ -94,9 +117,21 @@ class CArmA3ReachingEnv(gym.Env):
 
         info = self._get_info()
         distance = info["distance"]
-        action_penalty = 0.01 * float(np.linalg.norm(action))
-        reward = -distance - action_penalty
+        action_penalty = self.action_penalty_scale * float(np.linalg.norm(action))
+        smoothness_penalty = self.smoothness_penalty_scale * float(np.linalg.norm(action - self.previous_action))
+        joint_limit_penalty = self.joint_limit_penalty_scale * self._joint_limit_penalty()
         terminated = distance < self.success_threshold
+        reward = (
+            -self.distance_reward_scale * distance
+            - action_penalty
+            - smoothness_penalty
+            - joint_limit_penalty
+            + (self.success_bonus if terminated else 0.0)
+        )
         truncated = self._step_count >= self.max_steps
+        info["action_penalty"] = action_penalty
+        info["smoothness_penalty"] = smoothness_penalty
+        info["joint_limit_penalty"] = joint_limit_penalty
+        self.previous_action = action.copy()
 
         return self._get_obs(), float(reward), terminated, truncated, info

@@ -4,7 +4,6 @@ from pathlib import Path
 from stable_baselines3 import A2C, PPO
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.env_util import make_vec_env
-from stable_baselines3.common.monitor import Monitor
 
 from carm_rl_env.reaching_env import CArmA3ReachingEnv
 
@@ -15,15 +14,23 @@ ALGORITHMS = {
 }
 
 
-def _make_env(max_steps):
-    return Monitor(CArmA3ReachingEnv(max_steps=max_steps))
+def _env_kwargs(args):
+    return {
+        "max_steps": args.max_steps,
+        "success_threshold": args.success_threshold,
+        "distance_reward_scale": args.distance_reward_scale,
+        "action_penalty_scale": args.action_penalty_scale,
+        "smoothness_penalty_scale": args.smoothness_penalty_scale,
+        "joint_limit_penalty_scale": args.joint_limit_penalty_scale,
+        "success_bonus": args.success_bonus,
+    }
 
 
-def _evaluate(model, episodes, max_steps):
+def _evaluate(model, episodes, env_kwargs):
     distances = []
     rewards = []
     for episode in range(episodes):
-        env = CArmA3ReachingEnv(max_steps=max_steps)
+        env = CArmA3ReachingEnv(**env_kwargs)
         obs, info = env.reset(seed=1000 + episode)
         total_reward = 0.0
         terminated = False
@@ -42,6 +49,12 @@ def main():
     parser.add_argument("--algo", choices=sorted(ALGORITHMS), default="ppo")
     parser.add_argument("--timesteps", type=int, default=10_000)
     parser.add_argument("--max-steps", type=int, default=100)
+    parser.add_argument("--success-threshold", type=float, default=0.03)
+    parser.add_argument("--distance-reward-scale", type=float, default=1.0)
+    parser.add_argument("--action-penalty-scale", type=float, default=0.01)
+    parser.add_argument("--smoothness-penalty-scale", type=float, default=0.0)
+    parser.add_argument("--joint-limit-penalty-scale", type=float, default=0.0)
+    parser.add_argument("--success-bonus", type=float, default=0.0)
     parser.add_argument("--num-envs", type=int, default=1, help="Number of parallel vectorized env instances.")
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--device", default="auto", help="auto, cpu, cuda, or cuda:0")
@@ -62,7 +75,8 @@ def main():
     save_dir = Path(args.save_dir)
     save_dir.mkdir(parents=True, exist_ok=True)
 
-    raw_env = CArmA3ReachingEnv(max_steps=args.max_steps)
+    env_kwargs = _env_kwargs(args)
+    raw_env = CArmA3ReachingEnv(**env_kwargs)
     if args.check_env:
         check_env(raw_env, warn=True)
 
@@ -71,7 +85,7 @@ def main():
         n_envs=args.num_envs,
         seed=args.seed,
         monitor_dir=str(save_dir / "monitor"),
-        env_kwargs={"max_steps": args.max_steps},
+        env_kwargs=env_kwargs,
     )
     algo_cls = ALGORITHMS[args.algo]
     model_kwargs = {
@@ -84,8 +98,14 @@ def main():
     print(f"algo={args.algo}")
     print(f"num_envs={args.num_envs}")
     print(f"max_steps={args.max_steps}")
+    print(f"success_threshold={args.success_threshold}")
     print(f"timesteps={args.timesteps}")
     print(f"rollout_batch={args.n_steps * args.num_envs}")
+    print(f"distance_reward_scale={args.distance_reward_scale}")
+    print(f"action_penalty_scale={args.action_penalty_scale}")
+    print(f"smoothness_penalty_scale={args.smoothness_penalty_scale}")
+    print(f"joint_limit_penalty_scale={args.joint_limit_penalty_scale}")
+    print(f"success_bonus={args.success_bonus}")
 
     if args.load_model:
         model = algo_cls.load(
@@ -115,7 +135,7 @@ def main():
     model.save(model_path)
     print(f"saved_model={model_path}.zip")
 
-    distances, rewards = _evaluate(model, args.eval_episodes, args.max_steps)
+    distances, rewards = _evaluate(model, args.eval_episodes, env_kwargs)
     mean_distance = sum(distances) / len(distances)
     mean_reward = sum(rewards) / len(rewards)
     print(f"eval_episodes={args.eval_episodes}")
