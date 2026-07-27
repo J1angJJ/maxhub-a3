@@ -6,7 +6,13 @@ ARG USERNAME=developer
 
 USER root
 
+COPY apt/gazebo.packages /tmp/foxy-maxhub-a3-gazebo.packages
 COPY requirements.txt /tmp/foxy-maxhub-a3-requirements.txt
+
+RUN apt-get update \
+    && xargs -a /tmp/foxy-maxhub-a3-gazebo.packages apt-get install -y --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -f /tmp/foxy-maxhub-a3-gazebo.packages
 
 RUN python3 -m pip install --no-cache-dir \
       "importlib-metadata>=4.13,<8" \

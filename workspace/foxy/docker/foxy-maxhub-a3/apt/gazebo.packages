@@ -1,0 +1,7 @@
+gazebo11
+ros-foxy-gazebo-ros-pkgs
+ros-foxy-gazebo-ros2-control
+ros-foxy-ros2-control
+ros-foxy-ros2-controllers
+ros-foxy-joint-state-broadcaster
+ros-foxy-joint-trajectory-controller

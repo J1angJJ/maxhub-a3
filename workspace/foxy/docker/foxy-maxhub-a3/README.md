@@ -13,6 +13,8 @@ ubuntu-env:foxy-source -> ubuntu-env:foxy-user -> foxy-maxhub-a3:latest
 ```text
 workspace/foxy/docker/foxy-maxhub-a3/
 ├── Dockerfile
+├── apt/
+│   └── gazebo.packages
 ├── requirements.txt
 ├── compose.yaml
 ├── compose.camera.yaml
@@ -51,7 +53,8 @@ cd /home/j1angjj/workspace/maxhub-a3/workspace/foxy/docker/foxy-maxhub-a3
 docker compose build
 ```
 
-`requirements.txt` 只放本项目运行所需的薄 Python 依赖，当前包含 Gymnasium 最小 RL 环境依赖。
+`requirements.txt` 只放本项目运行所需的 Python 依赖，当前包含 Gymnasium、Stable-Baselines3 和 PyTorch。默认 PyTorch wheel 会包含 CUDA 运行库，镜像会明显变大，但后续可直接配合 GPU 容器运行。
+`apt/gazebo.packages` 记录 Gazebo Classic、`gazebo_ros_pkgs` 和 ROS 2 control 相关依赖。
 
 ## Local Env
 
@@ -123,6 +126,13 @@ docker compose -f compose.yaml -f compose.camera.yaml -f compose.gpu.yaml run --
 
 ```bash
 docker compose run --rm foxy-maxhub-a3 ros2 --help
+```
+
+检查 Gazebo：
+
+```bash
+docker compose run --rm foxy-maxhub-a3 \
+  bash -lc 'gzserver --version && gzclient --version && ros2 pkg list | grep -E "gazebo|ros2_control|controller"'
 ```
 
 检查 SDK 挂载：
