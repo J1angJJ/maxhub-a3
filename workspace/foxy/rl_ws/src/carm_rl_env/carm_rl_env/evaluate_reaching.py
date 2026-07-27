@@ -15,7 +15,7 @@ ALGORITHMS = {
 
 
 def _run_episode(model, seed, max_steps, success_threshold, target_position):
-    env = CArmA3ReachingEnv(max_steps=max_steps)
+    env = CArmA3ReachingEnv(max_steps=max_steps, success_threshold=success_threshold)
     reset_options = {"target_position": target_position} if target_position is not None else None
     obs, info = env.reset(seed=seed, options=reset_options)
     total_reward = 0.0
