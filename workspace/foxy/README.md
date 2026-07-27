@@ -13,6 +13,7 @@ workspace/foxy/
         ├── carm_api/
         ├── carm_a3_description/
         ├── carm_gazebo/
+        ├── carm_rl_gazebo/
         ├── carm_rl_env/
         └── carm_rl_bringup/
 ```
@@ -204,6 +205,26 @@ ros2 topic pub --once /arm_controller/joint_trajectory trajectory_msgs/msg/Joint
 ```
 
 当前 `carm_gazebo` 已能通过 `joint_trajectory_controller` 控制 `joint1` 到 `joint6`。夹爪关节暂未纳入控制器；reaching 第一阶段先只控制主臂。
+
+## Gazebo Reaching
+
+终端 1 启动 Gazebo 和控制器：
+
+```bash
+cd /workspace/rl_ws
+source install/setup.bash
+ros2 launch carm_gazebo spawn_a3_control.launch.py
+```
+
+终端 2 运行 Gazebo 随机动作 smoke test：
+
+```bash
+cd /workspace/rl_ws
+source install/setup.bash
+ros2 run carm_rl_gazebo random_gazebo_rollout --steps 10
+```
+
+当前 `carm_rl_gazebo` 不负责自动起停 Gazebo，`reset()` 也只是通过 trajectory 回到中位关节姿态。后续需要继续补 Gazebo reset/pause/step service，再进入 PPO 训练。
 
 ## 仿真方向
 

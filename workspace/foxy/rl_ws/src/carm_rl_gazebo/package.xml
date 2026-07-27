@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>carm_rl_gazebo</name>
+  <version>0.1.0</version>
+  <description>Gymnasium-style Gazebo reaching environment for CArm / MAXHUB A3.</description>
+
+  <maintainer email="j1angjj@todo.invalid">j1angjj</maintainer>
+  <license>UNLICENSED</license>
+
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <exec_depend>carm_rl_env</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>trajectory_msgs</exec_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
