@@ -44,6 +44,16 @@ ros2 run carm_rl_gazebo train_gazebo_reaching \
   --device cpu
 ```
 
+评估已训练模型：
+
+```bash
+ros2 run carm_rl_gazebo evaluate_gazebo_reaching \
+  --model /workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_1024_steps.zip \
+  --episodes 10 \
+  --csv /workspace/rl_ws/artifacts/gazebo_reaching/eval_1024.csv \
+  --device cpu
+```
+
 ## 当前边界
 
 - 环境不负责自动启动或关闭 Gazebo，需要外部先启动 `spawn_a3_control.launch.py`。

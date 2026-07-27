@@ -24,6 +24,7 @@ setup(
         "console_scripts": [
             "random_gazebo_rollout = carm_rl_gazebo.random_gazebo_rollout:main",
             "train_gazebo_reaching = carm_rl_gazebo.train_gazebo_reaching:main",
+            "evaluate_gazebo_reaching = carm_rl_gazebo.evaluate_gazebo_reaching:main",
         ],
     },
 )

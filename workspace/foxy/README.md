@@ -230,6 +230,12 @@ ros2 run carm_rl_gazebo random_gazebo_rollout --steps 10
 ros2 run carm_rl_gazebo train_gazebo_reaching --timesteps 64 --n-steps 32 --batch-size 32 --command-timeout 0.05 --joint-target-tolerance 0.08 --eval-episodes 1 --device cpu
 ```
 
+评估 Gazebo 模型：
+
+```bash
+ros2 run carm_rl_gazebo evaluate_gazebo_reaching --model /workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_1024_steps.zip --episodes 10 --csv /workspace/rl_ws/artifacts/gazebo_reaching/eval_1024.csv --device cpu
+```
+
 当前 `carm_rl_gazebo` 不负责自动起停 Gazebo，`reset()` 也只是通过 trajectory 回到中位关节姿态。每步会根据 `/joint_states` 的关节目标误差提前结束等待；后续需要继续补 Gazebo reset/pause/step service，再进入更长 PPO 训练。
 
 ## 仿真方向
