@@ -221,7 +221,7 @@ ros2 run carm_rl_gazebo evaluate_gazebo_reaching \
 
 ```bash
 cd /workspace/rl_ws
-colcon build --symlink-install --packages-select carm_rl_gazebo
+colcon build --symlink-install --packages-select carm_rl_env carm_rl_gazebo
 source install/setup.bash
 ```
 
@@ -340,6 +340,66 @@ ros2 run carm_rl_gazebo evaluate_gazebo_reaching \
   --reset-noise 0.05 \
   --reset-world-on-reset \
   --csv /workspace/rl_ws/artifacts/gazebo_reaching/eval100_action008_nearstop_hard3036_5000.csv \
+  --device cpu
+```
+
+seed 3036 续训评估结果：`success_rate=0.7600`、`mean_distance=0.0425`、`mean_best_distance=0.0367`、`worst_distance=0.3425`。成功率提高明显，但最坏失败转移到 seed `3060` 的低 z / 大 x 目标。
+
+多困难目标 replay 续训实验：
+
+```bash
+ros2 run carm_rl_gazebo train_gazebo_reaching \
+  --load-model /workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_action008_nearstop_hard3036_5000.zip \
+  --run-name action008_nearstop_multihard_10000 \
+  --timesteps 10000 \
+  --max-steps 45 \
+  --n-steps 64 \
+  --batch-size 64 \
+  --learning-rate 0.00008 \
+  --clip-range 0.05 \
+  --hard-target-positions '0.1542,0.2146,0.1086;0.5025,0.0751,0.5261;0.4676,-0.0989,0.1139;0.4279,-0.0001,0.1377' \
+  --hard-target-ratio 0.45 \
+  --hard-target-noise 0.04 \
+  --action-scale 0.08 \
+  --command-duration 0.10 \
+  --command-settle-time 0.02 \
+  --command-timeout 0.12 \
+  --joint-target-tolerance 0.08 \
+  --progress-reward-scale 0.5 \
+  --distance-regression-penalty-scale 3.0 \
+  --near-target-action-penalty-scale 0.08 \
+  --near-target-action-penalty-radius 0.08 \
+  --smoothness-penalty-scale 0.01 \
+  --joint-limit-penalty-scale 0.05 \
+  --success-bonus 1.0 \
+  --reset-noise 0.05 \
+  --reset-world-on-reset \
+  --eval-episodes 0 \
+  --device cpu
+```
+
+多困难目标 replay 续训后的 100 集评估：
+
+```bash
+ros2 run carm_rl_gazebo evaluate_gazebo_reaching \
+  --model /workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_action008_nearstop_multihard_10000.zip \
+  --episodes 100 \
+  --max-steps 45 \
+  --action-scale 0.08 \
+  --command-duration 0.10 \
+  --command-settle-time 0.02 \
+  --command-timeout 0.12 \
+  --joint-target-tolerance 0.08 \
+  --progress-reward-scale 0.5 \
+  --distance-regression-penalty-scale 3.0 \
+  --near-target-action-penalty-scale 0.08 \
+  --near-target-action-penalty-radius 0.08 \
+  --smoothness-penalty-scale 0.01 \
+  --joint-limit-penalty-scale 0.05 \
+  --success-bonus 1.0 \
+  --reset-noise 0.05 \
+  --reset-world-on-reset \
+  --csv /workspace/rl_ws/artifacts/gazebo_reaching/eval100_action008_nearstop_multihard_10000.csv \
   --device cpu
 ```
 

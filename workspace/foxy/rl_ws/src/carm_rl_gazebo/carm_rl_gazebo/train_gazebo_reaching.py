@@ -5,7 +5,7 @@ from stable_baselines3 import A2C, PPO
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.vec_env import DummyVecEnv
 
-from carm_rl_env.cli_utils import parse_target_position
+from carm_rl_env.cli_utils import parse_target_position, parse_target_positions
 from carm_rl_gazebo.gazebo_reaching_env import CArmA3GazeboReachingEnv
 
 
@@ -37,6 +37,7 @@ def _env_kwargs(args):
         "target_low": args.target_low,
         "target_high": args.target_high,
         "hard_target_position": args.hard_target_position,
+        "hard_target_positions": args.hard_target_positions,
         "hard_target_ratio": args.hard_target_ratio,
         "hard_target_noise": args.hard_target_noise,
         "reset_noise": args.reset_noise,
@@ -107,6 +108,12 @@ def main():
     parser.add_argument("--target-low", type=parse_target_position, default=None, help="Target sampling lower bound as x,y,z.")
     parser.add_argument("--target-high", type=parse_target_position, default=None, help="Target sampling upper bound as x,y,z.")
     parser.add_argument("--hard-target-position", type=parse_target_position, default=None, help="Replay target center as x,y,z.")
+    parser.add_argument(
+        "--hard-target-positions",
+        type=parse_target_positions,
+        default=None,
+        help="Replay target centers as 'x,y,z;x,y,z'. Overrides --hard-target-position when replay is sampled.",
+    )
     parser.add_argument("--hard-target-ratio", type=float, default=0.0)
     parser.add_argument("--hard-target-noise", type=float, default=0.03)
     parser.add_argument("--reset-noise", type=float, default=0.0, help="Uniform joint reset noise in radians.")
@@ -181,6 +188,7 @@ def main():
     print(f"target_low={args.target_low}")
     print(f"target_high={args.target_high}")
     print(f"hard_target_position={args.hard_target_position}")
+    print(f"hard_target_positions={args.hard_target_positions}")
     print(f"hard_target_ratio={args.hard_target_ratio}")
     print(f"hard_target_noise={args.hard_target_noise}")
     print(f"reset_noise={args.reset_noise}")

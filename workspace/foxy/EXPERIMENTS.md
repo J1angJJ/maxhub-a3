@@ -174,6 +174,20 @@ worst_failure=seed=3036 target=(0.5025,0.0751,0.5261) tcp=(0.4499,0.1142,0.3954)
 
 结论：近目标动作惩罚是当前有效方向，成功率提升到 69%，失败数从 34 降到 31。剩余失败目标已经分散到低 z、高 z、正 y、负 y，不宜继续只围绕 seed 3035 加权。
 
+针对 seed 3036 高 z 目标 5k 短续训：
+
+```text
+model=/workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_action008_nearstop_hard3036_5000.zip
+episodes=100
+success_rate=0.7600
+mean_distance=0.0425
+mean_best_distance=0.0367
+worst_distance=0.3425
+worst_failure=seed=3060 target=(0.4676,-0.0989,0.1139) tcp=(0.1261,-0.1238,0.1247)
+```
+
+结论：单点 hard3036 短训显著提高最终成功率到 76%，但把最坏失败转移到低 z、较大 x 的 seed 3060/3061，并且 worst distance 明显变差。下一轮不应继续单点 hard target，而应混合多个困难目标 replay。
+
 ### 诊断记录
 
 seed 3035 低位目标：
@@ -197,19 +211,21 @@ action_scale=0.06, max_steps=60, final_distance=0.1112
 
 ### 当前进行中
 
-正在从近目标动作惩罚模型出发，对当前最坏失败 seed 3036 的高 z 目标做 5k steps 短续训：
+已新增多困难目标 replay 参数 `--hard-target-positions`，用于把多个失败中心混合采样，格式为 `x,y,z;x,y,z`。
+
+下一轮计划从 `action008_nearstop_hard3036_5000` 出发，混合 seed 3035、3036、3060、3061 四类困难目标：
 
 ```text
-load_model=/workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_action008_nearstop_hard3035_10000.zip
-run_name=action008_nearstop_hard3036_5000
-hard_target_position=0.5025,0.0751,0.5261
-hard_target_ratio=0.35
+load_model=/workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_action008_nearstop_hard3036_5000.zip
+run_name=action008_nearstop_multihard_10000
+hard_target_positions=0.1542,0.2146,0.1086;0.5025,0.0751,0.5261;0.4676,-0.0989,0.1139;0.4279,-0.0001,0.1377
+hard_target_ratio=0.45
 hard_target_noise=0.04
-timesteps=5000
+timesteps=10000
 ```
 
 ### 下一步
 
-1. 记录 `action008_nearstop_hard3036_5000` 的 100 集评估。
-2. 如果成功率达到 70% 以上，新增多困难目标 replay 参数，避免手动只绑定一个 hard target。
-3. 如果成功率没有提升，优先考虑 success 后保持步数、近目标低速动作裁剪或基于 best distance 的终止/奖励设计。
+1. 运行并评估 `action008_nearstop_multihard_10000`。
+2. 如果成功率维持 75% 左右且 worst distance 回落，继续扩大多困难目标集合。
+3. 如果 worst distance 仍被新目标拉爆，优先考虑 replay buffer 式困难目标采样、近目标低速动作裁剪或基于 best distance 的终止/奖励设计。

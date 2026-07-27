@@ -4,7 +4,7 @@ from pathlib import Path
 
 from stable_baselines3 import A2C, PPO
 
-from carm_rl_env.cli_utils import parse_target_position
+from carm_rl_env.cli_utils import parse_target_position, parse_target_positions
 from carm_rl_gazebo.gazebo_reaching_env import CArmA3GazeboReachingEnv
 
 
@@ -99,6 +99,12 @@ def main():
     parser.add_argument("--target-low", type=parse_target_position, default=None, help="Target sampling lower bound as x,y,z.")
     parser.add_argument("--target-high", type=parse_target_position, default=None, help="Target sampling upper bound as x,y,z.")
     parser.add_argument("--hard-target-position", type=parse_target_position, default=None, help="Replay target center as x,y,z.")
+    parser.add_argument(
+        "--hard-target-positions",
+        type=parse_target_positions,
+        default=None,
+        help="Replay target centers as 'x,y,z;x,y,z'. Overrides --hard-target-position when replay is sampled.",
+    )
     parser.add_argument("--hard-target-ratio", type=float, default=0.0)
     parser.add_argument("--hard-target-noise", type=float, default=0.03)
     parser.add_argument("--reset-noise", type=float, default=0.0, help="Uniform joint reset noise in radians.")
@@ -128,6 +134,7 @@ def main():
         "target_low": args.target_low,
         "target_high": args.target_high,
         "hard_target_position": args.hard_target_position,
+        "hard_target_positions": args.hard_target_positions,
         "hard_target_ratio": args.hard_target_ratio,
         "hard_target_noise": args.hard_target_noise,
         "reset_noise": args.reset_noise,
