@@ -217,6 +217,13 @@ docker compose run --rm foxy-maxhub-a3 \
   bash -lc 'cd /workspace/rl_ws && source install/setup.bash && ros2 run carm_rl_env train_reaching --algo ppo --timesteps 50000 --num-envs 4 --n-steps 256 --batch-size 128 --device cpu --eval-episodes 20'
 ```
 
+从已有模型继续训练：
+
+```bash
+docker compose run --rm foxy-maxhub-a3 \
+  bash -lc 'cd /workspace/rl_ws && source install/setup.bash && ros2 run carm_rl_env train_reaching --algo ppo --load-model /workspace/rl_ws/artifacts/reaching/ppo_reaching_50000_steps.zip --timesteps 200000 --num-envs 4 --n-steps 256 --batch-size 128 --device cpu --eval-episodes 50'
+```
+
 使用 GPU overlay 后可以指定 CUDA：
 
 ```bash

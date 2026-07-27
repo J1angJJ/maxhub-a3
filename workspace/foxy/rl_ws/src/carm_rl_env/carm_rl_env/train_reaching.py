@@ -46,6 +46,12 @@ def main():
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--device", default="auto", help="auto, cpu, cuda, or cuda:0")
     parser.add_argument("--save-dir", default="/workspace/rl_ws/artifacts/reaching")
+    parser.add_argument("--load-model", default=None, help="Path to an existing SB3 .zip model for continued training.")
+    parser.add_argument(
+        "--reset-num-timesteps",
+        action="store_true",
+        help="Reset SB3 timestep counters when loading a model. By default continued training keeps counters.",
+    )
     parser.add_argument("--eval-episodes", type=int, default=5)
     parser.add_argument("--learning-rate", type=float, default=3e-4)
     parser.add_argument("--n-steps", type=int, default=256, help="PPO rollout steps, or A2C update steps.")
@@ -81,17 +87,31 @@ def main():
     print(f"timesteps={args.timesteps}")
     print(f"rollout_batch={args.n_steps * args.num_envs}")
 
-    model = algo_cls(
-        "MlpPolicy",
-        env,
-        verbose=1,
-        seed=args.seed,
-        device=args.device,
-        **model_kwargs,
+    if args.load_model:
+        model = algo_cls.load(
+            args.load_model,
+            env=env,
+            device=args.device,
+            seed=args.seed,
+            verbose=1,
+        )
+        print(f"loaded_model={args.load_model}")
+    else:
+        model = algo_cls(
+            "MlpPolicy",
+            env,
+            verbose=1,
+            seed=args.seed,
+            device=args.device,
+            **model_kwargs,
+        )
+    model.learn(
+        total_timesteps=args.timesteps,
+        reset_num_timesteps=args.reset_num_timesteps or not args.load_model,
     )
-    model.learn(total_timesteps=args.timesteps)
 
-    model_path = save_dir / f"{args.algo}_reaching_{args.timesteps}_steps"
+    model_suffix = f"{args.timesteps}_more_steps" if args.load_model else f"{args.timesteps}_steps"
+    model_path = save_dir / f"{args.algo}_reaching_{model_suffix}"
     model.save(model_path)
     print(f"saved_model={model_path}.zip")
 

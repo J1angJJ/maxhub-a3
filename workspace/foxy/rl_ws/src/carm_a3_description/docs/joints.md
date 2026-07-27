@@ -58,6 +58,7 @@ obs, reward, terminated, truncated, info = env.step(action)
 
 ```bash
 ros2 run carm_rl_env train_reaching --algo ppo --timesteps 50000 --num-envs 4 --n-steps 256 --batch-size 128
+ros2 run carm_rl_env train_reaching --algo ppo --load-model /workspace/rl_ws/artifacts/reaching/ppo_reaching_50000_steps.zip --timesteps 200000 --num-envs 4 --n-steps 256 --batch-size 128
 ros2 run carm_rl_env train_reaching --algo a2c --timesteps 10000
 ```
 
