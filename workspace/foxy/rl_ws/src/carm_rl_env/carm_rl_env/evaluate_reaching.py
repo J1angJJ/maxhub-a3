@@ -13,7 +13,7 @@ ALGORITHMS = {
 }
 
 
-def _run_episode(model, seed, max_steps):
+def _run_episode(model, seed, max_steps, success_threshold):
     env = CArmA3ReachingEnv(max_steps=max_steps)
     obs, info = env.reset(seed=seed)
     total_reward = 0.0
@@ -25,13 +25,27 @@ def _run_episode(model, seed, max_steps):
         obs, reward, terminated, truncated, info = env.step(action)
         total_reward += reward
 
+    tcp = info["tcp_position"]
+    target = info["target_position"]
+    delta = target - tcp
+    success = info["distance"] < success_threshold
     return {
         "seed": seed,
         "distance": info["distance"],
         "reward": total_reward,
         "episode_length": info["step_count"],
-        "success": bool(terminated),
+        "success": bool(success),
         "truncated": bool(truncated),
+        "failure_reason": "" if success else ("timeout" if truncated else "distance"),
+        "target_x": float(target[0]),
+        "target_y": float(target[1]),
+        "target_z": float(target[2]),
+        "tcp_x": float(tcp[0]),
+        "tcp_y": float(tcp[1]),
+        "tcp_z": float(tcp[2]),
+        "delta_x": float(delta[0]),
+        "delta_y": float(delta[1]),
+        "delta_z": float(delta[2]),
     }
 
 
@@ -48,12 +62,15 @@ def main():
     args = parser.parse_args()
 
     model = ALGORITHMS[args.algo].load(args.model, device=args.device)
-    rows = [_run_episode(model, args.seed + idx, args.max_steps) for idx in range(args.episodes)]
+    rows = [
+        _run_episode(model, args.seed + idx, args.max_steps, args.success_threshold)
+        for idx in range(args.episodes)
+    ]
 
     distances = [row["distance"] for row in rows]
     rewards = [row["reward"] for row in rows]
     lengths = [row["episode_length"] for row in rows]
-    successes = [row["distance"] < args.success_threshold for row in rows]
+    successes = [row["success"] for row in rows]
 
     if args.csv:
         csv_path = Path(args.csv)
@@ -61,7 +78,24 @@ def main():
         with csv_path.open("w", newline="") as f:
             writer = csv.DictWriter(
                 f,
-                fieldnames=["seed", "distance", "reward", "episode_length", "success", "truncated"],
+                fieldnames=[
+                    "seed",
+                    "distance",
+                    "reward",
+                    "episode_length",
+                    "success",
+                    "truncated",
+                    "failure_reason",
+                    "target_x",
+                    "target_y",
+                    "target_z",
+                    "tcp_x",
+                    "tcp_y",
+                    "tcp_z",
+                    "delta_x",
+                    "delta_y",
+                    "delta_z",
+                ],
             )
             writer.writeheader()
             writer.writerows(rows)
@@ -76,3 +110,14 @@ def main():
     print(f"worst_distance={max(distances):.4f}")
     print(f"mean_episode_length={sum(lengths) / len(lengths):.2f}")
     print(f"mean_reward={sum(rewards) / len(rewards):.4f}")
+    failures = [row for row in rows if not row["success"]]
+    print(f"failure_count={len(failures)}")
+    if failures:
+        worst = max(failures, key=lambda row: row["distance"])
+        print(
+            "worst_failure="
+            f"seed={worst['seed']} "
+            f"distance={worst['distance']:.4f} "
+            f"target=({worst['target_x']:.4f},{worst['target_y']:.4f},{worst['target_z']:.4f}) "
+            f"tcp=({worst['tcp_x']:.4f},{worst['tcp_y']:.4f},{worst['tcp_z']:.4f})"
+        )
