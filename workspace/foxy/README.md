@@ -444,6 +444,36 @@ ros2 run carm_rl_gazebo evaluate_gazebo_reaching \
   --device cpu
 ```
 
+追踪单个 Gazebo episode 并输出轨迹诊断图：
+
+```bash
+ros2 run carm_rl_gazebo trace_gazebo_reaching \
+  --model /workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_action008_nearstop_hold3_5000.zip \
+  --seed 3035 \
+  --max-steps 45 \
+  --action-scale 0.08 \
+  --command-duration 0.10 \
+  --command-settle-time 0.02 \
+  --command-timeout 0.12 \
+  --joint-target-tolerance 0.08 \
+  --success-hold-steps 3 \
+  --progress-reward-scale 0.5 \
+  --distance-regression-penalty-scale 3.0 \
+  --near-target-action-penalty-scale 0.08 \
+  --near-target-action-penalty-radius 0.08 \
+  --smoothness-penalty-scale 0.01 \
+  --joint-limit-penalty-scale 0.05 \
+  --success-bonus 1.0 \
+  --reset-noise 0.05 \
+  --reset-world-on-reset \
+  --csv /workspace/rl_ws/artifacts/gazebo_reaching/trace_seed3035_hold3.csv \
+  --device cpu
+
+ros2 run carm_rl_gazebo plot_gazebo_trace \
+  --csv /workspace/rl_ws/artifacts/gazebo_reaching/trace_seed3035_hold3.csv \
+  --output /workspace/rl_ws/artifacts/gazebo_reaching/trace_seed3035_hold3.png
+```
+
 更新 `carm_rl_gazebo` 源码后，在容器内重新编译并刷新环境：
 
 ```bash

@@ -26,6 +26,7 @@ setup(
             "train_gazebo_reaching = carm_rl_gazebo.train_gazebo_reaching:main",
             "evaluate_gazebo_reaching = carm_rl_gazebo.evaluate_gazebo_reaching:main",
             "trace_gazebo_reaching = carm_rl_gazebo.trace_gazebo_reaching:main",
+            "plot_gazebo_trace = carm_rl_gazebo.plot_gazebo_trace:main",
         ],
     },
 )
