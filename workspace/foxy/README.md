@@ -595,6 +595,66 @@ ros2 run carm_rl_gazebo evaluate_gazebo_reaching \
   --device cpu
 ```
 
+多困难目标 replay 10k 评估结果：`success_rate=0.6900`、`mean_distance=0.0458`、`mean_best_distance=0.0342`、`worst_distance=0.2186`。它缓解了 hard3036 单点续训的极端 worst distance，但成功率回落，暂不作为新主线。
+
+更轻的多困难目标 replay 续训实验：
+
+```bash
+ros2 run carm_rl_gazebo train_gazebo_reaching \
+  --load-model /workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_action008_nearstop_hard3036_5000.zip \
+  --run-name action008_nearstop_multihard_light_5000 \
+  --timesteps 5000 \
+  --max-steps 45 \
+  --n-steps 64 \
+  --batch-size 64 \
+  --learning-rate 0.00005 \
+  --clip-range 0.05 \
+  --hard-target-positions '0.1542,0.2146,0.1086;0.5025,0.0751,0.5261;0.4676,-0.0989,0.1139;0.4279,-0.0001,0.1377;0.2446,0.1443,0.1689' \
+  --hard-target-ratio 0.25 \
+  --hard-target-noise 0.04 \
+  --action-scale 0.08 \
+  --command-duration 0.10 \
+  --command-settle-time 0.02 \
+  --command-timeout 0.12 \
+  --joint-target-tolerance 0.08 \
+  --progress-reward-scale 0.5 \
+  --distance-regression-penalty-scale 3.0 \
+  --near-target-action-penalty-scale 0.08 \
+  --near-target-action-penalty-radius 0.08 \
+  --smoothness-penalty-scale 0.01 \
+  --joint-limit-penalty-scale 0.05 \
+  --success-bonus 1.0 \
+  --reset-noise 0.05 \
+  --reset-world-on-reset \
+  --eval-episodes 0 \
+  --device cpu
+```
+
+更轻多困难目标 replay 续训后的 100 集评估：
+
+```bash
+ros2 run carm_rl_gazebo evaluate_gazebo_reaching \
+  --model /workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_action008_nearstop_multihard_light_5000.zip \
+  --episodes 100 \
+  --max-steps 45 \
+  --action-scale 0.08 \
+  --command-duration 0.10 \
+  --command-settle-time 0.02 \
+  --command-timeout 0.12 \
+  --joint-target-tolerance 0.08 \
+  --progress-reward-scale 0.5 \
+  --distance-regression-penalty-scale 3.0 \
+  --near-target-action-penalty-scale 0.08 \
+  --near-target-action-penalty-radius 0.08 \
+  --smoothness-penalty-scale 0.01 \
+  --joint-limit-penalty-scale 0.05 \
+  --success-bonus 1.0 \
+  --reset-noise 0.05 \
+  --reset-world-on-reset \
+  --csv /workspace/rl_ws/artifacts/gazebo_reaching/eval100_action008_nearstop_multihard_light_5000.csv \
+  --device cpu
+```
+
 追踪单个 Gazebo 失败 seed：
 
 ```bash
