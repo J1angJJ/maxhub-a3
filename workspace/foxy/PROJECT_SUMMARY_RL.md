@@ -32,6 +32,18 @@ Modeling: URDF, robot_state_publisher, joint_trajectory_controller
 Vision: V4L2, sensor_msgs/Image, camera_info_manager
 ```
 
+## 图形化演示
+
+整体链路：
+
+![MAXHUB A3 ROS2/RL pipeline](assets/rl_pipeline.svg)
+
+单个 Gazebo reaching episode 的轨迹诊断示例：
+
+![Gazebo reaching trace seed 3035](assets/gazebo_trace_seed3035_action008_20000.png)
+
+这张 trace 图来自历史失败样本 `trace_seed3035_action008_20000.csv`，展示了 TCP 轨迹、目标点、距离曲线和控制误差。它更适合说明当前项目已经具备训练后诊断能力，但该样本不是当前最佳 hold3 主线模型的最终效果图。
+
 ## 代表性结果
 
 Toy kinematics reaching：

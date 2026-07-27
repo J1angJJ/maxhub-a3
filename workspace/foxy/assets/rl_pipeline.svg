@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="560" viewBox="0 0 1120 560" role="img" aria-labelledby="title desc">
+  <title id="title">MAXHUB A3 ROS2/RL pipeline</title>
+  <desc id="desc">A diagram of the Docker, ROS2, Gazebo, Gymnasium, PPO, and evaluation pipeline.</desc>
+  <defs>
+    <style>
+      .bg { fill: #f7f9fb; }
+      .band { fill: #ffffff; stroke: #d8e0e8; stroke-width: 2; }
+      .box { fill: #ffffff; stroke: #4f6f8f; stroke-width: 2; rx: 8; }
+      .box2 { fill: #eef7f3; stroke: #4c8a6a; stroke-width: 2; rx: 8; }
+      .box3 { fill: #fff5e8; stroke: #bf7b25; stroke-width: 2; rx: 8; }
+      .box4 { fill: #f2efff; stroke: #6f5fb5; stroke-width: 2; rx: 8; }
+      .text { font-family: Arial, "Noto Sans CJK SC", sans-serif; fill: #1f2933; font-size: 20px; }
+      .small { font-family: Arial, "Noto Sans CJK SC", sans-serif; fill: #4b5563; font-size: 15px; }
+      .label { font-family: Arial, "Noto Sans CJK SC", sans-serif; fill: #111827; font-size: 18px; font-weight: 700; }
+      .arrow { stroke: #536476; stroke-width: 2.5; fill: none; marker-end: url(#arrowhead); }
+      .muted { fill: #6b7280; font-size: 14px; font-family: Arial, "Noto Sans CJK SC", sans-serif; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#536476" />
+    </marker>
+  </defs>
+  <rect class="bg" x="0" y="0" width="1120" height="560" />
+  <text class="label" x="40" y="48">MAXHUB A3 ROS2/Foxy 强化学习原型链路</text>
+  <text class="muted" x="40" y="76">阶段定位：工程迁移 + Gazebo reaching 原型验证，未下发到实机 RL</text>
+
+  <rect class="band" x="40" y="110" width="1040" height="360" rx="12" />
+
+  <rect class="box" x="70" y="155" width="190" height="92" />
+  <text class="text" x="98" y="190">Docker/Foxy</text>
+  <text class="small" x="98" y="218">foxy-maxhub-a3</text>
+
+  <rect class="box" x="320" y="155" width="190" height="92" />
+  <text class="text" x="358" y="190">ROS2 工作区</text>
+  <text class="small" x="348" y="218">URDF / API / Vision</text>
+
+  <rect class="box2" x="570" y="155" width="190" height="92" />
+  <text class="text" x="626" y="190">Gazebo</text>
+  <text class="small" x="602" y="218">ros2_control 闭环</text>
+
+  <rect class="box3" x="820" y="155" width="190" height="92" />
+  <text class="text" x="865" y="190">Gymnasium</text>
+  <text class="small" x="860" y="218">obs/action/reward</text>
+
+  <rect class="box4" x="320" y="330" width="190" height="92" />
+  <text class="text" x="372" y="365">SB3 PPO</text>
+  <text class="small" x="356" y="393">策略训练与续训</text>
+
+  <rect class="box2" x="570" y="330" width="190" height="92" />
+  <text class="text" x="615" y="365">评估诊断</text>
+  <text class="small" x="600" y="393">CSV / trace / PNG</text>
+
+  <rect class="box3" x="820" y="330" width="190" height="92" />
+  <text class="text" x="866" y="365">冻结总结</text>
+  <text class="small" x="850" y="393">成果 / 边界 / 简历</text>
+
+  <path class="arrow" d="M260 201 H320" />
+  <path class="arrow" d="M510 201 H570" />
+  <path class="arrow" d="M760 201 H820" />
+  <path class="arrow" d="M915 247 V288 C915 315 880 320 760 350" />
+  <path class="arrow" d="M820 380 H760" />
+  <path class="arrow" d="M570 380 H510" />
+  <path class="arrow" d="M415 330 V265 C415 245 455 240 570 225" />
+  <path class="arrow" d="M760 376 H820" />
+
+  <text class="muted" x="72" y="505">代表结果：Toy reaching 99% 成功率；Gazebo reaching 当前主线稳定口径 77% 成功率。</text>
+  <text class="muted" x="72" y="530">停止边界：未做实机 RL 和安全执行层；后续主 RL 平台建议切到官方 demo 更完整的 Franka / MuJoCo / Isaac Lab。</text>
+</svg>

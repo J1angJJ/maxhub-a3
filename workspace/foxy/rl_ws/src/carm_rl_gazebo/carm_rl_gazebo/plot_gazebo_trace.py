@@ -59,8 +59,8 @@ def plot_trace(csv_path, output_path, title=None):
     terminated = _bool(rows[-1], "terminated")
     truncated = _bool(rows[-1], "truncated")
 
-    fig = plt.figure(figsize=(12, 8), constrained_layout=True)
-    fig.suptitle(title or Path(csv_path).name)
+    fig = plt.figure(figsize=(13, 8), constrained_layout=False)
+    fig.suptitle(title or Path(csv_path).name, y=0.97, fontsize=16)
 
     ax3d = fig.add_subplot(2, 2, (1, 3), projection="3d")
     ax3d.plot(tcp_x, tcp_y, tcp_z, color="#1f77b4", linewidth=2.0, label="tcp path")
@@ -73,7 +73,7 @@ def plot_trace(csv_path, output_path, title=None):
     ax3d.set_xlim(*_axis_limits(tcp_x + [target_x]))
     ax3d.set_ylim(*_axis_limits(tcp_y + [target_y]))
     ax3d.set_zlim(*_axis_limits(tcp_z + [target_z]))
-    ax3d.legend(loc="best")
+    ax3d.legend(loc="upper left", bbox_to_anchor=(0.02, 0.98))
 
     ax_dist = fig.add_subplot(2, 2, 2)
     ax_dist.plot(steps, distance, color="#1f77b4", label="distance")
@@ -96,7 +96,7 @@ def plot_trace(csv_path, output_path, title=None):
     ax_reward.plot(steps, joint_errors, color="#8c564b", label="joint target error")
     ax_reward.set_xlabel("step")
     ax_reward.grid(True, alpha=0.3)
-    ax_reward.legend(loc="best")
+    ax_reward.legend(loc="upper left")
 
     summary = (
         f"steps={len(rows)}\n"
@@ -107,16 +107,17 @@ def plot_trace(csv_path, output_path, title=None):
     )
     ax_reward.text(
         0.98,
-        0.02,
+        0.96,
         summary,
         transform=ax_reward.transAxes,
-        va="bottom",
+        va="top",
         ha="right",
         bbox={"boxstyle": "round,pad=0.35", "facecolor": "white", "alpha": 0.85, "edgecolor": "#cccccc"},
     )
 
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.tight_layout(rect=(0.0, 0.0, 1.0, 0.94))
     fig.savefig(output_path, dpi=160)
     plt.close(fig)
     return output_path, len(rows), final_distance, min_distance

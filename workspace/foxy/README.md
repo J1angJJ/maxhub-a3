@@ -17,6 +17,10 @@
 
 项目总结见 [PROJECT_SUMMARY_RL.md](PROJECT_SUMMARY_RL.md)，实验流水见 [EXPERIMENTS.md](EXPERIMENTS.md)。
 
+图形化演示：
+
+![MAXHUB A3 ROS2/RL pipeline](assets/rl_pipeline.svg)
+
 ## 目录结构
 
 ```text
