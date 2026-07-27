@@ -207,14 +207,21 @@ docker compose run --rm foxy-maxhub-a3 \
 
 ```bash
 docker compose run --rm foxy-maxhub-a3 \
-  bash -lc 'cd /workspace/rl_ws && colcon build --symlink-install && source install/setup.bash && ros2 run carm_rl_env train_reaching --algo ppo --timesteps 10000 --n-steps 256 --batch-size 64 --device auto'
+  bash -lc 'cd /workspace/rl_ws && colcon build --symlink-install && source install/setup.bash && ros2 run carm_rl_env train_reaching --algo ppo --timesteps 10000 --num-envs 1 --n-steps 256 --batch-size 64 --device auto'
+```
+
+运行 4 个并行环境的 PPO baseline：
+
+```bash
+docker compose run --rm foxy-maxhub-a3 \
+  bash -lc 'cd /workspace/rl_ws && source install/setup.bash && ros2 run carm_rl_env train_reaching --algo ppo --timesteps 50000 --num-envs 4 --n-steps 256 --batch-size 128 --device cpu --eval-episodes 20'
 ```
 
 使用 GPU overlay 后可以指定 CUDA：
 
 ```bash
 docker compose -f compose.yaml -f compose.gpu.yaml run --rm foxy-maxhub-a3 \
-  bash -lc 'cd /workspace/rl_ws && source install/setup.bash && ros2 run carm_rl_env train_reaching --algo ppo --timesteps 10000 --n-steps 256 --batch-size 64 --device cuda'
+  bash -lc 'cd /workspace/rl_ws && source install/setup.bash && ros2 run carm_rl_env train_reaching --algo ppo --timesteps 10000 --num-envs 4 --n-steps 256 --batch-size 128 --device cuda'
 ```
 
 如果需要编译官方 `carm_ros2` 参考包，建议先复制到 `/workspace/src` 再改，保留 `/opt/maxhub-a3/reference/carm_demo` 只读。

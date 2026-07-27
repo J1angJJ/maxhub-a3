@@ -3,6 +3,7 @@ from pathlib import Path
 
 from stable_baselines3 import A2C, PPO
 from stable_baselines3.common.env_checker import check_env
+from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.monitor import Monitor
 
 from carm_rl_env.reaching_env import CArmA3ReachingEnv
@@ -41,6 +42,7 @@ def main():
     parser.add_argument("--algo", choices=sorted(ALGORITHMS), default="ppo")
     parser.add_argument("--timesteps", type=int, default=10_000)
     parser.add_argument("--max-steps", type=int, default=100)
+    parser.add_argument("--num-envs", type=int, default=1, help="Number of parallel vectorized env instances.")
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--device", default="auto", help="auto, cpu, cuda, or cuda:0")
     parser.add_argument("--save-dir", default="/workspace/rl_ws/artifacts/reaching")
@@ -58,7 +60,13 @@ def main():
     if args.check_env:
         check_env(raw_env, warn=True)
 
-    env = _make_env(args.max_steps)
+    env = make_vec_env(
+        CArmA3ReachingEnv,
+        n_envs=args.num_envs,
+        seed=args.seed,
+        monitor_dir=str(save_dir / "monitor"),
+        env_kwargs={"max_steps": args.max_steps},
+    )
     algo_cls = ALGORITHMS[args.algo]
     model_kwargs = {
         "learning_rate": args.learning_rate,
@@ -66,6 +74,12 @@ def main():
     }
     if args.algo == "ppo":
         model_kwargs["batch_size"] = args.batch_size
+
+    print(f"algo={args.algo}")
+    print(f"num_envs={args.num_envs}")
+    print(f"max_steps={args.max_steps}")
+    print(f"timesteps={args.timesteps}")
+    print(f"rollout_batch={args.n_steps * args.num_envs}")
 
     model = algo_cls(
         "MlpPolicy",
