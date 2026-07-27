@@ -23,9 +23,11 @@ def _row(step, action, reward, terminated, truncated, info, obs):
         "step": step,
         "reward": reward,
         "distance": info["distance"],
+        "best_distance": info.get("best_distance", info["distance"]),
         "terminated": bool(terminated),
         "truncated": bool(truncated),
         "progress_reward": info.get("progress_reward", 0.0),
+        "distance_regression_penalty": info.get("distance_regression_penalty", 0.0),
         "joint_target_error": info.get("joint_target_error", 0.0),
         "joint_target_reached": info.get("joint_target_reached", False),
         "gazebo_reset_called": info.get("gazebo_reset_called", False),
@@ -72,6 +74,12 @@ def main():
     parser.add_argument("--success-threshold", type=float, default=0.03)
     parser.add_argument("--distance-reward-scale", type=float, default=1.0)
     parser.add_argument("--progress-reward-scale", type=float, default=0.0)
+    parser.add_argument(
+        "--distance-regression-penalty-scale",
+        type=float,
+        default=0.0,
+        help="Penalty multiplier for steps that move farther from the target than the previous step.",
+    )
     parser.add_argument("--action-penalty-scale", type=float, default=0.01)
     parser.add_argument("--smoothness-penalty-scale", type=float, default=0.0)
     parser.add_argument("--joint-limit-penalty-scale", type=float, default=0.0)
@@ -97,6 +105,7 @@ def main():
         "success_threshold": args.success_threshold,
         "distance_reward_scale": args.distance_reward_scale,
         "progress_reward_scale": args.progress_reward_scale,
+        "distance_regression_penalty_scale": args.distance_regression_penalty_scale,
         "action_penalty_scale": args.action_penalty_scale,
         "smoothness_penalty_scale": args.smoothness_penalty_scale,
         "joint_limit_penalty_scale": args.joint_limit_penalty_scale,
@@ -142,6 +151,7 @@ def main():
     print(f"steps={len(rows)}")
     print(f"total_reward={total_reward:.4f}")
     print(f"final_distance={rows[-1]['distance']:.4f}")
+    print(f"best_distance={rows[-1]['best_distance']:.4f}")
     print(f"joint_target_reached_rate={sum(target_reached) / len(target_reached):.4f}")
     print(f"terminated={rows[-1]['terminated']}")
     print(f"truncated={rows[-1]['truncated']}")

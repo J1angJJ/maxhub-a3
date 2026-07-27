@@ -409,6 +409,68 @@ ros2 run carm_rl_gazebo evaluate_gazebo_reaching \
   --device cpu
 ```
 
+更新 `carm_rl_gazebo` 源码后，在容器内重新编译并刷新环境：
+
+```bash
+cd /workspace/rl_ws
+colcon build --symlink-install --packages-select carm_rl_gazebo
+source install/setup.bash
+```
+
+低位目标回退惩罚续训实验：
+
+```bash
+ros2 run carm_rl_gazebo train_gazebo_reaching \
+  --load-model /workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_action008_hard3035_progress_20000.zip \
+  --run-name action008_regress3_hard3035_10000 \
+  --timesteps 10000 \
+  --max-steps 45 \
+  --n-steps 64 \
+  --batch-size 64 \
+  --learning-rate 0.0001 \
+  --clip-range 0.05 \
+  --hard-target-position 0.1542,0.2146,0.1086 \
+  --hard-target-ratio 0.45 \
+  --hard-target-noise 0.03 \
+  --action-scale 0.08 \
+  --command-duration 0.10 \
+  --command-settle-time 0.02 \
+  --command-timeout 0.12 \
+  --joint-target-tolerance 0.08 \
+  --progress-reward-scale 0.5 \
+  --distance-regression-penalty-scale 3.0 \
+  --smoothness-penalty-scale 0.01 \
+  --joint-limit-penalty-scale 0.05 \
+  --success-bonus 1.0 \
+  --reset-noise 0.05 \
+  --reset-world-on-reset \
+  --eval-episodes 0 \
+  --device cpu
+```
+
+回退惩罚续训后的 100 集评估：
+
+```bash
+ros2 run carm_rl_gazebo evaluate_gazebo_reaching \
+  --model /workspace/rl_ws/artifacts/gazebo_reaching/ppo_gazebo_reaching_action008_regress3_hard3035_10000.zip \
+  --episodes 100 \
+  --max-steps 45 \
+  --action-scale 0.08 \
+  --command-duration 0.10 \
+  --command-settle-time 0.02 \
+  --command-timeout 0.12 \
+  --joint-target-tolerance 0.08 \
+  --progress-reward-scale 0.5 \
+  --distance-regression-penalty-scale 3.0 \
+  --smoothness-penalty-scale 0.01 \
+  --joint-limit-penalty-scale 0.05 \
+  --success-bonus 1.0 \
+  --reset-noise 0.05 \
+  --reset-world-on-reset \
+  --csv /workspace/rl_ws/artifacts/gazebo_reaching/eval100_action008_regress3_hard3035_10000.csv \
+  --device cpu
+```
+
 追踪单个 Gazebo 失败 seed：
 
 ```bash

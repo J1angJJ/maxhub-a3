@@ -18,7 +18,7 @@ class CArmA3GazeboReachingEnv(gym.Env):
 
     This first version expects `ros2 launch carm_gazebo spawn_a3_control.launch.py`
     to already be running. It publishes position trajectories and observes
-    `/joint_states`; it does not reset Gazebo physics yet.
+    `/joint_states`; reset can optionally call Gazebo's `/reset_world` service.
     """
 
     metadata = {"render_modes": []}
@@ -34,6 +34,7 @@ class CArmA3GazeboReachingEnv(gym.Env):
         success_threshold=0.03,
         distance_reward_scale=1.0,
         progress_reward_scale=0.0,
+        distance_regression_penalty_scale=0.0,
         action_penalty_scale=0.01,
         smoothness_penalty_scale=0.0,
         joint_limit_penalty_scale=0.0,
@@ -65,6 +66,7 @@ class CArmA3GazeboReachingEnv(gym.Env):
         self.success_threshold = float(success_threshold)
         self.distance_reward_scale = float(distance_reward_scale)
         self.progress_reward_scale = float(progress_reward_scale)
+        self.distance_regression_penalty_scale = float(distance_regression_penalty_scale)
         self.action_penalty_scale = float(action_penalty_scale)
         self.smoothness_penalty_scale = float(smoothness_penalty_scale)
         self.joint_limit_penalty_scale = float(joint_limit_penalty_scale)
@@ -117,6 +119,7 @@ class CArmA3GazeboReachingEnv(gym.Env):
         self._step_count = 0
         self.previous_action = np.zeros(6, dtype=np.float32)
         self.previous_distance = None
+        self.best_distance = None
         self.target_position = np.zeros(3, dtype=np.float32)
 
     def _on_joint_state(self, msg):
@@ -217,6 +220,7 @@ class CArmA3GazeboReachingEnv(gym.Env):
             "tcp_position": tcp_position,
             "target_position": self.target_position.copy(),
             "distance": distance,
+            "best_distance": self.best_distance if self.best_distance is not None else distance,
             "step_count": self._step_count,
         }
 
@@ -225,6 +229,7 @@ class CArmA3GazeboReachingEnv(gym.Env):
         self._step_count = 0
         self.previous_action = np.zeros(6, dtype=np.float32)
         self.previous_distance = None
+        self.best_distance = None
         options = options or {}
         gazebo_reset_called = self._call_reset_world() if self.reset_world_on_reset else False
         current = self._wait_for_joint_positions()
@@ -247,6 +252,8 @@ class CArmA3GazeboReachingEnv(gym.Env):
 
         info = self._get_info(current)
         self.previous_distance = info["distance"]
+        self.best_distance = info["distance"]
+        info["best_distance"] = self.best_distance
         info["joint_target_error"] = joint_target_error
         info["joint_target_reached"] = joint_target_reached
         info["gazebo_reset_called"] = gazebo_reset_called
@@ -265,13 +272,16 @@ class CArmA3GazeboReachingEnv(gym.Env):
         distance = info["distance"]
         previous_distance = self.previous_distance if self.previous_distance is not None else distance
         progress_reward = self.progress_reward_scale * (previous_distance - distance)
+        distance_regression_penalty = self.distance_regression_penalty_scale * max(0.0, distance - previous_distance)
         action_penalty = self.action_penalty_scale * float(np.linalg.norm(action))
         smoothness_penalty = self.smoothness_penalty_scale * float(np.linalg.norm(action - self.previous_action))
         joint_limit_penalty = self.joint_limit_penalty_scale * self._joint_limit_penalty(current)
+        self.best_distance = min(self.best_distance if self.best_distance is not None else distance, distance)
         terminated = distance < self.success_threshold
         reward = (
             -self.distance_reward_scale * distance
             + progress_reward
+            - distance_regression_penalty
             - action_penalty
             - smoothness_penalty
             - joint_limit_penalty
@@ -279,9 +289,11 @@ class CArmA3GazeboReachingEnv(gym.Env):
         )
         truncated = self._step_count >= self.max_steps
         info["progress_reward"] = progress_reward
+        info["distance_regression_penalty"] = distance_regression_penalty
         info["action_penalty"] = action_penalty
         info["smoothness_penalty"] = smoothness_penalty
         info["joint_limit_penalty"] = joint_limit_penalty
+        info["best_distance"] = self.best_distance
         info["commanded_joint_positions"] = target_joints.copy()
         info["joint_target_error"] = joint_target_error
         info["joint_target_reached"] = joint_target_reached

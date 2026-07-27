@@ -34,12 +34,14 @@ def _run_episode(model, seed, env_kwargs):
         return {
             "seed": seed,
             "distance": info["distance"],
+            "best_distance": info.get("best_distance", info["distance"]),
             "reward": total_reward,
             "episode_length": info["step_count"],
             "success": bool(success),
             "truncated": bool(truncated),
             "failure_reason": "" if success else ("timeout" if truncated else "distance"),
             "progress_reward": info.get("progress_reward", 0.0),
+            "distance_regression_penalty": info.get("distance_regression_penalty", 0.0),
             "action_penalty": info.get("action_penalty", 0.0),
             "smoothness_penalty": info.get("smoothness_penalty", 0.0),
             "joint_limit_penalty": info.get("joint_limit_penalty", 0.0),
@@ -75,6 +77,12 @@ def main():
     parser.add_argument("--success-threshold", type=float, default=0.03)
     parser.add_argument("--distance-reward-scale", type=float, default=1.0)
     parser.add_argument("--progress-reward-scale", type=float, default=0.0)
+    parser.add_argument(
+        "--distance-regression-penalty-scale",
+        type=float,
+        default=0.0,
+        help="Penalty multiplier for steps that move farther from the target than the previous step.",
+    )
     parser.add_argument("--action-penalty-scale", type=float, default=0.01)
     parser.add_argument("--smoothness-penalty-scale", type=float, default=0.0)
     parser.add_argument("--joint-limit-penalty-scale", type=float, default=0.0)
@@ -101,6 +109,7 @@ def main():
         "success_threshold": args.success_threshold,
         "distance_reward_scale": args.distance_reward_scale,
         "progress_reward_scale": args.progress_reward_scale,
+        "distance_regression_penalty_scale": args.distance_regression_penalty_scale,
         "action_penalty_scale": args.action_penalty_scale,
         "smoothness_penalty_scale": args.smoothness_penalty_scale,
         "joint_limit_penalty_scale": args.joint_limit_penalty_scale,
@@ -120,6 +129,7 @@ def main():
     rows = [_run_episode(model, seed, env_kwargs) for seed in seeds]
 
     distances = [row["distance"] for row in rows]
+    best_distances = [row["best_distance"] for row in rows]
     rewards = [row["reward"] for row in rows]
     lengths = [row["episode_length"] for row in rows]
     successes = [row["success"] for row in rows]
@@ -140,6 +150,7 @@ def main():
     print(f"success_rate={sum(successes) / len(successes):.4f}")
     print(f"mean_distance={sum(distances) / len(distances):.4f}")
     print(f"best_distance={min(distances):.4f}")
+    print(f"mean_best_distance={sum(best_distances) / len(best_distances):.4f}")
     print(f"worst_distance={max(distances):.4f}")
     print(f"mean_episode_length={sum(lengths) / len(lengths):.2f}")
     print(f"mean_reward={sum(rewards) / len(rewards):.4f}")

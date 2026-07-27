@@ -26,6 +26,7 @@ def _env_kwargs(args):
         "success_threshold": args.success_threshold,
         "distance_reward_scale": args.distance_reward_scale,
         "progress_reward_scale": args.progress_reward_scale,
+        "distance_regression_penalty_scale": args.distance_regression_penalty_scale,
         "action_penalty_scale": args.action_penalty_scale,
         "smoothness_penalty_scale": args.smoothness_penalty_scale,
         "joint_limit_penalty_scale": args.joint_limit_penalty_scale,
@@ -83,6 +84,12 @@ def main():
     parser.add_argument("--success-threshold", type=float, default=0.03)
     parser.add_argument("--distance-reward-scale", type=float, default=1.0)
     parser.add_argument("--progress-reward-scale", type=float, default=0.0)
+    parser.add_argument(
+        "--distance-regression-penalty-scale",
+        type=float,
+        default=0.0,
+        help="Penalty multiplier for steps that move farther from the target than the previous step.",
+    )
     parser.add_argument("--action-penalty-scale", type=float, default=0.01)
     parser.add_argument("--smoothness-penalty-scale", type=float, default=0.0)
     parser.add_argument("--joint-limit-penalty-scale", type=float, default=0.0)
@@ -154,6 +161,7 @@ def main():
     print(f"joint_target_tolerance={args.joint_target_tolerance}")
     print(f"distance_reward_scale={args.distance_reward_scale}")
     print(f"progress_reward_scale={args.progress_reward_scale}")
+    print(f"distance_regression_penalty_scale={args.distance_regression_penalty_scale}")
     print(f"action_penalty_scale={args.action_penalty_scale}")
     print(f"smoothness_penalty_scale={args.smoothness_penalty_scale}")
     print(f"joint_limit_penalty_scale={args.joint_limit_penalty_scale}")
