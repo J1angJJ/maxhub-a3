@@ -2,6 +2,8 @@
 
 本文档记录暂停 ROS 1 主线后，基于 Ubuntu 22.04 + ROS 2 Humble 开始强化学习方向开发的初始判断。
 
+> 阶段说明：本文是早期 Humble 方案评估记录。后续实际落地路线改为 Ubuntu 20.04 + ROS 2 Foxy，并已在 `workspace/foxy/` 阶段性冻结。新的 RL 主线不建议继续围绕 MAXHUB A3 扩展，应迁移到官方 RL demo 更完整的平台。
+
 目标不是直接迁移全部 ROS 1 功能，而是把现有 CArm A3 实机能力收敛为一个适合机器人学习和 Sim-to-Real 的 ROS 2 安全接口。
 
 ## Reference Repo

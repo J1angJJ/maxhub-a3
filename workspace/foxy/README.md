@@ -870,9 +870,11 @@ ros2 run carm_rl_gazebo trace_gazebo_reaching \
 
 当前 `carm_rl_gazebo` 不负责自动起停 Gazebo，需要先启动 `carm_gazebo spawn_a3_control.launch.py`。使用 `--reset-world-on-reset` 时，环境会在每个 episode reset 前调用 `/reset_world`，随后通过 trajectory 回到带噪声的中位关节姿态。每步会根据 `/joint_states` 的关节目标误差提前结束等待。
 
-## 仿真方向
+## 仿真方向历史参考
 
-当前先把真实机械臂 SDK 接口、URDF 描述和 Gazebo Classic 基础入口迁到 Foxy。下一步建议按下面顺序推进：
+本节保留早期仿真路线判断，供以后恢复项目时参考。当前 Foxy/RL 方向已经阶段性冻结，不建议继续围绕 MAXHUB A3 盲目扩展训练功能。
+
+早期判断的推进顺序如下：
 
 1. Gazebo Classic：优先验证 URDF、关节轴、碰撞体、TF 和基础控制接口，和 Foxy 生态最贴近。
 2. MuJoCo：适合强化学习训练，需要从 URDF 整理 actuator、joint limit、collision 和 MJCF 资产。
@@ -886,4 +888,4 @@ Gazebo reaching 设计见 [GAZEBO_REACHING_PLAN.md](GAZEBO_REACHING_PLAN.md)。
 
 ## 迁移边界
 
-当前已迁移机械臂 SDK 的 ROS2 基础接口、bringup 参数和机器人描述包。ROS1 中的视觉、手眼、抓取任务和安全运动层暂不整体搬运；后续应按 RL 需要逐步迁移，并优先补安全执行层。
+当前已迁移机械臂 SDK 的 ROS2 基础接口、bringup 参数、机器人描述包和相机节点。ROS1 中的手眼、抓取任务和安全运动层没有整体搬运；后续如恢复实机方向，应优先补安全执行层，不要直接把 Gazebo 策略下发到真实机械臂。

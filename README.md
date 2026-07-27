@@ -12,6 +12,7 @@
 - [workspace/foxy/README.md](workspace/foxy/README.md)：ROS2 Foxy、Docker、Gazebo、Gymnasium/SB3 reaching 和相机迁移入口。
 - [workspace/foxy/PROJECT_SUMMARY_RL.md](workspace/foxy/PROJECT_SUMMARY_RL.md)：Foxy/RL 阶段冻结总结、代表性结果、边界和简历表述。
 - [docs/project_closure_review_2026-07-27.md](docs/project_closure_review_2026-07-27.md)：全仓库收束 review、风险边界和后续恢复路线。
+- [docs/tracked_documents_review_2026-07-27.md](docs/tracked_documents_review_2026-07-27.md)：已追踪文档复查记录、历史口径说明和检查结果。
 - [docs/migration_status_2026-07-26.md](docs/migration_status_2026-07-26.md)：从 Windows/虚拟机迁移到当前 Linux 工作区的交接状态、风险和下一步。
 
 ## 厂家资料
